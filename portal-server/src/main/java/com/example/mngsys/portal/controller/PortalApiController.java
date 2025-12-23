@@ -3,8 +3,10 @@ package com.example.mngsys.portal.controller;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
+import com.example.mngsys.portal.service.PortalActionService;
 import com.example.mngsys.portal.service.PortalAuthService;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,9 +29,12 @@ import java.util.Map;
 public class PortalApiController {
 
     private final PortalAuthService portalAuthService;
+    private final PortalActionService portalActionService;
 
-    public PortalApiController(PortalAuthService portalAuthService) {
+    public PortalApiController(PortalAuthService portalAuthService,
+                               PortalActionService portalActionService) {
         this.portalAuthService = portalAuthService;
+        this.portalActionService = portalActionService;
     }
 
     @PostMapping("/login")
@@ -100,6 +105,35 @@ public class PortalApiController {
         }
         String jumpUrl = portalAuthService.createSsoJumpUrl(userId, request.getSystemCode(), request.getTargetUrl());
         return ApiResponse.success(new SsoJumpResponse(jumpUrl));
+    }
+
+    @PostMapping("/action/pwd/enter")
+    public ApiResponse<ActionEnterResponse> enterPasswordAction(@Valid @RequestBody ActionTicketRequest request,
+                                                                HttpServletResponse response) {
+        return enterActionTicket(PortalActionService.ActionType.PASSWORD, request, response);
+    }
+
+    @PostMapping("/action/profile/enter")
+    public ApiResponse<ActionEnterResponse> enterProfileAction(@Valid @RequestBody ActionTicketRequest request,
+                                                               HttpServletResponse response) {
+        return enterActionTicket(PortalActionService.ActionType.PROFILE, request, response);
+    }
+
+    private ApiResponse<ActionEnterResponse> enterActionTicket(PortalActionService.ActionType actionType,
+                                                               ActionTicketRequest request,
+                                                               HttpServletResponse response) {
+        PortalActionService.EnterResult result = portalActionService.enter(actionType, request.getTicket());
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode());
+        }
+        ResponseCookie cookie = ResponseCookie.from("ptk", result.getPtk())
+                .httpOnly(true)
+                .path("/")
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        ActionEnterResponse payload = new ActionEnterResponse(true, result.getReturnUrl(), result.getSystemCode());
+        return ApiResponse.success(payload);
     }
 
     private LoginResponse buildLoginResponse(Object data, String jumpUrl) {
@@ -254,6 +288,43 @@ public class PortalApiController {
 
         public String getJumpUrl() {
             return jumpUrl;
+        }
+    }
+
+    public static class ActionTicketRequest {
+        @NotBlank(message = "ticket 不能为空")
+        private String ticket;
+
+        public String getTicket() {
+            return ticket;
+        }
+
+        public void setTicket(String ticket) {
+            this.ticket = ticket;
+        }
+    }
+
+    public static class ActionEnterResponse {
+        private final boolean ok;
+        private final String returnUrl;
+        private final String systemCode;
+
+        public ActionEnterResponse(boolean ok, String returnUrl, String systemCode) {
+            this.ok = ok;
+            this.returnUrl = returnUrl;
+            this.systemCode = systemCode;
+        }
+
+        public boolean isOk() {
+            return ok;
+        }
+
+        public String getReturnUrl() {
+            return returnUrl;
+        }
+
+        public String getSystemCode() {
+            return systemCode;
         }
     }
 }
