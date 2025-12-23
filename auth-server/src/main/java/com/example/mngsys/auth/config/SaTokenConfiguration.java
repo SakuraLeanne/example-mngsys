@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
+/**
+ * SaTokenConfiguration。
+ */
 public class SaTokenConfiguration {
 
     @Bean

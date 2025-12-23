@@ -3,6 +3,9 @@ package com.example.mngsys.redisevent;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "redis.event")
+/**
+ * RedisEventNotifyProperties。
+ */
 public class RedisEventNotifyProperties {
     private String streamKey = "portal:events";
     private String dedupKeyPrefix = "event:dedup:";

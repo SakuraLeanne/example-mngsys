@@ -13,6 +13,9 @@ import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 
+/**
+ * PendingEventRetryer。
+ */
 public class PendingEventRetryer {
     private final StringRedisTemplate redisTemplate;
     private final RedisEventNotifyProperties properties;

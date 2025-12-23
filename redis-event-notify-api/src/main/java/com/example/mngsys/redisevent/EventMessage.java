@@ -2,6 +2,9 @@ package com.example.mngsys.redisevent;
 
 import java.io.Serializable;
 
+/**
+ * EventMessage。
+ */
 public class EventMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 

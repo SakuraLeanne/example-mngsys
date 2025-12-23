@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @ConfigurationProperties(prefix = "portal")
+/**
+ * PortalProperties。
+ */
 public class PortalProperties {
 
     private Security security = new Security();

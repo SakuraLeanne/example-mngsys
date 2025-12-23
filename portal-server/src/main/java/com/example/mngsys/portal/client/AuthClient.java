@@ -15,6 +15,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Component
+/**
+ * AuthClient。
+ */
 public class AuthClient {
 
     private final RestTemplate restTemplate;

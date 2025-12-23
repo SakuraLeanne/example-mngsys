@@ -5,5 +5,8 @@ import com.example.mngsys.portal.entity.PortalUserAuthState;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
+/**
+ * PortalUserAuthStateMapper。
+ */
 public interface PortalUserAuthStateMapper extends BaseMapper<PortalUserAuthState> {
 }

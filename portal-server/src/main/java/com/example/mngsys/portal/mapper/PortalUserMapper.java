@@ -5,5 +5,8 @@ import com.example.mngsys.portal.entity.PortalUser;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
+/**
+ * PortalUserMapper。
+ */
 public interface PortalUserMapper extends BaseMapper<PortalUser> {
 }

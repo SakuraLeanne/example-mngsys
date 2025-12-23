@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("portal_audit_log")
+/**
+ * PortalAuditLog。
+ */
 public class PortalAuditLog {
     @TableId(type = IdType.AUTO)
     private Long id;

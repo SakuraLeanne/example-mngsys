@@ -1,5 +1,8 @@
 package com.example.mngsys.portal.common.context;
 
+/**
+ * RequestContext。
+ */
 public final class RequestContext {
     private static final ThreadLocal<Long> USER_ID_HOLDER = new ThreadLocal<>();
 

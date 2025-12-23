@@ -5,6 +5,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * PortalEvent。
+ */
 public final class PortalEvent implements Serializable {
     private static final long serialVersionUID = 1L;
 

@@ -2,6 +2,9 @@ package com.example.mngsys.portal.common.api;
 
 import java.io.Serializable;
 
+/**
+ * ApiResponse。
+ */
 public final class ApiResponse<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 

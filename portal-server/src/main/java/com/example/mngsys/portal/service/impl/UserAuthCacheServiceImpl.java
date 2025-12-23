@@ -11,6 +11,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Service
+/**
+ * UserAuthCacheServiceImpl。
+ */
 public class UserAuthCacheServiceImpl implements UserAuthCacheService {
 
     private static final String USER_AUTH_PREFIX = "user:auth:";

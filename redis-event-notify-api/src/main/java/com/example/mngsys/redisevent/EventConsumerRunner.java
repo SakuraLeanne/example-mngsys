@@ -14,6 +14,9 @@ import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 
+/**
+ * EventConsumerRunner。
+ */
 public class EventConsumerRunner {
     private final StringRedisTemplate redisTemplate;
     private final RedisEventNotifyProperties properties;

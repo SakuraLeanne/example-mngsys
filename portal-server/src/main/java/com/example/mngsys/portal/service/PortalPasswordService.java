@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+/**
+ * PortalPasswordService。
+ */
 public class PortalPasswordService {
 
     private static final String PTK_PREFIX = "portal:ptk:";

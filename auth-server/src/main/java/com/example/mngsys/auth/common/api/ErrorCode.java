@@ -1,5 +1,8 @@
 package com.example.mngsys.auth.common.api;
 
+/**
+ * ErrorCode。
+ */
 public enum ErrorCode {
     UNAUTHENTICATED(100100, 401, "未登录"),
     FORBIDDEN(100200, 403, "无权限"),

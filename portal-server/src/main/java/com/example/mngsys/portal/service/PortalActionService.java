@@ -20,6 +20,9 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
+/**
+ * PortalActionService。
+ */
 public class PortalActionService {
 
     private static final String ACTION_TICKET_PASSWORD_PREFIX = "portal:action:ticket:pwd:";

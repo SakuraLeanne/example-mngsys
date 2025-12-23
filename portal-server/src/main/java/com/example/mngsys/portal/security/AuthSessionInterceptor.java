@@ -5,6 +5,8 @@ import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -19,6 +21,9 @@ import java.util.Locale;
 import java.util.Map;
 
 @Component
+/**
+ * AuthSessionInterceptor。
+ */
 public class AuthSessionInterceptor implements HandlerInterceptor {
 
     private static final List<WhitelistEntry> WHITELIST = Arrays.asList(
@@ -29,18 +34,25 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
             new WhitelistEntry("GET", "/portal/api/profile"),
             new WhitelistEntry("POST", "/portal/api/profile")
     );
+    private static final String APP_MENU_PATH = "/portal/api/app/menus";
+    private static final String DEV_USER_HEADER = "X-User-Id";
 
     private final AuthClient authClient;
     private final ObjectMapper objectMapper;
+    private final Environment environment;
 
-    public AuthSessionInterceptor(AuthClient authClient, ObjectMapper objectMapper) {
+    public AuthSessionInterceptor(AuthClient authClient, ObjectMapper objectMapper, Environment environment) {
         this.authClient = authClient;
         this.objectMapper = objectMapper;
+        this.environment = environment;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod)) {
+            return true;
+        }
+        if (allowDevUserHeader(request)) {
             return true;
         }
         if (isWhitelisted(request)) {
@@ -82,6 +94,28 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         response.setStatus(ErrorCode.UNAUTHENTICATED.getHttpStatus());
         response.setContentType("application/json;charset=UTF-8");
         objectMapper.writeValue(response.getWriter(), ApiResponse.failure(ErrorCode.UNAUTHENTICATED));
+    }
+
+    private boolean allowDevUserHeader(HttpServletRequest request) {
+        if (!environment.acceptsProfiles(Profiles.of("dev"))) {
+            return false;
+        }
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        if (!"GET".equalsIgnoreCase(method)) {
+            return false;
+        }
+        if (!APP_MENU_PATH.equalsIgnoreCase(path)) {
+            return false;
+        }
+        String headerValue = request.getHeader(DEV_USER_HEADER);
+        Long userId = parseLong(headerValue);
+        if (userId == null) {
+            return false;
+        }
+        RequestContext.setUserId(userId);
+        request.setAttribute("userId", userId);
+        return true;
     }
 
     private Long extractUserId(Object data) {

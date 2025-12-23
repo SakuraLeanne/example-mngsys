@@ -5,5 +5,8 @@ import com.example.mngsys.portal.entity.PortalAuditLog;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
+/**
+ * PortalAuditLogMapper。
+ */
 public interface PortalAuditLogMapper extends BaseMapper<PortalAuditLog> {
 }

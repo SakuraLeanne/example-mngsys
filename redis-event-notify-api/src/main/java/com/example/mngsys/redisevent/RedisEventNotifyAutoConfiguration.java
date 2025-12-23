@@ -10,6 +10,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
 @EnableConfigurationProperties(RedisEventNotifyProperties.class)
+/**
+ * RedisEventNotifyAutoConfiguration。
+ */
 public class RedisEventNotifyAutoConfiguration {
 
     @Bean

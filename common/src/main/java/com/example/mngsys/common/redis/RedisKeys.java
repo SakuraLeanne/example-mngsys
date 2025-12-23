@@ -2,6 +2,9 @@ package com.example.mngsys.common.redis;
 
 import java.time.Duration;
 
+/**
+ * RedisKeys。
+ */
 public final class RedisKeys {
     private RedisKeys() {
     }

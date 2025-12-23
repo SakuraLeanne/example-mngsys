@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("app_menu_resource")
+/**
+ * AppMenuResource。
+ */
 public class AppMenuResource {
     @TableId(type = IdType.AUTO)
     private Long id;
