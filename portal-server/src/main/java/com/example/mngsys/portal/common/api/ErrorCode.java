@@ -10,7 +10,11 @@ public enum ErrorCode {
 
     ACTION_TICKET_INVALID(200110, 410, "action_ticket无效"),
     ACTION_TICKET_EXPIRED(200111, 410, "action_ticket过期"),
-    ACTION_TICKET_REPLAYED(200112, 409, "action_ticket已使用/重放");
+    ACTION_TICKET_REPLAYED(200112, 409, "action_ticket已使用/重放"),
+
+    PTK_INVALID(200120, 401, "ptk无效"),
+    PTK_EXPIRED(200121, 410, "ptk过期"),
+    PTK_SCOPE_MISMATCH(200122, 403, "ptk scope不匹配");
 
     private final int code;
     private final int httpStatus;

@@ -24,7 +24,10 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
     private static final List<WhitelistEntry> WHITELIST = Arrays.asList(
             new WhitelistEntry("POST", "/portal/api/login"),
             new WhitelistEntry("POST", "/portal/api/action/pwd/enter"),
-            new WhitelistEntry("POST", "/portal/api/action/profile/enter")
+            new WhitelistEntry("POST", "/portal/api/action/profile/enter"),
+            new WhitelistEntry("POST", "/portal/api/password/change"),
+            new WhitelistEntry("GET", "/portal/api/profile"),
+            new WhitelistEntry("POST", "/portal/api/profile")
     );
 
     private final AuthClient authClient;
