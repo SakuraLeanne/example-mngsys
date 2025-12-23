@@ -6,7 +6,11 @@ public enum ErrorCode {
     INVALID_ARGUMENT(100300, 400, "参数错误"),
     INVALID_RETURN_URL(100301, 400, "非法回调地址"),
     NOT_FOUND(100404, 404, "资源不存在"),
-    INTERNAL_ERROR(100500, 500, "系统错误");
+    INTERNAL_ERROR(100500, 500, "系统错误"),
+
+    ACTION_TICKET_INVALID(200110, 410, "action_ticket无效"),
+    ACTION_TICKET_EXPIRED(200111, 410, "action_ticket过期"),
+    ACTION_TICKET_REPLAYED(200112, 409, "action_ticket已使用/重放");
 
     private final int code;
     private final int httpStatus;
