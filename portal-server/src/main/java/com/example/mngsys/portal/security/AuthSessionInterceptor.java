@@ -21,6 +21,9 @@ import java.util.Locale;
 import java.util.Map;
 
 @Component
+/**
+ * AuthSessionInterceptor。
+ */
 public class AuthSessionInterceptor implements HandlerInterceptor {
 
     private static final List<WhitelistEntry> WHITELIST = Arrays.asList(

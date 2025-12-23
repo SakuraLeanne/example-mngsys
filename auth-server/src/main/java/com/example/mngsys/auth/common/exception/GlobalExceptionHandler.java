@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import javax.validation.ConstraintViolationException;
 
 @RestControllerAdvice
+/**
+ * GlobalExceptionHandler。
+ */
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotLoginException.class)

@@ -31,6 +31,9 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/portal/api")
 @Validated
+/**
+ * PortalApiController。
+ */
 public class PortalApiController {
 
     private final PortalAuthService portalAuthService;

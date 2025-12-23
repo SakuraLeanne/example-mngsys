@@ -7,6 +7,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 @SpringBootApplication
 @EnableConfigurationProperties(GatewaySecurityProperties.class)
+/**
+ * GatewayServerApplication。
+ */
 public class GatewayServerApplication {
 
     public static void main(String[] args) {

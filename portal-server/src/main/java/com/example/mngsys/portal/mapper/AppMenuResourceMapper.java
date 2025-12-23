@@ -5,5 +5,8 @@ import com.example.mngsys.portal.entity.AppMenuResource;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
+/**
+ * AppMenuResourceMapper。
+ */
 public interface AppMenuResourceMapper extends BaseMapper<AppMenuResource> {
 }

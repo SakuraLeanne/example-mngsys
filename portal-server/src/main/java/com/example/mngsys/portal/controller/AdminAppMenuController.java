@@ -27,6 +27,9 @@ import java.util.List;
 @RequestMapping("/portal/api/admin/app-menus")
 @Validated
 @AdminRequired
+/**
+ * AdminAppMenuController。
+ */
 public class AdminAppMenuController {
 
     private final PortalAdminAppMenuService portalAdminAppMenuService;

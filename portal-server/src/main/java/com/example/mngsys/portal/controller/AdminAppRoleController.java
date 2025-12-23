@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/portal/api/admin/app-roles")
 @Validated
 @AdminRequired
+/**
+ * AdminAppRoleController。
+ */
 public class AdminAppRoleController {
 
     private final PortalAdminAppRoleService portalAdminAppRoleService;

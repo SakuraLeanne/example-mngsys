@@ -1,5 +1,8 @@
 package com.example.mngsys.common.event;
 
+/**
+ * PortalEventType。
+ */
 public enum PortalEventType {
     USER_PASSWORD_CHANGED,
     USER_PROFILE_UPDATED,

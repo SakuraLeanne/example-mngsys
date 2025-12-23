@@ -21,6 +21,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+/**
+ * PortalAdminUserService。
+ */
 public class PortalAdminUserService {
 
     private static final int STATUS_ENABLED = 1;

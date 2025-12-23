@@ -1,5 +1,8 @@
 package com.example.mngsys.portal.service;
 
+/**
+ * UserAuthCacheService。
+ */
 public interface UserAuthCacheService {
     void updateUserAuthCache(Long userId, Integer status, Long authVersion, Long profileVersion);
 

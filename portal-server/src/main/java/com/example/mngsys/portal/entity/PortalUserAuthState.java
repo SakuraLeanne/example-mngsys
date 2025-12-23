@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("portal_user_auth_state")
+/**
+ * PortalUserAuthState。
+ */
 public class PortalUserAuthState {
     @TableId(type = IdType.INPUT)
     private Long userId;

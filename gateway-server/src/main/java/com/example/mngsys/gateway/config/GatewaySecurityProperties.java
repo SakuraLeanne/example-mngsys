@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @ConfigurationProperties(prefix = "gateway.security")
+/**
+ * GatewaySecurityProperties。
+ */
 public class GatewaySecurityProperties {
     private String authServerBaseUrl = "lb://auth-server";
     private List<String> whitelist = new ArrayList<>();

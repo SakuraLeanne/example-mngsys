@@ -5,5 +5,8 @@ import com.example.mngsys.portal.entity.AppUserRole;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
+/**
+ * AppUserRoleMapper。
+ */
 public interface AppUserRoleMapper extends BaseMapper<AppUserRole> {
 }

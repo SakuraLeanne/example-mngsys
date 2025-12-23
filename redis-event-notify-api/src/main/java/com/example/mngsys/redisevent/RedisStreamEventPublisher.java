@@ -8,6 +8,9 @@ import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 
+/**
+ * RedisStreamEventPublisher。
+ */
 public class RedisStreamEventPublisher implements EventPublisher {
     private final StringRedisTemplate redisTemplate;
     private final RedisEventNotifyProperties properties;

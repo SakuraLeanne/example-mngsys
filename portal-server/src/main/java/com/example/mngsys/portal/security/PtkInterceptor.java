@@ -22,6 +22,9 @@ import java.util.Map;
 import java.util.Optional;
 
 @Component
+/**
+ * PtkInterceptor。
+ */
 public class PtkInterceptor implements HandlerInterceptor {
 
     private static final String PTK_COOKIE_NAME = "ptk";

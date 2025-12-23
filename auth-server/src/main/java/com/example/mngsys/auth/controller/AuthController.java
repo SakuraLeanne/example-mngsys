@@ -21,6 +21,9 @@ import javax.validation.constraints.NotNull;
 @RestController
 @RequestMapping("/auth/api")
 @Validated
+/**
+ * AuthController。
+ */
 public class AuthController {
 
     private final AuthService authService;

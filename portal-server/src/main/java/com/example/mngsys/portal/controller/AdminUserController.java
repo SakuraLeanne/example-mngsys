@@ -23,6 +23,9 @@ import java.util.List;
 @RequestMapping("/portal/api/admin/users")
 @Validated
 @AdminRequired
+/**
+ * AdminUserController。
+ */
 public class AdminUserController {
 
     private final PortalAdminUserService portalAdminUserService;

@@ -13,6 +13,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Component
+/**
+ * AdminRequiredInterceptor。
+ */
 public class AdminRequiredInterceptor implements HandlerInterceptor {
 
     private final ObjectMapper objectMapper;

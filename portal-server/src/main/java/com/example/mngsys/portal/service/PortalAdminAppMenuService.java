@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+/**
+ * PortalAdminAppMenuService。
+ */
 public class PortalAdminAppMenuService {
 
     private final AppMenuResourceService appMenuResourceService;

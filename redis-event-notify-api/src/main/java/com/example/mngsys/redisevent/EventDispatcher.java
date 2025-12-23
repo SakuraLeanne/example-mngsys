@@ -3,6 +3,9 @@ package com.example.mngsys.redisevent;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * EventDispatcher。
+ */
 public class EventDispatcher {
     private final List<EventHandler> handlers;
 

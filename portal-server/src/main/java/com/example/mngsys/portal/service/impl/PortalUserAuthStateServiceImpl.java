@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 
 @Service
+/**
+ * PortalUserAuthStateServiceImpl。
+ */
 public class PortalUserAuthStateServiceImpl extends ServiceImpl<PortalUserAuthStateMapper, PortalUserAuthState>
         implements PortalUserAuthStateService {
 

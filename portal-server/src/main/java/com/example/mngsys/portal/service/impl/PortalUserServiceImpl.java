@@ -7,5 +7,8 @@ import com.example.mngsys.portal.service.PortalUserService;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * PortalUserServiceImpl。
+ */
 public class PortalUserServiceImpl extends ServiceImpl<PortalUserMapper, PortalUser> implements PortalUserService {
 }

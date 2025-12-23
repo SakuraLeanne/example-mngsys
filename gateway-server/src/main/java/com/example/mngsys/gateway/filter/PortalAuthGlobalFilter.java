@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+/**
+ * PortalAuthGlobalFilter。
+ */
 public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
 
     private static final String PORTAL_API_PREFIX = "/portal/api/";

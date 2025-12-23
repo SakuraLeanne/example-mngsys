@@ -7,5 +7,8 @@ import com.example.mngsys.portal.service.AppUserRoleService;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * AppUserRoleServiceImpl。
+ */
 public class AppUserRoleServiceImpl extends ServiceImpl<AppUserRoleMapper, AppUserRole> implements AppUserRoleService {
 }

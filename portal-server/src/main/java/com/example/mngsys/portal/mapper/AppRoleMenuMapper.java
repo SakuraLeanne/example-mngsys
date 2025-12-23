@@ -5,5 +5,8 @@ import com.example.mngsys.portal.entity.AppRoleMenu;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
+/**
+ * AppRoleMenuMapper。
+ */
 public interface AppRoleMenuMapper extends BaseMapper<AppRoleMenu> {
 }

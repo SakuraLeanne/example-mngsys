@@ -3,6 +3,9 @@ package com.example.mngsys.portal.controller.dto;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * AppMenuTreeNode。
+ */
 public class AppMenuTreeNode {
     private final Long id;
     private final String appCode;

@@ -21,6 +21,9 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Service
+/**
+ * PortalProfileService。
+ */
 public class PortalProfileService {
 
     private static final String PTK_PREFIX = "portal:ptk:";

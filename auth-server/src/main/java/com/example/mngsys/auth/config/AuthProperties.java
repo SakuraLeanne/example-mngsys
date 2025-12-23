@@ -3,6 +3,9 @@ package com.example.mngsys.auth.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "auth")
+/**
+ * AuthProperties。
+ */
 public class AuthProperties {
 
     private String internalToken;

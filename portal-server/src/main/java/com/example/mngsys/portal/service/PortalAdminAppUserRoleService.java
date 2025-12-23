@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+/**
+ * PortalAdminAppUserRoleService。
+ */
 public class PortalAdminAppUserRoleService {
 
     private static final String MENU_CACHE_PREFIX = "app:menu:user:";

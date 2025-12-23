@@ -7,6 +7,9 @@ import com.example.mngsys.portal.service.PortalAuditLogService;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * PortalAuditLogServiceImpl。
+ */
 public class PortalAuditLogServiceImpl extends ServiceImpl<PortalAuditLogMapper, PortalAuditLog>
         implements PortalAuditLogService {
 }

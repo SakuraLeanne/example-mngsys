@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("app_user_role")
+/**
+ * AppUserRole。
+ */
 public class AppUserRole {
     @TableId(type = IdType.AUTO)
     private Long id;

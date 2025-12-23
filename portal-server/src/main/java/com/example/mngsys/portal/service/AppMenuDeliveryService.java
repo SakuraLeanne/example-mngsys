@@ -22,6 +22,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+/**
+ * AppMenuDeliveryService。
+ */
 public class AppMenuDeliveryService {
 
     private static final String MENU_CACHE_PREFIX = "app:menu:user:";

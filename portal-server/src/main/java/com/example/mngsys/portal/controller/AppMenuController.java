@@ -14,6 +14,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/portal/api/app/menus")
 @Validated
+/**
+ * AppMenuController。
+ */
 public class AppMenuController {
 
     private final AppMenuDeliveryService appMenuDeliveryService;

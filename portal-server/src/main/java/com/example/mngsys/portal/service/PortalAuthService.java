@@ -22,6 +22,9 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
+/**
+ * PortalAuthService。
+ */
 public class PortalAuthService {
 
     private final AuthClient authClient;

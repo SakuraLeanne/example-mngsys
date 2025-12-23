@@ -7,5 +7,8 @@ import com.example.mngsys.portal.service.AppRoleMenuService;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * AppRoleMenuServiceImpl。
+ */
 public class AppRoleMenuServiceImpl extends ServiceImpl<AppRoleMenuMapper, AppRoleMenu> implements AppRoleMenuService {
 }

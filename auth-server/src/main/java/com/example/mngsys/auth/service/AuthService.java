@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+/**
+ * AuthService。
+ */
 public class AuthService {
 
     private final Map<String, User> users;
