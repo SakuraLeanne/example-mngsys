@@ -7,18 +7,24 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpStatusCodeException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Component
 public class AuthClient {
 
     private final RestTemplate restTemplate;
     private final AuthClientProperties authClientProperties;
+    private final ObjectMapper objectMapper;
 
-    public AuthClient(RestTemplate restTemplate, AuthClientProperties authClientProperties) {
+    public AuthClient(RestTemplate restTemplate, AuthClientProperties authClientProperties, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.authClientProperties = authClientProperties;
+        this.objectMapper = objectMapper;
     }
 
     public ApiResponse<LoginResponse> login(String username, String password) {
@@ -26,12 +32,58 @@ public class AuthClient {
         return restTemplate.postForEntity(buildUrl("/auth/api/login"), request, ApiResponse.class).getBody();
     }
 
+    public ResponseEntity<ApiResponse> loginWithResponse(String username, String password) {
+        LoginRequest request = new LoginRequest(username, password);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<LoginRequest> entity = new HttpEntity<>(request, headers);
+        return exchangeSafely(buildUrl("/auth/api/login"), HttpMethod.POST, entity);
+    }
+
     public ApiResponse<Void> logout() {
         return restTemplate.postForEntity(buildUrl("/auth/api/logout"), null, ApiResponse.class).getBody();
     }
 
+    public ResponseEntity<ApiResponse> logoutWithResponse(String cookie) {
+        HttpHeaders headers = new HttpHeaders();
+        if (StringUtils.hasText(cookie)) {
+            headers.add(HttpHeaders.COOKIE, cookie);
+        }
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        return exchangeSafely(buildUrl("/auth/api/logout"), HttpMethod.POST, entity);
+    }
+
     public ApiResponse<SessionResponse> sessionMe() {
         return restTemplate.getForEntity(buildUrl("/auth/api/session/me"), ApiResponse.class).getBody();
+    }
+
+    public ResponseEntity<ApiResponse> sessionMe(String cookie) {
+        HttpHeaders headers = new HttpHeaders();
+        if (StringUtils.hasText(cookie)) {
+            headers.add(HttpHeaders.COOKIE, cookie);
+        }
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        return exchangeSafely(buildUrl("/auth/api/session/me"), HttpMethod.GET, entity);
+    }
+
+    private ResponseEntity<ApiResponse> exchangeSafely(String url, HttpMethod method, HttpEntity<?> entity) {
+        try {
+            return restTemplate.exchange(url, method, entity, ApiResponse.class);
+        } catch (HttpStatusCodeException ex) {
+            ApiResponse response = parseErrorResponse(ex.getResponseBodyAsString());
+            return ResponseEntity.status(ex.getStatusCode()).body(response);
+        }
+    }
+
+    private ApiResponse parseErrorResponse(String body) {
+        if (!StringUtils.hasText(body)) {
+            return ApiResponse.failure(com.example.mngsys.portal.common.api.ErrorCode.INTERNAL_ERROR, "调用鉴权服务失败");
+        }
+        try {
+            return objectMapper.readValue(body, ApiResponse.class);
+        } catch (JsonProcessingException ex) {
+            return ApiResponse.failure(com.example.mngsys.portal.common.api.ErrorCode.INTERNAL_ERROR, "调用鉴权服务失败");
+        }
     }
 
     public ApiResponse<Void> kick(Long userId) {

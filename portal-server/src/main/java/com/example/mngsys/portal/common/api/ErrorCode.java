@@ -4,6 +4,7 @@ public enum ErrorCode {
     UNAUTHENTICATED(100100, 401, "未登录"),
     FORBIDDEN(100200, 403, "无权限"),
     INVALID_ARGUMENT(100300, 400, "参数错误"),
+    INVALID_RETURN_URL(100301, 400, "非法回调地址"),
     NOT_FOUND(100404, 404, "资源不存在"),
     INTERNAL_ERROR(100500, 500, "系统错误");
 
