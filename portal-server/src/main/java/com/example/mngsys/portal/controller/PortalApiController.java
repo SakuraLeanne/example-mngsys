@@ -5,6 +5,7 @@ import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.service.PortalActionService;
 import com.example.mngsys.portal.service.PortalAuthService;
+import com.example.mngsys.portal.service.PortalPasswordService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +16,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/portal/api")
@@ -30,11 +34,14 @@ public class PortalApiController {
 
     private final PortalAuthService portalAuthService;
     private final PortalActionService portalActionService;
+    private final PortalPasswordService portalPasswordService;
 
     public PortalApiController(PortalAuthService portalAuthService,
-                               PortalActionService portalActionService) {
+                               PortalActionService portalActionService,
+                               PortalPasswordService portalPasswordService) {
         this.portalAuthService = portalAuthService;
         this.portalActionService = portalActionService;
+        this.portalPasswordService = portalPasswordService;
     }
 
     @PostMapping("/login")
@@ -97,6 +104,20 @@ public class PortalApiController {
         return ApiResponse.success(null);
     }
 
+    @PostMapping("/password/change")
+    public ApiResponse<PasswordChangeResponse> changePassword(@Valid @RequestBody PasswordChangeRequest request,
+                                                              HttpServletRequest httpRequest) {
+        String ptk = resolvePtk(httpRequest);
+        PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
+                request.getOldPassword(),
+                request.getNewPassword(),
+                ptk);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode());
+        }
+        return ApiResponse.success(new PasswordChangeResponse(true, true));
+    }
+
     @PostMapping("/sso/jump-url")
     public ApiResponse<SsoJumpResponse> ssoJumpUrl(@Valid @RequestBody SsoJumpRequest request) {
         Long userId = RequestContext.getUserId();
@@ -153,6 +174,20 @@ public class PortalApiController {
             }
         }
         return new LoginResponse(userId, username, jumpUrl);
+    }
+
+    private String resolvePtk(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+        Optional<Cookie> cookie = Arrays.stream(cookies)
+                .filter(item -> "ptk".equals(item.getName()))
+                .findFirst();
+        return cookie.map(Cookie::getValue).orElse(null);
     }
 
     public static class LoginRequest {
@@ -217,6 +252,48 @@ public class PortalApiController {
 
         public String getJumpUrl() {
             return jumpUrl;
+        }
+    }
+
+    public static class PasswordChangeRequest {
+        @NotBlank(message = "旧密码不能为空")
+        private String oldPassword;
+        @NotBlank(message = "新密码不能为空")
+        @Size(min = 8, message = "新密码长度至少8位")
+        private String newPassword;
+
+        public String getOldPassword() {
+            return oldPassword;
+        }
+
+        public void setOldPassword(String oldPassword) {
+            this.oldPassword = oldPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class PasswordChangeResponse {
+        private final boolean success;
+        private final boolean needRelogin;
+
+        public PasswordChangeResponse(boolean success, boolean needRelogin) {
+            this.success = success;
+            this.needRelogin = needRelogin;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public boolean isNeedRelogin() {
+            return needRelogin;
         }
     }
 
