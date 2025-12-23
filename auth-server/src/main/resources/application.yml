@@ -21,3 +21,6 @@ sa-token:
   is-write-cookie: true
   cookie:
     http-only: true
+
+auth:
+  internalToken: "change-me"
