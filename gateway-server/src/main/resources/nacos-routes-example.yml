@@ -1,0 +1,12 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: auth-server
+          uri: lb://auth-server
+          predicates:
+            - Path=/auth/**
+        - id: portal-server
+          uri: lb://portal-server
+          predicates:
+            - Path=/portal/**
