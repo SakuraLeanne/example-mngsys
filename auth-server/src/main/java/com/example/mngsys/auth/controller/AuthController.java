@@ -2,16 +2,21 @@ package com.example.mngsys.auth.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.example.mngsys.auth.common.api.ApiResponse;
+import com.example.mngsys.auth.common.api.ErrorCode;
+import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.service.AuthService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 
 @RestController
 @RequestMapping("/auth/api")
@@ -19,9 +24,11 @@ import javax.validation.constraints.NotBlank;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthProperties authProperties;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AuthProperties authProperties) {
         this.authService = authService;
+        this.authProperties = authProperties;
     }
 
     @PostMapping("/login")
@@ -42,6 +49,18 @@ public class AuthController {
         StpUtil.checkLogin();
         Long userId = StpUtil.getLoginIdAsLong();
         return ApiResponse.success(new SessionResponse(userId));
+    }
+
+    @PostMapping("/session/kick")
+    public ResponseEntity<ApiResponse<Void>> kickSession(
+            @RequestHeader(value = "X-Internal-Token", required = false) String internalToken,
+            @Valid @RequestBody KickRequest request) {
+        if (internalToken == null || !internalToken.equals(authProperties.getInternalToken())) {
+            return ResponseEntity.status(ErrorCode.UNAUTHENTICATED.getHttpStatus())
+                    .body(ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "内部鉴权失败"));
+        }
+        StpUtil.logout(request.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     public static class LoginRequest {
@@ -94,6 +113,19 @@ public class AuthController {
 
         public Long getUserId() {
             return userId;
+        }
+    }
+
+    public static class KickRequest {
+        @NotNull(message = "用户ID不能为空")
+        private Long userId;
+
+        public Long getUserId() {
+            return userId;
+        }
+
+        public void setUserId(Long userId) {
+            this.userId = userId;
         }
     }
 }
