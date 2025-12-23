@@ -39,6 +39,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, ex.getMessage()));
     }
 
+    @ExceptionHandler(InvalidReturnUrlException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidReturnUrl(InvalidReturnUrlException ex) {
+        return ResponseEntity.status(ErrorCode.INVALID_RETURN_URL.getHttpStatus())
+                .body(ApiResponse.failure(ErrorCode.INVALID_RETURN_URL, ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getHttpStatus())
