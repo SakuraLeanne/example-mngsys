@@ -5,6 +5,8 @@ import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.service.PortalActionService;
 import com.example.mngsys.portal.service.PortalAuthService;
+import com.example.mngsys.portal.service.PortalPasswordService;
+import com.example.mngsys.portal.service.PortalProfileService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +17,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/portal/api")
@@ -30,11 +35,17 @@ public class PortalApiController {
 
     private final PortalAuthService portalAuthService;
     private final PortalActionService portalActionService;
+    private final PortalPasswordService portalPasswordService;
+    private final PortalProfileService portalProfileService;
 
     public PortalApiController(PortalAuthService portalAuthService,
-                               PortalActionService portalActionService) {
+                               PortalActionService portalActionService,
+                               PortalPasswordService portalPasswordService,
+                               PortalProfileService portalProfileService) {
         this.portalAuthService = portalAuthService;
         this.portalActionService = portalActionService;
+        this.portalPasswordService = portalPasswordService;
+        this.portalProfileService = portalProfileService;
     }
 
     @PostMapping("/login")
@@ -97,6 +108,46 @@ public class PortalApiController {
         return ApiResponse.success(null);
     }
 
+    @PostMapping("/password/change")
+    public ApiResponse<PasswordChangeResponse> changePassword(@Valid @RequestBody PasswordChangeRequest request,
+                                                              HttpServletRequest httpRequest) {
+        String ptk = resolvePtk(httpRequest);
+        PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
+                request.getOldPassword(),
+                request.getNewPassword(),
+                ptk);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode());
+        }
+        return ApiResponse.success(new PasswordChangeResponse(true, true));
+    }
+
+    @GetMapping("/profile")
+    public ApiResponse<ProfileResponse> profile(HttpServletRequest httpRequest) {
+        String ptk = resolvePtk(httpRequest);
+        PortalProfileService.ProfileResult result = portalProfileService.getProfile(ptk);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode());
+        }
+        ProfileResponse response = new ProfileResponse(result.getRealName(), result.getMobile(), result.getEmail());
+        return ApiResponse.success(response);
+    }
+
+    @PostMapping("/profile")
+    public ApiResponse<ProfileUpdateResponse> updateProfile(@Valid @RequestBody ProfileUpdateRequest request,
+                                                            HttpServletRequest httpRequest) {
+        String ptk = resolvePtk(httpRequest);
+        PortalProfileService.UpdateResult result = portalProfileService.updateProfile(
+                ptk,
+                request.getRealName(),
+                request.getMobile(),
+                request.getEmail());
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode());
+        }
+        return ApiResponse.success(new ProfileUpdateResponse(true));
+    }
+
     @PostMapping("/sso/jump-url")
     public ApiResponse<SsoJumpResponse> ssoJumpUrl(@Valid @RequestBody SsoJumpRequest request) {
         Long userId = RequestContext.getUserId();
@@ -153,6 +204,20 @@ public class PortalApiController {
             }
         }
         return new LoginResponse(userId, username, jumpUrl);
+    }
+
+    private String resolvePtk(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+        Optional<Cookie> cookie = Arrays.stream(cookies)
+                .filter(item -> "ptk".equals(item.getName()))
+                .findFirst();
+        return cookie.map(Cookie::getValue).orElse(null);
     }
 
     public static class LoginRequest {
@@ -217,6 +282,114 @@ public class PortalApiController {
 
         public String getJumpUrl() {
             return jumpUrl;
+        }
+    }
+
+    public static class PasswordChangeRequest {
+        @NotBlank(message = "旧密码不能为空")
+        private String oldPassword;
+        @NotBlank(message = "新密码不能为空")
+        @Size(min = 8, message = "新密码长度至少8位")
+        private String newPassword;
+
+        public String getOldPassword() {
+            return oldPassword;
+        }
+
+        public void setOldPassword(String oldPassword) {
+            this.oldPassword = oldPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class PasswordChangeResponse {
+        private final boolean success;
+        private final boolean needRelogin;
+
+        public PasswordChangeResponse(boolean success, boolean needRelogin) {
+            this.success = success;
+            this.needRelogin = needRelogin;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public boolean isNeedRelogin() {
+            return needRelogin;
+        }
+    }
+
+    public static class ProfileResponse {
+        private final String realName;
+        private final String mobile;
+        private final String email;
+
+        public ProfileResponse(String realName, String mobile, String email) {
+            this.realName = realName;
+            this.mobile = mobile;
+            this.email = email;
+        }
+
+        public String getRealName() {
+            return realName;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+    }
+
+    public static class ProfileUpdateRequest {
+        private String realName;
+        private String mobile;
+        private String email;
+
+        public String getRealName() {
+            return realName;
+        }
+
+        public void setRealName(String realName) {
+            this.realName = realName;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+    }
+
+    public static class ProfileUpdateResponse {
+        private final boolean success;
+
+        public ProfileUpdateResponse(boolean success) {
+            this.success = success;
+        }
+
+        public boolean isSuccess() {
+            return success;
         }
     }
 

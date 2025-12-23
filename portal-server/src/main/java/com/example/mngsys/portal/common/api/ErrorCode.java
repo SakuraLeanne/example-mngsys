@@ -14,7 +14,9 @@ public enum ErrorCode {
 
     PTK_INVALID(200120, 401, "ptk无效"),
     PTK_EXPIRED(200121, 410, "ptk过期"),
-    PTK_SCOPE_MISMATCH(200122, 403, "ptk scope不匹配");
+    PTK_SCOPE_MISMATCH(200122, 403, "ptk scope不匹配"),
+
+    USER_DISABLED(300100, 403, "用户禁用");
 
     private final int code;
     private final int httpStatus;
