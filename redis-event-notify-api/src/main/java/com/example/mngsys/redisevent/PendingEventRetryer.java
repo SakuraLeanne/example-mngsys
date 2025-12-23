@@ -22,7 +22,7 @@ public class PendingEventRetryer {
         this.properties = properties;
     }
 
-    public List<EventMessage> retryPending(EventMessageHandler handler, Duration minIdleTime, int count) {
+    public List<EventMessage> retryPending(EventDispatcher dispatcher, Duration minIdleTime, int count) {
         String streamKey = properties.getStreamKey();
         PendingMessages pending = redisTemplate.opsForStream()
                 .pending(streamKey, properties.getGroupName(), Range.unbounded(), count);
@@ -38,12 +38,7 @@ public class PendingEventRetryer {
         }
         for (MapRecord<String, String, String> record : claimed) {
             EventMessage message = toMessage(record.getValue());
-            boolean success = false;
-            try {
-                success = handler.handle(message);
-            } catch (Exception ex) {
-                success = false;
-            }
+            boolean success = dispatcher.handle(message);
             if (success) {
                 redisTemplate.opsForStream().acknowledge(streamKey, properties.getGroupName(), record.getId());
                 handled.add(message);

@@ -23,7 +23,7 @@ public class EventConsumerRunner {
         this.properties = properties;
     }
 
-    public List<EventMessage> consumeOnce(EventMessageHandler handler) {
+    public List<EventMessage> consumeOnce(EventDispatcher dispatcher) {
         String streamKey = properties.getStreamKey();
         ensureGroup(streamKey, properties.getGroupName());
 
@@ -52,12 +52,7 @@ public class EventConsumerRunner {
                     continue;
                 }
             }
-            boolean success = false;
-            try {
-                success = handler.handle(message);
-            } catch (Exception ex) {
-                success = false;
-            }
+            boolean success = dispatcher.handle(message);
             if (success) {
                 redisTemplate.opsForStream().acknowledge(streamKey, properties.getGroupName(), record.getId());
                 handled.add(message);
