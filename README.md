@@ -22,9 +22,14 @@
 | `portal-server` | 门户服务 | 8081（默认） | RBAC 管理、菜单下发、用户管理、审计日志 |
 | `gateway-server` | 网关服务 | 8082（默认） | 统一路由、白名单放行、登录态校验 |
 | `redis-event-notify-api` | 事件通知组件 | N/A | 基于 Redis Stream 的事件发布/消费能力 |
-| `common` | 通用模块 | N/A | 通用 API 响应、错误码与 Redis Key 约定 |
+| `common-utils` | 通用模块 | N/A | 通用 API 响应、错误码与 Redis Key 约定 |
 
 > 端口以各服务 `application.yml` 为准。
+
+## 构建说明
+
+- 根目录新增聚合 `pom.xml`，统一管理各模块版本，可直接执行 `mvn -DskipTests package` 进行多模块构建。
+- 通用能力已抽取为 `common-utils` 模块，后续可在其他服务中以 Maven 依赖方式复用。
 
 ## 网关（gateway-server）
 
