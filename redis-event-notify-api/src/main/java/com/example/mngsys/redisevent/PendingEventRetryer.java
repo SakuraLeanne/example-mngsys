@@ -37,8 +37,14 @@ public class PendingEventRetryer {
         String[] ids = messages.stream()
                 .map(p -> p.getId().getValue())
                 .toArray(String[]::new);
-        List<MapRecord<String, Object, Object>> claimed = redisTemplate.opsForStream()
-                .claim(streamKey, properties.getGroupName(), properties.getConsumerName(), minIdleTime.toMillis(), ids);
+        List<MapRecord<String, Object, Object>> claimed = new ArrayList<>();
+        for (String id : ids) {
+            List<MapRecord<String, Object, Object>> records =
+                    redisTemplate.opsForStream().range(streamKey, Range.closed(id, id));
+            if (records != null && !records.isEmpty()) {
+                claimed.addAll(records);
+            }
+        }
         List<EventMessage> handled = new ArrayList<>();
         if (claimed == null) {
             return handled;
