@@ -6,7 +6,7 @@ import cn.dev33.satoken.dao.SaTokenDao;
 import cn.dev33.satoken.dao.SaTokenDaoRedisJackson;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 
 @Configuration
 /**
@@ -25,9 +25,9 @@ public class SaTokenConfiguration {
     }
 
     @Bean
-    public SaTokenDao saTokenDao(StringRedisTemplate stringRedisTemplate) {
+    public SaTokenDao saTokenDao(RedisTemplate<String, Object> redisTemplate) {
         SaTokenDaoRedisJackson dao = new SaTokenDaoRedisJackson();
-        dao.setRedisTemplate(stringRedisTemplate);
+        dao.setRedisTemplate(redisTemplate);
         return dao;
     }
 }
