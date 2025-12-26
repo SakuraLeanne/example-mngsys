@@ -1,5 +1,7 @@
 package com.example.mngsys.redisevent;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -10,7 +12,11 @@ public class EventDispatcher {
     private final List<EventHandler> handlers;
 
     public EventDispatcher(List<EventHandler> handlers) {
-        this.handlers = handlers == null ? List.of() : List.copyOf(handlers);
+        if (handlers == null || handlers.isEmpty()) {
+            this.handlers = Collections.emptyList();
+            return;
+        }
+        this.handlers = Collections.unmodifiableList(new ArrayList<>(handlers));
     }
 
     public boolean handle(EventMessage message) {
