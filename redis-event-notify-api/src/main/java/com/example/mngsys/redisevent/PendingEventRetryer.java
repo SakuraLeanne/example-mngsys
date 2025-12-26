@@ -38,7 +38,7 @@ public class PendingEventRetryer {
                 .map(p -> p.getId().getValue())
                 .toArray(String[]::new);
         List<MapRecord<String, Object, Object>> claimed = redisTemplate.opsForStream()
-                .claim(streamKey, properties.getGroupName(), properties.getConsumerName(), minIdleTime, ids);
+                .claim(streamKey, properties.getGroupName(), properties.getConsumerName(), minIdleTime.toMillis(), ids);
         List<EventMessage> handled = new ArrayList<>();
         if (claimed == null) {
             return handled;
