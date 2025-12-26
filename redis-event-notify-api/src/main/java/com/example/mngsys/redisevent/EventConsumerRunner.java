@@ -41,7 +41,7 @@ public class EventConsumerRunner {
             return handled;
         }
         for (MapRecord<String, Object, Object> record : records) {
-            EventMessage message = toMessage(record.getValue());
+            EventMessage message = toMessage(asStringObjectMap(record.getValue()));
             String eventId = message.getEventId();
             if (StringUtils.hasText(eventId)) {
                 String dedupKey = buildDedupKey(properties.getSystemCode(), eventId);
@@ -77,6 +77,16 @@ public class EventConsumerRunner {
 
     private String buildDedupKey(String systemCode, String eventId) {
         return properties.getDedupKeyPrefix() + systemCode + ":" + eventId;
+    }
+
+    private Map<String, Object> asStringObjectMap(Map<Object, Object> source) {
+        Map<String, Object> target = new java.util.HashMap<>();
+        if (source != null) {
+            for (Map.Entry<Object, Object> entry : source.entrySet()) {
+                target.put(asString(entry.getKey()), entry.getValue());
+            }
+        }
+        return target;
     }
 
     private EventMessage toMessage(Map<String, Object> map) {

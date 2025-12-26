@@ -32,16 +32,19 @@ public class PendingEventRetryer {
         if (pending == null || pending.isEmpty()) {
             return new ArrayList<>();
         }
-        List<PendingMessage> messages = pending.getPendingMessages();
+        List<PendingMessage> messages = new ArrayList<>();
+        pending.forEach(messages::add);
+        String[] ids = messages.stream()
+                .map(p -> p.getId().getValue())
+                .toArray(String[]::new);
         List<MapRecord<String, Object, Object>> claimed = redisTemplate.opsForStream()
-                .claim(streamKey, properties.getGroupName(), properties.getConsumerName(), minIdleTime,
-                        messages.toArray(new PendingMessage[0]));
+                .claim(streamKey, properties.getGroupName(), properties.getConsumerName(), minIdleTime, ids);
         List<EventMessage> handled = new ArrayList<>();
         if (claimed == null) {
             return handled;
         }
         for (MapRecord<String, Object, Object> record : claimed) {
-            EventMessage message = toMessage(record.getValue());
+            EventMessage message = toMessage(asStringObjectMap(record.getValue()));
             boolean success = dispatcher.handle(message);
             if (success) {
                 redisTemplate.opsForStream().acknowledge(streamKey, properties.getGroupName(), record.getId());
@@ -49,6 +52,16 @@ public class PendingEventRetryer {
             }
         }
         return handled;
+    }
+
+    private Map<String, Object> asStringObjectMap(Map<Object, Object> source) {
+        Map<String, Object> target = new java.util.HashMap<>();
+        if (source != null) {
+            for (Map.Entry<Object, Object> entry : source.entrySet()) {
+                target.put(asString(entry.getKey()), entry.getValue());
+            }
+        }
+        return target;
     }
 
     private EventMessage toMessage(Map<String, Object> map) {
