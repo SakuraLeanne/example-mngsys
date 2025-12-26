@@ -34,13 +34,13 @@ public class EventConsumerRunner {
         StreamReadOptions options = StreamReadOptions.empty()
                 .count(properties.getBatchSize())
                 .block(Duration.ofMillis(properties.getBlockMillis()));
-        List<MapRecord<String, String, String>> records = redisTemplate.opsForStream()
+        List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
                 .read(consumer, options, StreamOffset.create(streamKey, ReadOffset.lastConsumed()));
         List<EventMessage> handled = new ArrayList<>();
         if (records == null || records.isEmpty()) {
             return handled;
         }
-        for (MapRecord<String, String, String> record : records) {
+        for (MapRecord<String, Object, Object> record : records) {
             EventMessage message = toMessage(record.getValue());
             String eventId = message.getEventId();
             if (StringUtils.hasText(eventId)) {
@@ -79,24 +79,29 @@ public class EventConsumerRunner {
         return properties.getDedupKeyPrefix() + systemCode + ":" + eventId;
     }
 
-    private EventMessage toMessage(Map<String, String> map) {
+    private EventMessage toMessage(Map<String, Object> map) {
         EventMessage message = new EventMessage();
-        message.setEventId(map.get("eventId"));
-        message.setEventType(map.get("eventType"));
+        message.setEventId(asString(map.get("eventId")));
+        message.setEventType(asString(map.get("eventType")));
         message.setUserId(parseLong(map.get("userId")));
         message.setAuthVersion(parseLong(map.get("authVersion")));
         message.setProfileVersion(parseLong(map.get("profileVersion")));
         message.setOperatorId(parseLong(map.get("operatorId")));
-        message.setOperatorName(map.get("operatorName"));
+        message.setOperatorName(asString(map.get("operatorName")));
         message.setTs(parseLong(map.get("ts")));
-        message.setPayload(map.get("payload"));
+        message.setPayload(asString(map.get("payload")));
         return message;
     }
 
-    private Long parseLong(String value) {
-        if (!StringUtils.hasText(value)) {
+    private String asString(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private Long parseLong(Object value) {
+        String string = asString(value);
+        if (!StringUtils.hasText(string)) {
             return null;
         }
-        return Long.valueOf(value);
+        return Long.valueOf(string);
     }
 }
