@@ -24,80 +24,80 @@ CREATE TABLE IF NOT EXISTS portal_user (
     UNIQUE KEY uk_portal_user_mobile (mobile),
     UNIQUE KEY uk_portal_user_username (username),
     KEY idx_portal_user_tenant_id (tenant_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='门户用户表';
 
 CREATE TABLE IF NOT EXISTS portal_user_auth_state (
-    user_id VARCHAR(64) PRIMARY KEY,
-    auth_version BIGINT NOT NULL DEFAULT 1,
-    profile_version BIGINT NOT NULL DEFAULT 1,
-    last_pwd_change_time DATETIME DEFAULT NULL,
-    last_profile_update_time DATETIME DEFAULT NULL,
-    last_disable_time DATETIME DEFAULT NULL,
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    user_id VARCHAR(64) PRIMARY KEY COMMENT '用户ID',
+    auth_version BIGINT NOT NULL DEFAULT 1 COMMENT '认证信息版本号',
+    profile_version BIGINT NOT NULL DEFAULT 1 COMMENT '档案信息版本号',
+    last_pwd_change_time DATETIME DEFAULT NULL COMMENT '最近密码变更时间',
+    last_profile_update_time DATETIME DEFAULT NULL COMMENT '最近档案更新',
+    last_disable_time DATETIME DEFAULT NULL COMMENT '最近禁用时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='门户用户认证状态表';
 
 CREATE TABLE IF NOT EXISTS app_role (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    app_code VARCHAR(64) NOT NULL,
-    role_code VARCHAR(64) NOT NULL,
-    role_name VARCHAR(128) NOT NULL,
-    status TINYINT NOT NULL DEFAULT 1,
-    remark VARCHAR(255) DEFAULT NULL,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '自增主键',
+    app_code VARCHAR(64) NOT NULL COMMENT '应用编码',
+    role_code VARCHAR(64) NOT NULL COMMENT '角色编码',
+    role_name VARCHAR(128) NOT NULL COMMENT '角色名称',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+    remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_app_role_code (app_code, role_code),
     KEY idx_app_role_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用角色表';
 
 CREATE TABLE IF NOT EXISTS app_menu_resource (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    app_code VARCHAR(64) NOT NULL,
-    menu_code VARCHAR(64) NOT NULL,
-    menu_name VARCHAR(128) NOT NULL,
-    menu_path VARCHAR(255) DEFAULT NULL,
-    menu_type VARCHAR(32) DEFAULT NULL,
-    parent_id BIGINT DEFAULT NULL,
-    permission VARCHAR(128) DEFAULT NULL,
-    sort INT NOT NULL DEFAULT 0,
-    status TINYINT NOT NULL DEFAULT 1,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '自增主键',
+    app_code VARCHAR(64) NOT NULL COMMENT '应用编码',
+    menu_code VARCHAR(64) NOT NULL COMMENT '菜单/资源编码',
+    menu_name VARCHAR(128) NOT NULL COMMENT '菜单/资源名称',
+    menu_path VARCHAR(255) DEFAULT NULL COMMENT '前端路由/资源路径',
+    menu_type VARCHAR(32) DEFAULT NULL COMMENT '类型：menu/button/link等',
+    parent_id BIGINT DEFAULT NULL COMMENT '父菜单ID',
+    permission VARCHAR(128) DEFAULT NULL COMMENT '权限标识',
+    sort INT NOT NULL DEFAULT 0 COMMENT '排序号（升序）',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_app_menu_code (app_code, menu_code),
     KEY idx_app_menu_parent (parent_id),
     KEY idx_app_menu_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用菜单及资源表';
 
 CREATE TABLE IF NOT EXISTS app_user_role (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id VARCHAR(64) NOT NULL,
-    role_id BIGINT NOT NULL,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '自增主键',
+    user_id VARCHAR(64) NOT NULL COMMENT '用户ID',
+    role_id BIGINT NOT NULL COMMENT '角色ID',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     UNIQUE KEY uk_app_user_role (user_id, role_id),
     KEY idx_app_user_role_role (role_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
 
 CREATE TABLE IF NOT EXISTS app_role_menu (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    role_id BIGINT NOT NULL,
-    menu_id BIGINT NOT NULL,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '自增主键',
+    role_id BIGINT NOT NULL COMMENT '角色ID',
+    menu_id BIGINT NOT NULL COMMENT '菜单/资源ID',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     UNIQUE KEY uk_app_role_menu (role_id, menu_id),
     KEY idx_app_role_menu_menu (menu_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单/资源关联表';
 
 CREATE TABLE IF NOT EXISTS portal_audit_log (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id VARCHAR(64) DEFAULT NULL,
-    username VARCHAR(64) DEFAULT NULL,
-    action VARCHAR(128) NOT NULL,
-    resource VARCHAR(255) DEFAULT NULL,
-    detail TEXT DEFAULT NULL,
-    ip VARCHAR(64) DEFAULT NULL,
-    status TINYINT NOT NULL DEFAULT 1,
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '自增主键',
+    user_id VARCHAR(64) DEFAULT NULL COMMENT '用户ID',
+    username VARCHAR(64) DEFAULT NULL COMMENT '用户名',
+    action VARCHAR(128) NOT NULL COMMENT '操作名称',
+    resource VARCHAR(255) DEFAULT NULL COMMENT '操作资源',
+    detail TEXT DEFAULT NULL COMMENT '详细信息',
+    ip VARCHAR(64) DEFAULT NULL COMMENT '来源IP',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-失败，1-成功',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     KEY idx_portal_audit_user (user_id),
     KEY idx_portal_audit_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='门户审计日志表';
 
 INSERT INTO portal_user (id, username, mobile, mobile_verified, email, email_verified, password, status, real_name, nick_name, create_time, update_time)
 VALUES ('u-admin-0001', 'admin', '13800000000', 1, 'admin@example.com', 1, '{bcrypt}$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Cw5IV/pY5PaaC2l5x4pnW5sA8vz', 1, '管理员', '管理员', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
