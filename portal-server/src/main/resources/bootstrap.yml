@@ -1,3 +1,6 @@
+server:
+  port: 8081
+
 spring:
   application:
     name: portal-server
@@ -17,3 +20,25 @@ spring:
           - data-id: share-config-test.yml
             group: DEFAULT_GROUP
             refresh: true
+          - data-id: portal-share-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+portal:
+  security:
+    allowedHosts: []
+  sso:
+    ticketTtlSeconds: 60
+  ptk:
+    ttlSeconds: 600
+  userAuth:
+    cacheTtlSeconds: 600
+  events:
+    streamKey: portal:events
+
+auth:
+  serverBaseUrl: http://localhost:8080
+  internalToken: change-me

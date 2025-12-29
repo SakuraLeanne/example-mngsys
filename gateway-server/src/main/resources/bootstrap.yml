@@ -1,3 +1,6 @@
+server:
+  port: 8082
+
 spring:
   application:
     name: gateway-server
@@ -17,3 +20,16 @@ spring:
           - data-id: share-config-test.yml
             group: DEFAULT_GROUP
             refresh: true
+          - data-id: portal-share-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+gateway:
+  security:
+    authServerBaseUrl: lb://auth-server

@@ -1,3 +1,6 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: auth-server
@@ -17,3 +20,13 @@ spring:
           - data-id: share-config-test.yml
             group: DEFAULT_GROUP
             refresh: true
+          - data-id: portal-share-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
+
+sa-token:
+  token-name: satoken
+  is-read-cookie: true
+  is-write-cookie: true
+  cookie:
+    http-only: true

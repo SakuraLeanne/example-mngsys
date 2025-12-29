@@ -1,0 +1,6 @@
+gateway:
+  security:
+    whitelist:
+      - /auth/api/login
+      - /portal/api/login
+      - /portal/api/action/**
