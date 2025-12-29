@@ -6,6 +6,7 @@ import com.example.mngsys.portal.controller.dto.AppMenuTreeNode;
 import com.example.mngsys.portal.entity.AppMenuResource;
 import com.example.mngsys.portal.security.AdminRequired;
 import com.example.mngsys.portal.service.PortalAdminAppMenuService;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -163,7 +164,7 @@ public class AdminAppMenuController {
             return null;
         }
         String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
+        if (StringUtils.hasText(forwarded)) {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();

@@ -4,6 +4,7 @@ import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.security.AdminRequired;
 import com.example.mngsys.portal.service.PortalAdminUserService;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -133,7 +134,7 @@ public class AdminUserController {
             return null;
         }
         String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
+        if (StringUtils.hasText(forwarded)) {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
