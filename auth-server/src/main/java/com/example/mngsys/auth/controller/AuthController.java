@@ -23,10 +23,21 @@ import javax.validation.constraints.NotNull;
 @Validated
 /**
  * AuthController。
+ * <p>
+ * 认证中心对外的 REST 控制器，包含登录、登出、查询当前会话、踢出会话等接口。
+ * 依赖 Sa-Token 完成会话管理，并通过 {@link AuthService} 进行凭证校验。
+ * </p>
  */
 public class AuthController {
 
+    /**
+     * 认证业务服务，负责用户身份校验。
+     */
     private final AuthService authService;
+
+    /**
+     * 认证相关配置，包含内部调用 Token 等安全参数。
+     */
     private final AuthProperties authProperties;
 
     public AuthController(AuthService authService, AuthProperties authProperties) {
@@ -34,6 +45,12 @@ public class AuthController {
         this.authProperties = authProperties;
     }
 
+    /**
+     * 用户登录接口，校验用户名与密码成功后创建 Sa-Token 会话。
+     *
+     * @param request 登录请求体，包含用户名与密码
+     * @return 携带用户基本信息的成功响应
+     */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthService.User user = authService.authenticate(request.getUsername(), request.getPassword());
@@ -41,12 +58,22 @@ public class AuthController {
         return ApiResponse.success(new LoginResponse(user.getUserId(), user.getUsername()));
     }
 
+    /**
+     * 用户登出接口，清理当前登录会话。
+     *
+     * @return 成功响应
+     */
     @PostMapping("/logout")
     public ApiResponse<Void> logout() {
         StpUtil.logout();
         return ApiResponse.success(null);
     }
 
+    /**
+     * 查询当前登录用户会话信息，需要用户已登录。
+     *
+     * @return 包含用户 ID 的会话信息
+     */
     @GetMapping("/session/me")
     public ApiResponse<SessionResponse> sessionMe() {
         StpUtil.checkLogin();
@@ -54,6 +81,13 @@ public class AuthController {
         return ApiResponse.success(new SessionResponse(userId));
     }
 
+    /**
+     * 踢出指定用户的会话，仅允许内部服务凭借内部 Token 调用。
+     *
+     * @param internalToken 内部鉴权 Token，通过请求头传递
+     * @param request       请求体，包含目标用户 ID
+     * @return 失败时返回 401 未认证，成功时返回 OK
+     */
     @PostMapping("/session/kick")
     public ResponseEntity<ApiResponse<Void>> kickSession(
             @RequestHeader(value = "X-Internal-Token", required = false) String internalToken,
@@ -67,8 +101,10 @@ public class AuthController {
     }
 
     public static class LoginRequest {
+        /** 用户名，必填。 */
         @NotBlank(message = "用户名不能为空")
         private String username;
+        /** 密码，必填。 */
         @NotBlank(message = "密码不能为空")
         private String password;
 
@@ -90,7 +126,9 @@ public class AuthController {
     }
 
     public static class LoginResponse {
+        /** 用户 ID。 */
         private final Long userId;
+        /** 用户名。 */
         private final String username;
 
         public LoginResponse(Long userId, String username) {
@@ -108,6 +146,7 @@ public class AuthController {
     }
 
     public static class SessionResponse {
+        /** 当前会话对应的用户 ID。 */
         private final Long userId;
 
         public SessionResponse(Long userId) {
@@ -120,6 +159,7 @@ public class AuthController {
     }
 
     public static class KickRequest {
+        /** 被踢出的用户 ID。 */
         @NotNull(message = "用户ID不能为空")
         private Long userId;
 

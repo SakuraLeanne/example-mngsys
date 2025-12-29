@@ -7,18 +7,32 @@ import java.util.UUID;
 
 /**
  * PortalEvent。
+ * <p>
+ * 门户侧用户相关事件的标准数据结构，支持事件唯一标识、事件类型、操作者信息、
+ * 以及业务载荷，用于事件通知与审计。通过静态工厂方法创建，自动生成事件 ID
+ * 和时间戳，避免业务方重复编码。
+ * </p>
  */
 public final class PortalEvent implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    /** 事件唯一标识，使用 UUID 生成。 */
     private final String eventId;
+    /** 事件类型。 */
     private final PortalEventType eventType;
+    /** 关联的用户 ID。 */
     private final long userId;
+    /** 当前授权数据版本，用于增量消费。 */
     private final Long authVersion;
+    /** 当前档案数据版本，用于增量消费。 */
     private final Long profileVersion;
+    /** 操作人 ID，系统任务可为空。 */
     private final Long operatorId;
+    /** 操作人姓名或账户名，便于审计展示。 */
     private final String operatorName;
+    /** 事件生成时间戳（毫秒）。 */
     private final long ts;
+    /** 事件携带的业务扩展数据。 */
     private final Map<String, Object> payload;
 
     private PortalEvent(String eventId,
