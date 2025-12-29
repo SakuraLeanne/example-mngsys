@@ -58,7 +58,7 @@ public class AppMenuDeliveryService {
         }
         String cacheKey = buildMenuCacheKey(userId);
         String cached = stringRedisTemplate.opsForValue().get(cacheKey);
-        if (cached != null && !cached.isBlank()) {
+        if (StringUtils.hasText(cached)) {
             List<AppMenuTreeNode> nodes = parseCached(cached);
             if (nodes != null) {
                 return nodes;
