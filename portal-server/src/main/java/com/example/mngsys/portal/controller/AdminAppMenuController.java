@@ -23,21 +23,35 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.util.List;
 
+/**
+ * 管理端应用菜单控制器，提供菜单树查询与增删改接口。
+ */
 @RestController
 @RequestMapping("/portal/api/admin/app-menus")
 @Validated
 @AdminRequired
-/**
- * AdminAppMenuController。
- */
 public class AdminAppMenuController {
 
+    /**
+     * 应用菜单管理服务。
+     */
     private final PortalAdminAppMenuService portalAdminAppMenuService;
 
+    /**
+     * 构造函数，注入菜单管理服务。
+     *
+     * @param portalAdminAppMenuService 菜单管理服务
+     */
     public AdminAppMenuController(PortalAdminAppMenuService portalAdminAppMenuService) {
         this.portalAdminAppMenuService = portalAdminAppMenuService;
     }
 
+    /**
+     * 查询菜单树。
+     *
+     * @param appCode 应用编码，可选
+     * @return 菜单树结构
+     */
     @GetMapping("/tree")
     public ApiResponse<List<AppMenuTreeNode>> tree(@RequestParam(required = false) String appCode) {
         PortalAdminAppMenuService.Result<List<AppMenuTreeNode>> result =
@@ -48,6 +62,13 @@ public class AdminAppMenuController {
         return ApiResponse.success(result.getData());
     }
 
+    /**
+     * 创建菜单。
+     *
+     * @param request            创建请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 操作结果
+     */
     @PostMapping
     public ApiResponse<ActionResponse> create(@Valid @RequestBody MenuCreateRequest request,
                                               HttpServletRequest httpServletRequest) {
@@ -63,6 +84,14 @@ public class AdminAppMenuController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 更新菜单。
+     *
+     * @param id                 菜单 ID
+     * @param request            更新请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 操作结果
+     */
     @PutMapping("/{id}")
     public ApiResponse<ActionResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody MenuUpdateRequest request,
@@ -79,6 +108,13 @@ public class AdminAppMenuController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 删除菜单。
+     *
+     * @param id                 菜单 ID
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 操作结果
+     */
     @DeleteMapping("/{id}")
     public ApiResponse<ActionResponse> delete(@PathVariable Long id, HttpServletRequest httpServletRequest) {
         Long operatorId = RequestContext.getUserId();
@@ -92,6 +128,14 @@ public class AdminAppMenuController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 更新菜单状态。
+     *
+     * @param id                 菜单 ID
+     * @param request            状态请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 操作结果
+     */
     @PostMapping("/{id}/status")
     public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
                                                     @Valid @RequestBody StatusRequest request,
@@ -108,6 +152,12 @@ public class AdminAppMenuController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 从请求中解析操作者 IP。
+     *
+     * @param request HTTP 请求
+     * @return IP 地址
+     */
     private String resolveIp(HttpServletRequest request) {
         if (request == null) {
             return null;
@@ -119,18 +169,48 @@ public class AdminAppMenuController {
         return request.getRemoteAddr();
     }
 
+    /**
+     * 菜单创建请求体。
+     */
     public static class MenuCreateRequest {
+        /**
+         * 应用编码。
+         */
         @NotBlank(message = "appCode 不能为空")
         private String appCode;
+        /**
+         * 菜单编码。
+         */
         @NotBlank(message = "menuCode 不能为空")
         private String menuCode;
+        /**
+         * 菜单名称。
+         */
         @NotBlank(message = "menuName 不能为空")
         private String menuName;
+        /**
+         * 菜单路由路径。
+         */
         private String menuPath;
+        /**
+         * 菜单类型。
+         */
         private String menuType;
+        /**
+         * 父级菜单 ID。
+         */
         private Long parentId;
+        /**
+         * 权限标识。
+         */
         private String permission;
+        /**
+         * 排序。
+         */
         private Integer sort;
+        /**
+         * 状态。
+         */
         private Integer status;
 
         public String getAppCode() {
@@ -220,15 +300,45 @@ public class AdminAppMenuController {
         }
     }
 
+    /**
+     * 菜单更新请求体。
+     */
     public static class MenuUpdateRequest {
+        /**
+         * 应用编码。
+         */
         private String appCode;
+        /**
+         * 菜单编码。
+         */
         private String menuCode;
+        /**
+         * 菜单名称。
+         */
         private String menuName;
+        /**
+         * 菜单路由路径。
+         */
         private String menuPath;
+        /**
+         * 菜单类型。
+         */
         private String menuType;
+        /**
+         * 父级菜单 ID。
+         */
         private Long parentId;
+        /**
+         * 权限标识。
+         */
         private String permission;
+        /**
+         * 排序。
+         */
         private Integer sort;
+        /**
+         * 状态。
+         */
         private Integer status;
 
         public String getAppCode() {
@@ -318,7 +428,13 @@ public class AdminAppMenuController {
         }
     }
 
+    /**
+     * 菜单状态更新请求体。
+     */
     public static class StatusRequest {
+        /**
+         * 状态值。
+         */
         @NotNull(message = "status 不能为空")
         private Integer status;
 
@@ -331,7 +447,13 @@ public class AdminAppMenuController {
         }
     }
 
+    /**
+     * 通用操作结果。
+     */
     public static class ActionResponse {
+        /**
+         * 是否成功。
+         */
         private final boolean success;
 
         public ActionResponse(boolean success) {
