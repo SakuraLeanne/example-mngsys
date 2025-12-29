@@ -1,6 +1,8 @@
 package com.example.mngsys.portal.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -15,8 +17,8 @@ import java.time.LocalDateTime;
  */
 public class PortalUserAuthState {
     /** 用户 ID（主键）。 */
-    @TableId(type = IdType.INPUT)
-    private Long userId;
+    @TableId(value = "user_id", type = IdType.INPUT)
+    private String userId;
     /** 权限数据版本号，用于增量同步。 */
     private Long authVersion;
     /** 档案数据版本号，用于增量同步。 */
@@ -28,13 +30,14 @@ public class PortalUserAuthState {
     /** 最近被禁用时间。 */
     private LocalDateTime lastDisableTime;
     /** 记录更新时间。 */
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

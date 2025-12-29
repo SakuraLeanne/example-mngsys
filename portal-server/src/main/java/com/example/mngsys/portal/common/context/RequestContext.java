@@ -4,16 +4,17 @@ package com.example.mngsys.portal.common.context;
  * RequestContext。
  */
 public final class RequestContext {
-    private static final ThreadLocal<Long> USER_ID_HOLDER = new ThreadLocal<>();
+    /** 使用字符串形式的用户ID，兼容雪花/UUID。 */
+    private static final ThreadLocal<String> USER_ID_HOLDER = new ThreadLocal<>();
 
     private RequestContext() {
     }
 
-    public static void setUserId(Long userId) {
+    public static void setUserId(String userId) {
         USER_ID_HOLDER.set(userId);
     }
 
-    public static Long getUserId() {
+    public static String getUserId() {
         return USER_ID_HOLDER.get();
     }
 

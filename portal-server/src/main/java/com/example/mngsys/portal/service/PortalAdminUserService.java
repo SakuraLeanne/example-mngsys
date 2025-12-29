@@ -72,7 +72,7 @@ public class PortalAdminUserService {
         if (status != null) {
             wrapper.eq(PortalUser::getStatus, status);
         }
-        wrapper.orderByDesc(PortalUser::getId);
+        wrapper.orderByDesc(PortalUser::getCreateTime);
         Page<PortalUser> result = portalUserService.page(query, wrapper);
         List<PortalUser> records = result.getRecords();
         List<com.example.mngsys.portal.controller.AdminUserController.UserSummary> users = records.stream()
@@ -83,13 +83,13 @@ public class PortalAdminUserService {
                         user.getMobile(),
                         user.getEmail(),
                         user.getStatus(),
-                        user.getDisableTime()))
+                        user.getRemark()))
                 .collect(Collectors.toList());
         return new PageResult(result.getTotal(), pageIndex, pageSize, users);
     }
 
-    public UserDetailResult getUserDetail(Long userId) {
-        if (userId == null) {
+    public UserDetailResult getUserDetail(String userId) {
+        if (!StringUtils.hasText(userId)) {
             return UserDetailResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
         PortalUser user = portalUserService.getById(userId);
@@ -104,33 +104,28 @@ public class PortalAdminUserService {
                         user.getMobile(),
                         user.getEmail(),
                         user.getStatus(),
-                        user.getDisableReason(),
-                        user.getDisableTime(),
+                        user.getRemark(),
                         user.getCreateTime());
         return UserDetailResult.success(detail);
     }
 
     @Transactional
-    public ActionResult disableUser(Long userId, String reason, Long operatorId, String ip) {
-        if (userId == null || !StringUtils.hasText(reason)) {
+    public ActionResult disableUser(String userId, String reason, String operatorId, String ip) {
+        if (!StringUtils.hasText(userId) || !StringUtils.hasText(reason)) {
             return ActionResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
         PortalUser user = portalUserService.getById(userId);
         if (user == null) {
             return ActionResult.failure(ErrorCode.NOT_FOUND);
         }
-        LocalDateTime now = LocalDateTime.now();
         user.setStatus(STATUS_DISABLED);
-        user.setDisableReason(reason);
-        user.setDisableTime(now);
-        user.setUpdateTime(now);
+        user.setRemark(reason);
         portalUserService.updateById(user);
 
         PortalUserAuthState state = loadOrInitAuthState(userId);
         Long nextAuthVersion = nextVersion(state.getAuthVersion());
         state.setAuthVersion(nextAuthVersion);
-        state.setLastDisableTime(now);
-        state.setUpdateTime(now);
+        state.setLastDisableTime(LocalDateTime.now());
         portalUserAuthStateService.saveOrUpdate(state);
         userAuthCacheService.updateUserAuthCache(userId, STATUS_DISABLED, nextAuthVersion, state.getProfileVersion());
 
@@ -141,25 +136,21 @@ public class PortalAdminUserService {
     }
 
     @Transactional
-    public ActionResult enableUser(Long userId, Long operatorId, String ip) {
-        if (userId == null) {
+    public ActionResult enableUser(String userId, String operatorId, String ip) {
+        if (!StringUtils.hasText(userId)) {
             return ActionResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
         PortalUser user = portalUserService.getById(userId);
         if (user == null) {
             return ActionResult.failure(ErrorCode.NOT_FOUND);
         }
-        LocalDateTime now = LocalDateTime.now();
         user.setStatus(STATUS_ENABLED);
-        user.setDisableReason(null);
-        user.setDisableTime(null);
-        user.setUpdateTime(now);
+        user.setRemark(null);
         portalUserService.updateById(user);
 
         PortalUserAuthState state = loadOrInitAuthState(userId);
         Long nextAuthVersion = nextVersion(state.getAuthVersion());
         state.setAuthVersion(nextAuthVersion);
-        state.setUpdateTime(now);
         portalUserAuthStateService.saveOrUpdate(state);
         userAuthCacheService.updateUserAuthCache(userId, STATUS_ENABLED, nextAuthVersion, state.getProfileVersion());
 
@@ -169,7 +160,7 @@ public class PortalAdminUserService {
         return ActionResult.success();
     }
 
-    private PortalUserAuthState loadOrInitAuthState(Long userId) {
+    private PortalUserAuthState loadOrInitAuthState(String userId) {
         PortalUserAuthState state = portalUserAuthStateService.getById(userId);
         if (state == null) {
             state = new PortalUserAuthState();
@@ -185,7 +176,7 @@ public class PortalAdminUserService {
         return base + 1;
     }
 
-    private void publishDisabled(Long userId, Long authVersion, String reason, Long operatorId) {
+    private void publishDisabled(String userId, Long authVersion, String reason, String operatorId) {
         EventMessage message = new EventMessage();
         message.setEventId(UUID.randomUUID().toString());
         message.setEventType(EVENT_USER_DISABLED);
@@ -203,7 +194,7 @@ public class PortalAdminUserService {
         eventPublisher.publish(message);
     }
 
-    private void publishEnabled(Long userId, Long authVersion, Long operatorId) {
+    private void publishEnabled(String userId, Long authVersion, String operatorId) {
         EventMessage message = new EventMessage();
         message.setEventId(UUID.randomUUID().toString());
         message.setEventType(EVENT_USER_ENABLED);
@@ -214,7 +205,7 @@ public class PortalAdminUserService {
         eventPublisher.publish(message);
     }
 
-    private void writeAuditLog(Long operatorId, String action, String resource, String detail, String ip) {
+    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
         PortalAuditLog log = new PortalAuditLog();
         log.setUserId(operatorId);
         log.setAction(action);

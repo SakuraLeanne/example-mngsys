@@ -14,6 +14,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -35,6 +37,7 @@ public class PortalPasswordService {
     private final ObjectMapper objectMapper;
     private final AuthClient authClient;
     private final EventPublisher eventPublisher;
+    private final PasswordEncoder passwordEncoder;
 
     public PortalPasswordService(PortalUserService portalUserService,
                                  PortalUserAuthStateService portalUserAuthStateService,
@@ -42,7 +45,8 @@ public class PortalPasswordService {
                                  StringRedisTemplate stringRedisTemplate,
                                  ObjectMapper objectMapper,
                                  AuthClient authClient,
-                                 EventPublisher eventPublisher) {
+                                 EventPublisher eventPublisher,
+                                 PasswordEncoder passwordEncoder) {
         this.portalUserService = portalUserService;
         this.portalUserAuthStateService = portalUserAuthStateService;
         this.userAuthCacheService = userAuthCacheService;
@@ -50,17 +54,18 @@ public class PortalPasswordService {
         this.objectMapper = objectMapper;
         this.authClient = authClient;
         this.eventPublisher = eventPublisher;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     public ChangeResult changePassword(String oldPassword, String newPassword, String ptk) {
         if (!StringUtils.hasText(oldPassword)) {
-            throw new IllegalArgumentException("oldPassword 不能为空");
+            return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
-        if (!StringUtils.hasText(newPassword) || newPassword.length() < 8) {
-            throw new IllegalArgumentException("newPassword 长度至少 8 位");
+        if (!StringUtils.hasText(newPassword) || newPassword.length() < 8 || !isComplexEnough(newPassword)) {
+            return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
-        Long userId = resolveUserId(ptk);
+        String userId = resolveUserId(ptk);
         if (userId == null) {
             return ChangeResult.failure(ErrorCode.UNAUTHENTICATED);
         }
@@ -72,12 +77,20 @@ public class PortalPasswordService {
         if (status == null || status != 1) {
             return ChangeResult.failure(ErrorCode.USER_DISABLED);
         }
+        if (!matchesPassword(oldPassword, user.getPassword())) {
+            return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
+        }
+        if (matchesPassword(newPassword, user.getPassword())) {
+            return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
+        }
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedPassword);
+        portalUserService.updateById(user);
         LocalDateTime now = LocalDateTime.now();
         PortalUserAuthState state = loadOrInitAuthState(userId);
         Long nextAuthVersion = nextVersion(state.getAuthVersion());
         state.setAuthVersion(nextAuthVersion);
         state.setLastPwdChangeTime(now);
-        state.setUpdateTime(now);
         portalUserAuthStateService.saveOrUpdate(state);
         userAuthCacheService.updateUserAuthCache(userId, status, nextAuthVersion, state.getProfileVersion());
         authClient.kick(userId);
@@ -86,15 +99,45 @@ public class PortalPasswordService {
         return ChangeResult.success(userId, nextAuthVersion);
     }
 
-    private Long resolveUserId(String ptk) {
-        Long ptkUserId = loadUserIdFromPtk(ptk);
+    private boolean isComplexEnough(String password) {
+        boolean hasLetter = false;
+        boolean hasDigit = false;
+        for (char c : password.toCharArray()) {
+            if (Character.isLetter(c)) {
+                hasLetter = true;
+            } else if (Character.isDigit(c)) {
+                hasDigit = true;
+            }
+            if (hasLetter && hasDigit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean matchesPassword(String rawPassword, String encoded) {
+        if (!StringUtils.hasText(encoded)) {
+            return false;
+        }
+        if (encoded.startsWith("{")) {
+            return passwordEncoder.matches(rawPassword, encoded);
+        }
+        BCryptPasswordEncoder fallback = new BCryptPasswordEncoder();
+        if (fallback.matches(rawPassword, encoded)) {
+            return true;
+        }
+        return passwordEncoder.matches(rawPassword, encoded);
+    }
+
+    private String resolveUserId(String ptk) {
+        String ptkUserId = loadUserIdFromPtk(ptk);
         if (ptkUserId != null) {
             return ptkUserId;
         }
         return RequestContext.getUserId();
     }
 
-    private Long loadUserIdFromPtk(String ptk) {
+    private String loadUserIdFromPtk(String ptk) {
         if (!StringUtils.hasText(ptk)) {
             return null;
         }
@@ -105,13 +148,13 @@ public class PortalPasswordService {
         try {
             Map<String, Object> data = objectMapper.readValue(payload, new TypeReference<Map<String, Object>>() {
             });
-            return parseLong(data.get("userId"));
+            return parseString(data.get("userId"));
         } catch (JsonProcessingException ex) {
             return null;
         }
     }
 
-    private PortalUserAuthState loadOrInitAuthState(Long userId) {
+    private PortalUserAuthState loadOrInitAuthState(String userId) {
         PortalUserAuthState state = portalUserAuthStateService.getById(userId);
         if (state == null) {
             state = new PortalUserAuthState();
@@ -134,7 +177,7 @@ public class PortalPasswordService {
         stringRedisTemplate.delete(PTK_PREFIX + ptk);
     }
 
-    private void publishPasswordChanged(Long userId, Long authVersion) {
+    private void publishPasswordChanged(String userId, Long authVersion) {
         EventMessage message = new EventMessage();
         message.setEventId(UUID.randomUUID().toString());
         message.setEventType(EVENT_TYPE_PASSWORD_CHANGED);
@@ -144,38 +187,28 @@ public class PortalPasswordService {
         eventPublisher.publish(message);
     }
 
-    private Long parseLong(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
+    private String parseString(Object value) {
         if (value == null) {
             return null;
         }
         String text = value.toString();
-        if (!StringUtils.hasText(text)) {
-            return null;
-        }
-        try {
-            return Long.parseLong(text);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return StringUtils.hasText(text) ? text : null;
     }
 
     public static class ChangeResult {
         private final boolean success;
         private final ErrorCode errorCode;
-        private final Long userId;
+        private final String userId;
         private final Long authVersion;
 
-        private ChangeResult(boolean success, ErrorCode errorCode, Long userId, Long authVersion) {
+        private ChangeResult(boolean success, ErrorCode errorCode, String userId, Long authVersion) {
             this.success = success;
             this.errorCode = errorCode;
             this.userId = userId;
             this.authVersion = authVersion;
         }
 
-        public static ChangeResult success(Long userId, Long authVersion) {
+        public static ChangeResult success(String userId, Long authVersion) {
             return new ChangeResult(true, null, userId, authVersion);
         }
 
@@ -191,7 +224,7 @@ public class PortalPasswordService {
             return errorCode;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 

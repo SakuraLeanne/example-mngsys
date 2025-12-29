@@ -42,7 +42,7 @@ public class PortalAdminAppMenuService {
     }
 
     @Transactional
-    public Result<Void> createMenu(AppMenuResource menu, Long operatorId, String ip) {
+    public Result<Void> createMenu(AppMenuResource menu, String operatorId, String ip) {
         if (menu == null || !StringUtils.hasText(menu.getAppCode())
                 || !StringUtils.hasText(menu.getMenuCode())
                 || !StringUtils.hasText(menu.getMenuName())) {
@@ -54,16 +54,13 @@ public class PortalAdminAppMenuService {
         if (existsMenuCode(menu.getAppCode(), menu.getMenuCode(), null)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单编码已存在");
         }
-        LocalDateTime now = LocalDateTime.now();
-        menu.setCreateTime(now);
-        menu.setUpdateTime(now);
         appMenuResourceService.save(menu);
         writeAuditLog(operatorId, "CREATE_APP_MENU", String.valueOf(menu.getId()), menu.getMenuName(), ip);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> updateMenu(Long id, AppMenuResource update, Long operatorId, String ip) {
+    public Result<Void> updateMenu(Long id, AppMenuResource update, String operatorId, String ip) {
         if (id == null || update == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单信息不完整");
         }
@@ -105,14 +102,13 @@ public class PortalAdminAppMenuService {
         if (update.getStatus() != null) {
             menu.setStatus(update.getStatus());
         }
-        menu.setUpdateTime(LocalDateTime.now());
         appMenuResourceService.updateById(menu);
         writeAuditLog(operatorId, "UPDATE_APP_MENU", String.valueOf(menu.getId()), menu.getMenuName(), ip);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> updateStatus(Long id, Integer status, Long operatorId, String ip) {
+    public Result<Void> updateStatus(Long id, Integer status, String operatorId, String ip) {
         if (id == null || status == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "状态不能为空");
         }
@@ -121,7 +117,6 @@ public class PortalAdminAppMenuService {
             return Result.failure(ErrorCode.NOT_FOUND, "菜单不存在");
         }
         menu.setStatus(status);
-        menu.setUpdateTime(LocalDateTime.now());
         appMenuResourceService.updateById(menu);
         writeAuditLog(operatorId, "UPDATE_APP_MENU_STATUS", String.valueOf(menu.getId()),
                 String.valueOf(status), ip);
@@ -129,7 +124,7 @@ public class PortalAdminAppMenuService {
     }
 
     @Transactional
-    public Result<Void> deleteMenu(Long id, Long operatorId, String ip) {
+    public Result<Void> deleteMenu(Long id, String operatorId, String ip) {
         if (id == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单ID不能为空");
         }
@@ -217,7 +212,7 @@ public class PortalAdminAppMenuService {
         }
     }
 
-    private void writeAuditLog(Long operatorId, String action, String resource, String detail, String ip) {
+    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
         PortalAuditLog log = new PortalAuditLog();
         log.setUserId(operatorId);
         log.setAction(action);

@@ -139,10 +139,10 @@ public class PtkInterceptor implements HandlerInterceptor {
     }
 
     private static class PtkPayload {
-        private final Long userId;
+        private final String userId;
         private final String scope;
 
-        private PtkPayload(Long userId, String scope) {
+        private PtkPayload(String userId, String scope) {
             this.userId = userId;
             this.scope = scope;
         }
@@ -151,12 +151,12 @@ public class PtkInterceptor implements HandlerInterceptor {
             if (data == null || data.isEmpty()) {
                 return null;
             }
-            Long userId = parseLong(data.get("userId"));
+            String userId = parseString(data.get("userId"));
             String scope = data.get("scope") == null ? null : data.get("scope").toString();
             return new PtkPayload(userId, scope);
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
@@ -164,18 +164,12 @@ public class PtkInterceptor implements HandlerInterceptor {
             return scope;
         }
 
-        private static Long parseLong(Object value) {
-            if (value instanceof Number) {
-                return ((Number) value).longValue();
+        private static String parseString(Object value) {
+            if (value == null) {
+                return null;
             }
-            if (value != null) {
-                try {
-                    return Long.parseLong(value.toString());
-                } catch (NumberFormatException ex) {
-                    return null;
-                }
-            }
-            return null;
+            String text = value.toString();
+            return StringUtils.hasText(text) ? text : null;
         }
     }
 }

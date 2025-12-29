@@ -28,8 +28,8 @@ public class UserAuthCacheServiceImpl implements UserAuthCacheService {
     }
 
     @Override
-    public void updateUserAuthCache(Long userId, Integer status, Long authVersion, Long profileVersion) {
-        if (userId == null) {
+    public void updateUserAuthCache(String userId, Integer status, Long authVersion, Long profileVersion) {
+        if (!StringUtils.hasText(userId)) {
             return;
         }
         Map<String, String> values = new HashMap<>();
@@ -52,8 +52,8 @@ public class UserAuthCacheServiceImpl implements UserAuthCacheService {
     }
 
     @Override
-    public UserAuthCache getUserAuthCache(Long userId) {
-        if (userId == null) {
+    public UserAuthCache getUserAuthCache(String userId) {
+        if (!StringUtils.hasText(userId)) {
             return null;
         }
         Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(buildKey(userId));
@@ -66,7 +66,7 @@ public class UserAuthCacheServiceImpl implements UserAuthCacheService {
         return new UserAuthCache(status, authVersion, profileVersion);
     }
 
-    private String buildKey(Long userId) {
+    private String buildKey(String userId) {
         return USER_AUTH_PREFIX + userId;
     }
 

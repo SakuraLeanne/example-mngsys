@@ -59,7 +59,7 @@ public class PortalAuthService {
         return authClient.logoutWithResponse(cookie);
     }
 
-    public String createSsoJumpUrl(Long userId, String systemCode, String targetUrl) {
+    public String createSsoJumpUrl(String userId, String systemCode, String targetUrl) {
         validateReturnUrl(targetUrl);
         if (userId == null) {
             throw new IllegalArgumentException("用户未登录");
@@ -124,18 +124,12 @@ public class PortalAuthService {
         return "sso:ticket:" + ticket;
     }
 
-    private Long extractUserId(Object data) {
+    private String extractUserId(Object data) {
         if (data instanceof Map) {
             Object value = ((Map<?, ?>) data).get("userId");
-            if (value instanceof Number) {
-                return ((Number) value).longValue();
-            }
             if (value != null) {
-                try {
-                    return Long.parseLong(value.toString());
-                } catch (NumberFormatException ex) {
-                    return null;
-                }
+                String text = value.toString();
+                return StringUtils.hasText(text) ? text : null;
             }
         }
         return null;

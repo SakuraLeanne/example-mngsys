@@ -72,7 +72,7 @@ public class AdminAppMenuController {
     @PostMapping
     public ApiResponse<ActionResponse> create(@Valid @RequestBody MenuCreateRequest request,
                                               HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         AppMenuResource menu = request.toEntity();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.createMenu(
                 menu,
@@ -96,7 +96,7 @@ public class AdminAppMenuController {
     public ApiResponse<ActionResponse> update(@PathVariable Long id,
                                               @Valid @RequestBody MenuUpdateRequest request,
                                               HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateMenu(
                 id,
                 request.toEntity(),
@@ -117,7 +117,7 @@ public class AdminAppMenuController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<ActionResponse> delete(@PathVariable Long id, HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.deleteMenu(
                 id,
                 operatorId,
@@ -140,7 +140,7 @@ public class AdminAppMenuController {
     public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
                                                     @Valid @RequestBody StatusRequest request,
                                                     HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateStatus(
                 id,
                 request.getStatus(),

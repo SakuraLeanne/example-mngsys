@@ -7,9 +7,9 @@ import com.example.mngsys.portal.entity.PortalUserAuthState;
  * PortalUserAuthStateService。
  */
 public interface PortalUserAuthStateService extends IService<PortalUserAuthState> {
-    void recordPasswordChange(Long userId);
+    void recordPasswordChange(String userId);
 
-    void recordProfileUpdate(Long userId);
+    void recordProfileUpdate(String userId);
 
-    void recordStatusChange(Long userId, Integer status);
+    void recordStatusChange(String userId, Integer status);
 }

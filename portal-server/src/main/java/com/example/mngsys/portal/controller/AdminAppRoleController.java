@@ -76,7 +76,7 @@ public class AdminAppRoleController {
     @PostMapping
     public ApiResponse<RoleSummary> create(@Valid @RequestBody RoleCreateRequest request,
                                            HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<AppRole> result = portalAdminAppRoleService.createRole(
                 request.toEntity(),
                 operatorId,
@@ -99,7 +99,7 @@ public class AdminAppRoleController {
     public ApiResponse<RoleSummary> update(@PathVariable Long id,
                                            @Valid @RequestBody RoleUpdateRequest request,
                                            HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<AppRole> result = portalAdminAppRoleService.updateRole(
                 id,
                 request.toEntity(),
@@ -123,7 +123,7 @@ public class AdminAppRoleController {
     public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
                                                     @Valid @RequestBody StatusRequest request,
                                                     HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.updateStatus(
                 id,
                 request.getStatus(),
@@ -147,7 +147,7 @@ public class AdminAppRoleController {
     public ApiResponse<ActionResponse> grantMenus(@PathVariable Long id,
                                                   @Valid @RequestBody GrantMenusRequest request,
                                                   HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.grantMenus(
                 id,
                 request.getMenuIds(),

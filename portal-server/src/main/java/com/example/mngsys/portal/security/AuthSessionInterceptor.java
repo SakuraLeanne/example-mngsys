@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -69,7 +68,7 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
             writeUnauthorized(response);
             return false;
         }
-        Long userId = extractUserId(body.getData());
+        String userId = extractUserId(body.getData());
         if (userId == null) {
             writeUnauthorized(response);
             return false;
@@ -109,7 +108,7 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
             return false;
         }
         String headerValue = request.getHeader(DEV_USER_HEADER);
-        Long userId = parseLong(headerValue);
+        String userId = parseString(headerValue);
         if (userId == null) {
             return false;
         }
@@ -118,33 +117,23 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private Long extractUserId(Object data) {
+    private String extractUserId(Object data) {
         if (data instanceof AuthClient.SessionResponse) {
             return ((AuthClient.SessionResponse) data).getUserId();
         }
         if (data instanceof Map) {
             Object value = ((Map<?, ?>) data).get("userId");
-            return parseLong(value);
+            return parseString(value);
         }
         return null;
     }
 
-    private Long parseLong(Object value) {
+    private String parseString(Object value) {
         if (value == null) {
             return null;
         }
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
         String text = value.toString().trim();
-        if (text.isEmpty()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(text.toLowerCase(Locale.ROOT));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return text.isEmpty() ? null : text;
     }
 
     private static class WhitelistEntry {

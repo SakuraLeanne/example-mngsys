@@ -38,8 +38,8 @@ public class PortalAdminAppUserRoleService {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
-    public Result<List<AppRole>> listUserRoles(Long userId) {
-        if (userId == null) {
+    public Result<List<AppRole>> listUserRoles(String userId) {
+        if (!StringUtils.hasText(userId)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "用户ID不能为空");
         }
         List<AppUserRole> relations = appUserRoleService.list(new LambdaQueryWrapper<AppUserRole>()
@@ -57,8 +57,8 @@ public class PortalAdminAppUserRoleService {
     }
 
     @Transactional
-    public Result<Void> grantRoles(Long userId, List<Long> roleIds, Long operatorId, String ip) {
-        if (userId == null) {
+    public Result<Void> grantRoles(String userId, List<Long> roleIds, String operatorId, String ip) {
+        if (!StringUtils.hasText(userId)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "用户ID不能为空");
         }
         List<Long> normalized = roleIds == null ? new ArrayList<>() : roleIds.stream()
@@ -89,11 +89,11 @@ public class PortalAdminAppUserRoleService {
         return Result.success(null);
     }
 
-    private String buildMenuCacheKey(Long userId) {
+    private String buildMenuCacheKey(String userId) {
         return MENU_CACHE_PREFIX + userId;
     }
 
-    private void writeAuditLog(Long operatorId, String action, String resource, String detail, String ip) {
+    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
         PortalAuditLog log = new PortalAuditLog();
         log.setUserId(operatorId);
         log.setAction(action);

@@ -1,6 +1,7 @@
 package com.example.mngsys.portal.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -18,7 +19,8 @@ public class PortalAuditLog {
     @TableId(type = IdType.AUTO)
     private Long id;
     /** 操作用户 ID。 */
-    private Long userId;
+    @TableField("user_id")
+    private String userId;
     /** 操作用户名。 */
     private String username;
     /** 操作类型/动作。 */
@@ -42,11 +44,11 @@ public class PortalAuditLog {
         this.id = id;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

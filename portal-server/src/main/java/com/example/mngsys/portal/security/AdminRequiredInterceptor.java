@@ -33,8 +33,8 @@ public class AdminRequiredInterceptor implements HandlerInterceptor {
         if (!requiresAdmin(handlerMethod)) {
             return true;
         }
-        Long userId = RequestContext.getUserId();
-        if (userId != null && userId == 1L) {
+        String userId = RequestContext.getUserId();
+        if (userId != null && ("1".equals(userId) || "u-admin-0001".equals(userId))) {
             return true;
         }
         writeForbidden(response);

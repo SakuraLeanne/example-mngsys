@@ -10,10 +10,10 @@ public class EventMessage implements Serializable {
 
     private String eventId;
     private String eventType;
-    private Long userId;
+    private String userId;
     private Long authVersion;
     private Long profileVersion;
-    private Long operatorId;
+    private String operatorId;
     private String operatorName;
     private Long ts;
     private String payload;
@@ -34,11 +34,11 @@ public class EventMessage implements Serializable {
         this.eventType = eventType;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 
@@ -58,11 +58,11 @@ public class EventMessage implements Serializable {
         this.profileVersion = profileVersion;
     }
 
-    public Long getOperatorId() {
+    public String getOperatorId() {
         return operatorId;
     }
 
-    public void setOperatorId(Long operatorId) {
+    public void setOperatorId(String operatorId) {
         this.operatorId = operatorId;
     }
 

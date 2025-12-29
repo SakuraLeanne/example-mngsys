@@ -51,7 +51,7 @@ public class PortalProfileService {
     }
 
     public ProfileResult getProfile(String ptk) {
-        Long userId = resolveUserId(ptk);
+        String userId = resolveUserId(ptk);
         if (userId == null) {
             return ProfileResult.failure(ErrorCode.UNAUTHENTICATED);
         }
@@ -68,9 +68,12 @@ public class PortalProfileService {
 
     @Transactional
     public UpdateResult updateProfile(String ptk, String realName, String mobile, String email) {
-        Long userId = resolveUserId(ptk);
+        String userId = resolveUserId(ptk);
         if (userId == null) {
             return UpdateResult.failure(ErrorCode.UNAUTHENTICATED);
+        }
+        if (!StringUtils.hasText(mobile)) {
+            return UpdateResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
         PortalUser user = portalUserService.getById(userId);
         if (user == null) {
@@ -84,31 +87,33 @@ public class PortalProfileService {
         user.setRealName(realName);
         user.setMobile(mobile);
         user.setEmail(email);
-        user.setUpdateTime(LocalDateTime.now());
-        portalUserService.updateById(user);
+        try {
+            portalUserService.updateById(user);
+        } catch (IllegalArgumentException ex) {
+            return UpdateResult.failure(ErrorCode.INVALID_ARGUMENT);
+        }
 
         LocalDateTime now = LocalDateTime.now();
         PortalUserAuthState state = loadOrInitAuthState(userId);
         Long nextProfileVersion = nextVersion(state.getProfileVersion());
         state.setProfileVersion(nextProfileVersion);
         state.setLastProfileUpdateTime(now);
-        state.setUpdateTime(now);
         portalUserAuthStateService.saveOrUpdate(state);
         userAuthCacheService.updateUserAuthCache(userId, status, null, nextProfileVersion);
         publishProfileUpdated(userId, nextProfileVersion, changedFields);
         return UpdateResult.success(userId, nextProfileVersion);
     }
 
-    private Long resolveUserId(String ptk) {
-        Long ptkUserId = loadUserIdFromPtk(ptk);
-        Long sessionUserId = RequestContext.getUserId();
+    private String resolveUserId(String ptk) {
+        String ptkUserId = loadUserIdFromPtk(ptk);
+        String sessionUserId = RequestContext.getUserId();
         if (ptkUserId != null && sessionUserId != null && !ptkUserId.equals(sessionUserId)) {
             return null;
         }
         return ptkUserId != null ? ptkUserId : sessionUserId;
     }
 
-    private Long loadUserIdFromPtk(String ptk) {
+    private String loadUserIdFromPtk(String ptk) {
         if (!StringUtils.hasText(ptk)) {
             return null;
         }
@@ -119,13 +124,13 @@ public class PortalProfileService {
         try {
             Map<String, Object> data = objectMapper.readValue(payload, new TypeReference<Map<String, Object>>() {
             });
-            return parseLong(data.get("userId"));
+            return parseString(data.get("userId"));
         } catch (JsonProcessingException ex) {
             return null;
         }
     }
 
-    private PortalUserAuthState loadOrInitAuthState(Long userId) {
+    private PortalUserAuthState loadOrInitAuthState(String userId) {
         PortalUserAuthState state = portalUserAuthStateService.getById(userId);
         if (state == null) {
             state = new PortalUserAuthState();
@@ -141,7 +146,7 @@ public class PortalProfileService {
         return base + 1;
     }
 
-    private void publishProfileUpdated(Long userId, Long profileVersion, Map<String, Object> changedFields) {
+    private void publishProfileUpdated(String userId, Long profileVersion, Map<String, Object> changedFields) {
         EventMessage message = new EventMessage();
         message.setEventId(UUID.randomUUID().toString());
         message.setEventType(EVENT_TYPE_PROFILE_UPDATED);
@@ -172,22 +177,12 @@ public class PortalProfileService {
         return changed;
     }
 
-    private Long parseLong(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
+    private String parseString(Object value) {
         if (value == null) {
             return null;
         }
         String text = value.toString();
-        if (!StringUtils.hasText(text)) {
-            return null;
-        }
-        try {
-            return Long.parseLong(text);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return StringUtils.hasText(text) ? text : null;
     }
 
     public static class ProfileResult {
@@ -237,17 +232,17 @@ public class PortalProfileService {
     public static class UpdateResult {
         private final boolean success;
         private final ErrorCode errorCode;
-        private final Long userId;
+        private final String userId;
         private final Long profileVersion;
 
-        private UpdateResult(boolean success, ErrorCode errorCode, Long userId, Long profileVersion) {
+        private UpdateResult(boolean success, ErrorCode errorCode, String userId, Long profileVersion) {
             this.success = success;
             this.errorCode = errorCode;
             this.userId = userId;
             this.profileVersion = profileVersion;
         }
 
-        public static UpdateResult success(Long userId, Long profileVersion) {
+        public static UpdateResult success(String userId, Long profileVersion) {
             return new UpdateResult(true, null, userId, profileVersion);
         }
 
@@ -263,7 +258,7 @@ public class PortalProfileService {
             return errorCode;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 

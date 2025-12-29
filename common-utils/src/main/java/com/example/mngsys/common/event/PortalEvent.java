@@ -20,14 +20,14 @@ public final class PortalEvent implements Serializable {
     private final String eventId;
     /** 事件类型。 */
     private final PortalEventType eventType;
-    /** 关联的用户 ID。 */
-    private final long userId;
+    /** 关联的用户 ID（字符串形式，兼容雪花/UUID）。 */
+    private final String userId;
     /** 当前授权数据版本，用于增量消费。 */
     private final Long authVersion;
     /** 当前档案数据版本，用于增量消费。 */
     private final Long profileVersion;
     /** 操作人 ID，系统任务可为空。 */
-    private final Long operatorId;
+    private final String operatorId;
     /** 操作人姓名或账户名，便于审计展示。 */
     private final String operatorName;
     /** 事件生成时间戳（毫秒）。 */
@@ -37,10 +37,10 @@ public final class PortalEvent implements Serializable {
 
     private PortalEvent(String eventId,
                         PortalEventType eventType,
-                        long userId,
+                        String userId,
                         Long authVersion,
                         Long profileVersion,
-                        Long operatorId,
+                        String operatorId,
                         String operatorName,
                         long ts,
                         Map<String, Object> payload) {
@@ -56,10 +56,10 @@ public final class PortalEvent implements Serializable {
     }
 
     public static PortalEvent create(PortalEventType eventType,
-                                     long userId,
+                                     String userId,
                                      Long authVersion,
                                      Long profileVersion,
-                                     Long operatorId,
+                                     String operatorId,
                                      String operatorName,
                                      Map<String, Object> payload) {
         Objects.requireNonNull(eventType, "eventType");
@@ -84,7 +84,7 @@ public final class PortalEvent implements Serializable {
         return eventType;
     }
 
-    public long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
@@ -96,7 +96,7 @@ public final class PortalEvent implements Serializable {
         return profileVersion;
     }
 
-    public Long getOperatorId() {
+    public String getOperatorId() {
         return operatorId;
     }
 

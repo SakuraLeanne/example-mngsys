@@ -28,8 +28,8 @@ public class PortalUserAuthStateServiceImpl extends ServiceImpl<PortalUserAuthSt
     }
 
     @Override
-    public void recordPasswordChange(Long userId) {
-        if (userId == null) {
+    public void recordPasswordChange(String userId) {
+        if (userId == null || userId.isEmpty()) {
             return;
         }
         PortalUserAuthState state = loadOrInit(userId);
@@ -43,8 +43,8 @@ public class PortalUserAuthStateServiceImpl extends ServiceImpl<PortalUserAuthSt
     }
 
     @Override
-    public void recordProfileUpdate(Long userId) {
-        if (userId == null) {
+    public void recordProfileUpdate(String userId) {
+        if (userId == null || userId.isEmpty()) {
             return;
         }
         PortalUserAuthState state = loadOrInit(userId);
@@ -58,8 +58,8 @@ public class PortalUserAuthStateServiceImpl extends ServiceImpl<PortalUserAuthSt
     }
 
     @Override
-    public void recordStatusChange(Long userId, Integer status) {
-        if (userId == null) {
+    public void recordStatusChange(String userId, Integer status) {
+        if (userId == null || userId.isEmpty()) {
             return;
         }
         PortalUserAuthState state = loadOrInit(userId);
@@ -71,7 +71,7 @@ public class PortalUserAuthStateServiceImpl extends ServiceImpl<PortalUserAuthSt
         }
     }
 
-    private PortalUserAuthState loadOrInit(Long userId) {
+    private PortalUserAuthState loadOrInit(String userId) {
         PortalUserAuthState state = getById(userId);
         if (state == null) {
             state = new PortalUserAuthState();
@@ -87,7 +87,7 @@ public class PortalUserAuthStateServiceImpl extends ServiceImpl<PortalUserAuthSt
         return base + 1;
     }
 
-    private Integer resolveStatus(Long userId) {
+    private Integer resolveStatus(String userId) {
         PortalUser user = portalUserService.getById(userId);
         return user == null ? null : user.getStatus();
     }

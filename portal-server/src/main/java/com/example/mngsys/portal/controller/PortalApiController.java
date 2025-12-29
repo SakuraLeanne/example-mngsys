@@ -113,7 +113,7 @@ public class PortalApiController {
      */
     @GetMapping("/me")
     public ApiResponse<MeResponse> me() {
-        Long userId = RequestContext.getUserId();
+        String userId = RequestContext.getUserId();
         return ApiResponse.success(new MeResponse(userId));
     }
 
@@ -223,7 +223,7 @@ public class PortalApiController {
      */
     @PostMapping("/sso/jump-url")
     public ApiResponse<SsoJumpResponse> ssoJumpUrl(@Valid @RequestBody SsoJumpRequest request) {
-        Long userId = RequestContext.getUserId();
+        String userId = RequestContext.getUserId();
         if (userId == null) {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED);
         }
@@ -290,15 +290,15 @@ public class PortalApiController {
      * @return 登录响应对象
      */
     private LoginResponse buildLoginResponse(Object data, String jumpUrl) {
-        Long userId = null;
+        String userId = null;
         String username = null;
         if (data instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) data;
             Object userIdValue = map.get("userId");
             if (userIdValue instanceof Number) {
-                userId = ((Number) userIdValue).longValue();
+                userId = userIdValue.toString();
             } else if (userIdValue != null) {
-                userId = Long.parseLong(userIdValue.toString());
+                userId = userIdValue.toString();
             }
             Object usernameValue = map.get("username");
             if (usernameValue != null) {
@@ -391,7 +391,7 @@ public class PortalApiController {
         /**
          * 用户主键 ID。
          */
-        private final Long userId;
+        private final String userId;
         /**
          * 用户名。
          */
@@ -401,13 +401,13 @@ public class PortalApiController {
          */
         private final String jumpUrl;
 
-        public LoginResponse(Long userId, String username, String jumpUrl) {
+        public LoginResponse(String userId, String username, String jumpUrl) {
             this.userId = userId;
             this.username = username;
             this.jumpUrl = jumpUrl;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
@@ -527,6 +527,7 @@ public class PortalApiController {
         /**
          * 手机号。
          */
+        @NotBlank(message = "手机号不能为空")
         private String mobile;
         /**
          * 邮箱。
@@ -583,13 +584,13 @@ public class PortalApiController {
         /**
          * 用户 ID。
          */
-        private final Long userId;
+        private final String userId;
 
-        public MeResponse(Long userId) {
+        public MeResponse(String userId) {
             this.userId = userId;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
     }

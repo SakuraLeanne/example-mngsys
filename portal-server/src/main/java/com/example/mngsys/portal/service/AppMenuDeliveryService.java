@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,8 +52,8 @@ public class AppMenuDeliveryService {
         this.objectMapper = objectMapper;
     }
 
-    public List<AppMenuTreeNode> loadMenus(Long userId) {
-        if (userId == null) {
+    public List<AppMenuTreeNode> loadMenus(String userId) {
+        if (!StringUtils.hasText(userId)) {
             return new ArrayList<>();
         }
         String cacheKey = buildMenuCacheKey(userId);
@@ -68,7 +69,7 @@ public class AppMenuDeliveryService {
         return menus;
     }
 
-    private List<AppMenuTreeNode> queryMenus(Long userId) {
+    private List<AppMenuTreeNode> queryMenus(String userId) {
         List<AppUserRole> userRoles = appUserRoleService.list(new LambdaQueryWrapper<AppUserRole>()
                 .eq(AppUserRole::getUserId, userId));
         if (userRoles.isEmpty()) {
@@ -97,7 +98,7 @@ public class AppMenuDeliveryService {
         return buildTree(menus);
     }
 
-    private String buildMenuCacheKey(Long userId) {
+    private String buildMenuCacheKey(String userId) {
         return MENU_CACHE_PREFIX + userId;
     }
 
