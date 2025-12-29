@@ -40,7 +40,7 @@ public class AppMenuController {
      */
     @GetMapping
     public ApiResponse<List<AppMenuTreeNode>> menus() {
-        Long userId = RequestContext.getUserId();
+        String userId = RequestContext.getUserId();
         List<AppMenuTreeNode> menus = appMenuDeliveryService.loadMenus(userId);
         return ApiResponse.success(menus);
     }

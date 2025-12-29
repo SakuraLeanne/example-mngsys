@@ -1,6 +1,7 @@
 package com.example.mngsys.portal.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -18,7 +19,8 @@ public class AppUserRole {
     @TableId(type = IdType.AUTO)
     private Long id;
     /** 用户 ID，关联门户用户表。 */
-    private Long userId;
+    @TableField("user_id")
+    private String userId;
     /** 角色 ID，关联 {@link AppRole#id}。 */
     private Long roleId;
     /** 关联创建时间。 */
@@ -32,11 +34,11 @@ public class AppUserRole {
         this.id = id;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

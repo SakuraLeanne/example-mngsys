@@ -89,7 +89,7 @@ public class AuthClient {
         }
     }
 
-    public ApiResponse<Void> kick(Long userId) {
+    public ApiResponse<Void> kick(String userId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-Internal-Token", authClientProperties.getInternalToken());
@@ -141,14 +141,14 @@ public class AuthClient {
     }
 
     public static class LoginResponse {
-        private Long userId;
+        private String userId;
         private String username;
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
-        public void setUserId(Long userId) {
+        public void setUserId(String userId) {
             this.userId = userId;
         }
 
@@ -162,32 +162,32 @@ public class AuthClient {
     }
 
     public static class SessionResponse {
-        private Long userId;
+        private String userId;
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
-        public void setUserId(Long userId) {
+        public void setUserId(String userId) {
             this.userId = userId;
         }
     }
 
     public static class KickRequest {
-        private Long userId;
+        private String userId;
 
         public KickRequest() {
         }
 
-        public KickRequest(Long userId) {
+        public KickRequest(String userId) {
             this.userId = userId;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
-        public void setUserId(Long userId) {
+        public void setUserId(String userId) {
             this.userId = userId;
         }
     }

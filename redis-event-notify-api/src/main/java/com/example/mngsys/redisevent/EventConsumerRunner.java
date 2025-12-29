@@ -93,10 +93,10 @@ public class EventConsumerRunner {
         EventMessage message = new EventMessage();
         message.setEventId(asString(map.get("eventId")));
         message.setEventType(asString(map.get("eventType")));
-        message.setUserId(parseLong(map.get("userId")));
+        message.setUserId(asString(map.get("userId")));
         message.setAuthVersion(parseLong(map.get("authVersion")));
         message.setProfileVersion(parseLong(map.get("profileVersion")));
-        message.setOperatorId(parseLong(map.get("operatorId")));
+        message.setOperatorId(asString(map.get("operatorId")));
         message.setOperatorName(asString(map.get("operatorName")));
         message.setTs(parseLong(map.get("ts")));
         message.setPayload(asString(map.get("payload")));

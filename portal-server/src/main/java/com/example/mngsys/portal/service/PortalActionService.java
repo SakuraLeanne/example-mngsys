@@ -192,13 +192,13 @@ public class PortalActionService {
     }
 
     private static class ActionTicketPayload {
-        private final Long userId;
+        private final String userId;
         private final String scope;
         private final String returnUrl;
         private final String sourceSystemCode;
         private final Long expireAt;
 
-        private ActionTicketPayload(Long userId, String scope, String returnUrl, String sourceSystemCode, Long expireAt) {
+        private ActionTicketPayload(String userId, String scope, String returnUrl, String sourceSystemCode, Long expireAt) {
             this.userId = userId;
             this.scope = scope;
             this.returnUrl = returnUrl;
@@ -210,7 +210,7 @@ public class PortalActionService {
             if (data == null || data.isEmpty()) {
                 return null;
             }
-            Long userId = parseLong(data.get("userId"));
+            String userId = parseString(data.get("userId"));
             String scope = parseString(data.get("scope"));
             String returnUrl = parseString(data.get("returnUrl"));
             String sourceSystemCode = parseString(data.get("sourceSystemCode"));
@@ -228,7 +228,7 @@ public class PortalActionService {
             return Instant.now().toEpochMilli() > expireAt;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
@@ -259,7 +259,11 @@ public class PortalActionService {
         }
 
         private static String parseString(Object value) {
-            return value == null ? null : value.toString();
+            if (value == null) {
+                return null;
+            }
+            String text = value.toString();
+            return StringUtils.hasText(text) ? text : null;
         }
     }
 }

@@ -50,7 +50,7 @@ public class AdminAppUserRoleController {
      * @return 角色概要列表
      */
     @GetMapping
-    public ApiResponse<List<RoleSummary>> list(@PathVariable Long userId) {
+    public ApiResponse<List<RoleSummary>> list(@PathVariable String userId) {
         PortalAdminAppUserRoleService.Result<List<AppRole>> result =
                 portalAdminAppUserRoleService.listUserRoles(userId);
         if (!result.isSuccess()) {
@@ -71,10 +71,10 @@ public class AdminAppUserRoleController {
      * @return 授权结果
      */
     @PostMapping
-    public ApiResponse<ActionResponse> grant(@PathVariable Long userId,
+    public ApiResponse<ActionResponse> grant(@PathVariable String userId,
                                              @Valid @RequestBody GrantRolesRequest request,
                                              HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppUserRoleService.Result<Void> result = portalAdminAppUserRoleService.grantRoles(
                 userId,
                 request.getRoleIds(),

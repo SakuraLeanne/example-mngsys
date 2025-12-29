@@ -77,7 +77,7 @@ public class AuthController {
     @GetMapping("/session/me")
     public ApiResponse<SessionResponse> sessionMe() {
         StpUtil.checkLogin();
-        Long userId = StpUtil.getLoginIdAsLong();
+        String userId = String.valueOf(StpUtil.getLoginId());
         return ApiResponse.success(new SessionResponse(userId));
     }
 
@@ -127,16 +127,16 @@ public class AuthController {
 
     public static class LoginResponse {
         /** 用户 ID。 */
-        private final Long userId;
+        private final String userId;
         /** 用户名。 */
         private final String username;
 
-        public LoginResponse(Long userId, String username) {
+        public LoginResponse(String userId, String username) {
             this.userId = userId;
             this.username = username;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
@@ -147,13 +147,13 @@ public class AuthController {
 
     public static class SessionResponse {
         /** 当前会话对应的用户 ID。 */
-        private final Long userId;
+        private final String userId;
 
-        public SessionResponse(Long userId) {
+        public SessionResponse(String userId) {
             this.userId = userId;
         }
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
     }
@@ -161,13 +161,13 @@ public class AuthController {
     public static class KickRequest {
         /** 被踢出的用户 ID。 */
         @NotNull(message = "用户ID不能为空")
-        private Long userId;
+        private String userId;
 
-        public Long getUserId() {
+        public String getUserId() {
             return userId;
         }
 
-        public void setUserId(Long userId) {
+        public void setUserId(String userId) {
             this.userId = userId;
         }
     }

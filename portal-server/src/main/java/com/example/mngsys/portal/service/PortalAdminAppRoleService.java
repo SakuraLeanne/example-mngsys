@@ -51,7 +51,7 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<AppRole> createRole(AppRole role, Long operatorId, String ip) {
+    public Result<AppRole> createRole(AppRole role, String operatorId, String ip) {
         if (role == null || !StringUtils.hasText(role.getAppCode())
                 || !StringUtils.hasText(role.getRoleCode())
                 || !StringUtils.hasText(role.getRoleName())) {
@@ -60,9 +60,6 @@ public class PortalAdminAppRoleService {
         if (existsRoleCode(role.getAppCode(), role.getRoleCode(), null)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色编码已存在");
         }
-        LocalDateTime now = LocalDateTime.now();
-        role.setCreateTime(now);
-        role.setUpdateTime(now);
         if (role.getStatus() == null) {
             role.setStatus(1);
         }
@@ -72,7 +69,7 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<AppRole> updateRole(Long id, AppRole update, Long operatorId, String ip) {
+    public Result<AppRole> updateRole(Long id, AppRole update, String operatorId, String ip) {
         if (id == null || update == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色信息不完整");
         }
@@ -98,14 +95,13 @@ public class PortalAdminAppRoleService {
         if (update.getStatus() != null) {
             role.setStatus(update.getStatus());
         }
-        role.setUpdateTime(LocalDateTime.now());
         appRoleService.updateById(role);
         writeAuditLog(operatorId, "UPDATE_APP_ROLE", String.valueOf(role.getId()), role.getRoleName(), ip);
         return Result.success(role);
     }
 
     @Transactional
-    public Result<Void> updateStatus(Long id, Integer status, Long operatorId, String ip) {
+    public Result<Void> updateStatus(Long id, Integer status, String operatorId, String ip) {
         if (id == null || status == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "状态不能为空");
         }
@@ -114,7 +110,6 @@ public class PortalAdminAppRoleService {
             return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
         }
         role.setStatus(status);
-        role.setUpdateTime(LocalDateTime.now());
         appRoleService.updateById(role);
         writeAuditLog(operatorId, "UPDATE_APP_ROLE_STATUS", String.valueOf(role.getId()),
                 String.valueOf(status), ip);
@@ -122,7 +117,7 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<Void> grantMenus(Long roleId, List<Long> menuIds, Long operatorId, String ip) {
+    public Result<Void> grantMenus(Long roleId, List<Long> menuIds, String operatorId, String ip) {
         if (roleId == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
         }
@@ -175,7 +170,7 @@ public class PortalAdminAppRoleService {
         return appRoleService.count(wrapper) > 0;
     }
 
-    private void writeAuditLog(Long operatorId, String action, String resource, String detail, String ip) {
+    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
         PortalAuditLog log = new PortalAuditLog();
         log.setUserId(operatorId);
         log.setAction(action);

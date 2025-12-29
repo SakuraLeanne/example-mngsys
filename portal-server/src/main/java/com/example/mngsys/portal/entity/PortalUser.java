@@ -1,9 +1,12 @@
 package com.example.mngsys.portal.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @TableName("portal_user")
@@ -15,33 +18,65 @@ import java.time.LocalDateTime;
  * </p>
  */
 public class PortalUser {
-    /** 主键 ID，自增。 */
-    @TableId(type = IdType.AUTO)
-    private Long id;
-    /** 用户名（登录账号）。 */
+    /** 主键 ID，字符串雪花/UUID。 */
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    private String id;
+    /** 用户名（登录账号，默认同手机号）。 */
     private String username;
-    /** 用户真实姓名。 */
-    private String realName;
-    /** 手机号。 */
+    /** 手机号，唯一且必填。 */
     private String mobile;
+    /** 手机号是否已验证：0-否，1-是。 */
+    @TableField("mobile_verified")
+    private Integer mobileVerified;
     /** 邮箱。 */
     private String email;
-    /** 用户状态，通常 1 表示启用，0 表示禁用。 */
+    /** 邮箱是否已验证：0-否，1-是。 */
+    @TableField("email_verified")
+    private Integer emailVerified;
+    /** 密码哈希串（仅保存编码后的值）。 */
+    private String password;
+    /** 用户状态：0-禁用，1-正常，2-冻结。 */
     private Integer status;
-    /** 禁用原因。 */
-    private String disableReason;
-    /** 禁用时间。 */
-    private LocalDateTime disableTime;
+    /** 用户真实姓名。 */
+    @TableField("real_name")
+    private String realName;
+    /** 昵称。 */
+    @TableField("nick_name")
+    private String nickName;
+    /** 性别。 */
+    private String gender;
+    /** 出生日期。 */
+    private LocalDate birthday;
+    /** 公司名称。 */
+    @TableField("company_name")
+    private String companyName;
+    /** 部门。 */
+    private String department;
+    /** 职位。 */
+    private String position;
+    /** 租户/园区 ID。 */
+    @TableField("tenant_id")
+    private String tenantId;
+    /** 备注。 */
+    private String remark;
     /** 创建时间。 */
+    @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     /** 更新时间。 */
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+    /** 创建人 ID。 */
+    @TableField("create_by")
+    private String createBy;
+    /** 修改人 ID。 */
+    @TableField("update_by")
+    private String updateBy;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -53,20 +88,20 @@ public class PortalUser {
         this.username = username;
     }
 
-    public String getRealName() {
-        return realName;
-    }
-
-    public void setRealName(String realName) {
-        this.realName = realName;
-    }
-
     public String getMobile() {
         return mobile;
     }
 
     public void setMobile(String mobile) {
         this.mobile = mobile;
+    }
+
+    public Integer getMobileVerified() {
+        return mobileVerified;
+    }
+
+    public void setMobileVerified(Integer mobileVerified) {
+        this.mobileVerified = mobileVerified;
     }
 
     public String getEmail() {
@@ -77,6 +112,22 @@ public class PortalUser {
         this.email = email;
     }
 
+    public Integer getEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(Integer emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     public Integer getStatus() {
         return status;
     }
@@ -85,20 +136,76 @@ public class PortalUser {
         this.status = status;
     }
 
-    public String getDisableReason() {
-        return disableReason;
+    public String getRealName() {
+        return realName;
     }
 
-    public void setDisableReason(String disableReason) {
-        this.disableReason = disableReason;
+    public void setRealName(String realName) {
+        this.realName = realName;
     }
 
-    public LocalDateTime getDisableTime() {
-        return disableTime;
+    public String getNickName() {
+        return nickName;
     }
 
-    public void setDisableTime(LocalDateTime disableTime) {
-        this.disableTime = disableTime;
+    public void setNickName(String nickName) {
+        this.nickName = nickName;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public LocalDate getBirthday() {
+        return birthday;
+    }
+
+    public void setBirthday(LocalDate birthday) {
+        this.birthday = birthday;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 
     public LocalDateTime getCreateTime() {
@@ -115,5 +222,21 @@ public class PortalUser {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public String getCreateBy() {
+        return createBy;
+    }
+
+    public void setCreateBy(String createBy) {
+        this.createBy = createBy;
+    }
+
+    public String getUpdateBy() {
+        return updateBy;
+    }
+
+    public void setUpdateBy(String updateBy) {
+        this.updateBy = updateBy;
     }
 }

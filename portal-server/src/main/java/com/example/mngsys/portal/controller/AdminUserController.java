@@ -69,7 +69,7 @@ public class AdminUserController {
      * @return 用户详细信息
      */
     @GetMapping("/{userId}")
-    public ApiResponse<UserDetail> getUser(@PathVariable Long userId) {
+    public ApiResponse<UserDetail> getUser(@PathVariable String userId) {
         PortalAdminUserService.UserDetailResult result = portalAdminUserService.getUserDetail(userId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
@@ -86,10 +86,10 @@ public class AdminUserController {
      * @return 操作结果
      */
     @PostMapping("/{userId}/disable")
-    public ApiResponse<ActionResponse> disableUser(@PathVariable Long userId,
+    public ApiResponse<ActionResponse> disableUser(@PathVariable String userId,
                                                    @Valid @RequestBody DisableRequest request,
                                                    HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminUserService.ActionResult result = portalAdminUserService.disableUser(
                 userId,
                 request.getReason(),
@@ -109,9 +109,9 @@ public class AdminUserController {
      * @return 操作结果
      */
     @PostMapping("/{userId}/enable")
-    public ApiResponse<ActionResponse> enableUser(@PathVariable Long userId,
+    public ApiResponse<ActionResponse> enableUser(@PathVariable String userId,
                                                   HttpServletRequest httpServletRequest) {
-        Long operatorId = RequestContext.getUserId();
+        String operatorId = RequestContext.getUserId();
         PortalAdminUserService.ActionResult result = portalAdminUserService.enableUser(
                 userId,
                 operatorId,
@@ -230,7 +230,7 @@ public class AdminUserController {
         /**
          * 用户 ID。
          */
-        private final Long id;
+        private final String id;
         /**
          * 用户名。
          */
@@ -251,23 +251,21 @@ public class AdminUserController {
          * 用户状态。
          */
         private final Integer status;
-        /**
-         * 禁用时间。
-         */
-        private final LocalDateTime disableTime;
+        /** 备注信息。 */
+        private final String remark;
 
-        public UserSummary(Long id, String username, String realName, String mobile, String email,
-                           Integer status, LocalDateTime disableTime) {
+        public UserSummary(String id, String username, String realName, String mobile, String email,
+                           Integer status, String remark) {
             this.id = id;
             this.username = username;
             this.realName = realName;
             this.mobile = mobile;
             this.email = email;
             this.status = status;
-            this.disableTime = disableTime;
+            this.remark = remark;
         }
 
-        public Long getId() {
+        public String getId() {
             return id;
         }
 
@@ -291,8 +289,8 @@ public class AdminUserController {
             return status;
         }
 
-        public LocalDateTime getDisableTime() {
-            return disableTime;
+        public String getRemark() {
+            return remark;
         }
     }
 
@@ -303,7 +301,7 @@ public class AdminUserController {
         /**
          * 用户 ID。
          */
-        private final Long id;
+        private final String id;
         /**
          * 用户名。
          */
@@ -324,21 +322,15 @@ public class AdminUserController {
          * 用户状态。
          */
         private final Integer status;
-        /**
-         * 禁用原因。
-         */
-        private final String disableReason;
-        /**
-         * 禁用时间。
-         */
-        private final LocalDateTime disableTime;
+        /** 备注信息（包含禁用原因等）。 */
+        private final String remark;
         /**
          * 创建时间。
          */
         private final LocalDateTime createTime;
 
-        public UserDetail(Long id, String username, String realName, String mobile, String email,
-                          Integer status, String disableReason, LocalDateTime disableTime,
+        public UserDetail(String id, String username, String realName, String mobile, String email,
+                          Integer status, String remark,
                           LocalDateTime createTime) {
             this.id = id;
             this.username = username;
@@ -346,12 +338,11 @@ public class AdminUserController {
             this.mobile = mobile;
             this.email = email;
             this.status = status;
-            this.disableReason = disableReason;
-            this.disableTime = disableTime;
+            this.remark = remark;
             this.createTime = createTime;
         }
 
-        public Long getId() {
+        public String getId() {
             return id;
         }
 
@@ -375,12 +366,8 @@ public class AdminUserController {
             return status;
         }
 
-        public String getDisableReason() {
-            return disableReason;
-        }
-
-        public LocalDateTime getDisableTime() {
-            return disableTime;
+        public String getRemark() {
+            return remark;
         }
 
         public LocalDateTime getCreateTime() {
