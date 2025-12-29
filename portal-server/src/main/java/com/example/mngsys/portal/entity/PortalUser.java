@@ -9,18 +9,32 @@ import java.time.LocalDateTime;
 @TableName("portal_user")
 /**
  * PortalUser。
+ * <p>
+ * 门户用户表实体类，映射表 {@code portal_user}，记录用户的基础信息、状态以及审计字段。
+ * 使用 MyBatis-Plus 进行 ORM 映射。
+ * </p>
  */
 public class PortalUser {
+    /** 主键 ID，自增。 */
     @TableId(type = IdType.AUTO)
     private Long id;
+    /** 用户名（登录账号）。 */
     private String username;
+    /** 用户真实姓名。 */
     private String realName;
+    /** 手机号。 */
     private String mobile;
+    /** 邮箱。 */
     private String email;
+    /** 用户状态，通常 1 表示启用，0 表示禁用。 */
     private Integer status;
+    /** 禁用原因。 */
     private String disableReason;
+    /** 禁用时间。 */
     private LocalDateTime disableTime;
+    /** 创建时间。 */
     private LocalDateTime createTime;
+    /** 更新时间。 */
     private LocalDateTime updateTime;
 
     public Long getId() {
