@@ -9,17 +9,29 @@ import java.time.LocalDateTime;
 @TableName("portal_audit_log")
 /**
  * PortalAuditLog。
+ * <p>
+ * 门户审计日志实体，记录用户在管理系统中的关键操作、资源访问及结果，便于追踪与合规审计。
+ * </p>
  */
 public class PortalAuditLog {
+    /** 主键 ID，自增。 */
     @TableId(type = IdType.AUTO)
     private Long id;
+    /** 操作用户 ID。 */
     private Long userId;
+    /** 操作用户名。 */
     private String username;
+    /** 操作类型/动作。 */
     private String action;
+    /** 目标资源标识。 */
     private String resource;
+    /** 操作详情或请求参数摘要。 */
     private String detail;
+    /** 操作来源 IP。 */
     private String ip;
+    /** 操作状态，1 为成功，其他为失败或异常。 */
     private Integer status;
+    /** 记录创建时间。 */
     private LocalDateTime createTime;
 
     public Long getId() {
