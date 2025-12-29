@@ -9,16 +9,27 @@ import java.time.LocalDateTime;
 @TableName("app_role")
 /**
  * AppRole。
+ * <p>
+ * 应用角色实体，定义应用内的角色编码与名称，用于权限分组和授权分配。
+ * </p>
  */
 public class AppRole {
+    /** 主键 ID，自增。 */
     @TableId(type = IdType.AUTO)
     private Long id;
+    /** 归属应用编码。 */
     private String appCode;
+    /** 角色编码，唯一标识角色。 */
     private String roleCode;
+    /** 角色名称。 */
     private String roleName;
+    /** 角色状态，1 为启用，0 为禁用。 */
     private Integer status;
+    /** 角色备注。 */
     private String remark;
+    /** 创建时间。 */
     private LocalDateTime createTime;
+    /** 更新时间。 */
     private LocalDateTime updateTime;
 
     public Long getId() {

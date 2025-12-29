@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * PortalUser。
  * <p>
  * 门户用户表实体类，映射表 {@code portal_user}，记录用户的基础信息、状态以及审计字段。
- * 使用 MyBatis-Plus 进行 ORM 映射。
+ * 使用 MyBatis-Plus 进行 ORM 映射，支撑登录鉴权和用户管理。
  * </p>
  */
 public class PortalUser {

@@ -9,20 +9,36 @@ import java.time.LocalDateTime;
 @TableName("app_menu_resource")
 /**
  * AppMenuResource。
+ * <p>
+ * 应用菜单/资源表实体，描述前端菜单树或按钮资源的定义，包括路径、类型、权限标识等，
+ * 用于权限控制与菜单渲染。
+ * </p>
  */
 public class AppMenuResource {
+    /** 主键 ID，自增。 */
     @TableId(type = IdType.AUTO)
     private Long id;
+    /** 归属应用编码。 */
     private String appCode;
+    /** 菜单唯一编码。 */
     private String menuCode;
+    /** 菜单名称（展示文案）。 */
     private String menuName;
+    /** 前端路由路径或资源路径。 */
     private String menuPath;
+    /** 菜单类型（目录、页面、按钮等）。 */
     private String menuType;
+    /** 父菜单 ID，根节点为空或 0。 */
     private Long parentId;
+    /** 权限标识（如接口权限或按钮权限）。 */
     private String permission;
+    /** 菜单排序值，越小越靠前。 */
     private Integer sort;
+    /** 菜单状态，1 为启用，0 为禁用。 */
     private Integer status;
+    /** 创建时间。 */
     private LocalDateTime createTime;
+    /** 更新时间。 */
     private LocalDateTime updateTime;
 
     public Long getId() {
