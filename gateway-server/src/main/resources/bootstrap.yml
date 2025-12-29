@@ -20,6 +20,9 @@ spring:
           - data-id: portal-share-config.yml
             group: DEFAULT_GROUP
             refresh: true
+          - data-id: portal-share-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
 
 management:
   endpoints:
@@ -30,7 +33,3 @@ management:
 gateway:
   security:
     authServerBaseUrl: lb://auth-server
-    whitelist:
-      - /auth/api/login
-      - /portal/api/login
-      - /portal/api/action/**

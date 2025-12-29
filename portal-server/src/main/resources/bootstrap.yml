@@ -20,6 +20,9 @@ spring:
           - data-id: portal-share-config.yml
             group: DEFAULT_GROUP
             refresh: true
+          - data-id: portal-share-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
