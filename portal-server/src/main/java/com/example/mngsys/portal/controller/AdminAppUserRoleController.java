@@ -20,21 +20,35 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 管理端应用用户角色控制器，提供用户角色查询与授权接口。
+ */
 @RestController
 @RequestMapping("/portal/api/admin/app-users/{userId}/roles")
 @Validated
 @AdminRequired
-/**
- * AdminAppUserRoleController。
- */
 public class AdminAppUserRoleController {
 
+    /**
+     * 应用用户角色管理服务。
+     */
     private final PortalAdminAppUserRoleService portalAdminAppUserRoleService;
 
+    /**
+     * 构造函数，注入用户角色管理服务。
+     *
+     * @param portalAdminAppUserRoleService 用户角色管理服务
+     */
     public AdminAppUserRoleController(PortalAdminAppUserRoleService portalAdminAppUserRoleService) {
         this.portalAdminAppUserRoleService = portalAdminAppUserRoleService;
     }
 
+    /**
+     * 查询指定用户已拥有的角色列表。
+     *
+     * @param userId 用户 ID
+     * @return 角色概要列表
+     */
     @GetMapping
     public ApiResponse<List<RoleSummary>> list(@PathVariable Long userId) {
         PortalAdminAppUserRoleService.Result<List<AppRole>> result =
@@ -48,6 +62,14 @@ public class AdminAppUserRoleController {
         return ApiResponse.success(roles);
     }
 
+    /**
+     * 批量授权用户角色。
+     *
+     * @param userId              用户 ID
+     * @param request             授权请求，包含角色 ID 列表
+     * @param httpServletRequest  HTTP 请求，用于获取操作者 IP
+     * @return 授权结果
+     */
     @PostMapping
     public ApiResponse<ActionResponse> grant(@PathVariable Long userId,
                                              @Valid @RequestBody GrantRolesRequest request,
@@ -64,6 +86,12 @@ public class AdminAppUserRoleController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 从请求头与远端地址解析操作者 IP。
+     *
+     * @param request HTTP 请求
+     * @return IP 地址
+     */
     private String resolveIp(HttpServletRequest request) {
         if (request == null) {
             return null;
@@ -75,14 +103,41 @@ public class AdminAppUserRoleController {
         return request.getRemoteAddr();
     }
 
+    /**
+     * 角色概要信息，用于列表展示。
+     */
     public static class RoleSummary {
+        /**
+         * 角色主键 ID。
+         */
         private final Long id;
+        /**
+         * 应用编码。
+         */
         private final String appCode;
+        /**
+         * 角色编码。
+         */
         private final String roleCode;
+        /**
+         * 角色名称。
+         */
         private final String roleName;
+        /**
+         * 状态：1 启用，0 禁用等。
+         */
         private final Integer status;
+        /**
+         * 备注信息。
+         */
         private final String remark;
+        /**
+         * 创建时间。
+         */
         private final LocalDateTime createTime;
+        /**
+         * 更新时间。
+         */
         private final LocalDateTime updateTime;
 
         public RoleSummary(Long id, String appCode, String roleCode, String roleName, Integer status,
@@ -138,7 +193,13 @@ public class AdminAppUserRoleController {
         }
     }
 
+    /**
+     * 授权请求体，包含角色 ID 列表。
+     */
     public static class GrantRolesRequest {
+        /**
+         * 角色 ID 列表。
+         */
         @NotNull(message = "roleIds 不能为空")
         private List<Long> roleIds;
 
@@ -151,7 +212,13 @@ public class AdminAppUserRoleController {
         }
     }
 
+    /**
+     * 通用操作响应。
+     */
     public static class ActionResponse {
+        /**
+         * 是否成功。
+         */
         private final boolean success;
 
         public ActionResponse(boolean success) {

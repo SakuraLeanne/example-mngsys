@@ -23,21 +23,36 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 管理端应用角色控制器，提供角色查询、创建、修改、授权菜单等接口。
+ */
 @RestController
 @RequestMapping("/portal/api/admin/app-roles")
 @Validated
 @AdminRequired
-/**
- * AdminAppRoleController。
- */
 public class AdminAppRoleController {
 
+    /**
+     * 应用角色管理服务。
+     */
     private final PortalAdminAppRoleService portalAdminAppRoleService;
 
+    /**
+     * 构造函数，注入角色管理服务。
+     *
+     * @param portalAdminAppRoleService 角色管理服务
+     */
     public AdminAppRoleController(PortalAdminAppRoleService portalAdminAppRoleService) {
         this.portalAdminAppRoleService = portalAdminAppRoleService;
     }
 
+    /**
+     * 查询角色列表。
+     *
+     * @param appCode 应用编码，可选
+     * @param status  状态，可选
+     * @return 角色概要列表
+     */
     @GetMapping
     public ApiResponse<List<RoleSummary>> list(@RequestParam(required = false) String appCode,
                                                @RequestParam(required = false) Integer status) {
@@ -51,6 +66,13 @@ public class AdminAppRoleController {
         return ApiResponse.success(roles);
     }
 
+    /**
+     * 创建角色。
+     *
+     * @param request            创建请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 创建后的角色概要
+     */
     @PostMapping
     public ApiResponse<RoleSummary> create(@Valid @RequestBody RoleCreateRequest request,
                                            HttpServletRequest httpServletRequest) {
@@ -65,6 +87,14 @@ public class AdminAppRoleController {
         return ApiResponse.success(RoleSummary.from(result.getData()));
     }
 
+    /**
+     * 更新角色。
+     *
+     * @param id                 角色 ID
+     * @param request            更新请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 更新后的角色概要
+     */
     @PutMapping("/{id}")
     public ApiResponse<RoleSummary> update(@PathVariable Long id,
                                            @Valid @RequestBody RoleUpdateRequest request,
@@ -81,6 +111,14 @@ public class AdminAppRoleController {
         return ApiResponse.success(RoleSummary.from(result.getData()));
     }
 
+    /**
+     * 更新角色状态。
+     *
+     * @param id                 角色 ID
+     * @param request            状态请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 操作结果
+     */
     @PostMapping("/{id}/status")
     public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
                                                     @Valid @RequestBody StatusRequest request,
@@ -97,6 +135,14 @@ public class AdminAppRoleController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 为角色授权菜单。
+     *
+     * @param id                 角色 ID
+     * @param request            菜单授权请求
+     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @return 操作结果
+     */
     @PostMapping("/{id}/grant-menus")
     public ApiResponse<ActionResponse> grantMenus(@PathVariable Long id,
                                                   @Valid @RequestBody GrantMenusRequest request,
@@ -113,6 +159,12 @@ public class AdminAppRoleController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
+    /**
+     * 从请求头和远端地址解析操作者 IP。
+     *
+     * @param request HTTP 请求
+     * @return IP 地址
+     */
     private String resolveIp(HttpServletRequest request) {
         if (request == null) {
             return null;
@@ -124,14 +176,41 @@ public class AdminAppRoleController {
         return request.getRemoteAddr();
     }
 
+    /**
+     * 角色概要信息。
+     */
     public static class RoleSummary {
+        /**
+         * 角色 ID。
+         */
         private final Long id;
+        /**
+         * 应用编码。
+         */
         private final String appCode;
+        /**
+         * 角色编码。
+         */
         private final String roleCode;
+        /**
+         * 角色名称。
+         */
         private final String roleName;
+        /**
+         * 状态。
+         */
         private final Integer status;
+        /**
+         * 备注。
+         */
         private final String remark;
+        /**
+         * 创建时间。
+         */
         private final LocalDateTime createTime;
+        /**
+         * 更新时间。
+         */
         private final LocalDateTime updateTime;
 
         public RoleSummary(Long id, String appCode, String roleCode, String roleName, Integer status,
@@ -187,14 +266,32 @@ public class AdminAppRoleController {
         }
     }
 
+    /**
+     * 角色创建请求体。
+     */
     public static class RoleCreateRequest {
+        /**
+         * 应用编码。
+         */
         @NotBlank(message = "appCode 不能为空")
         private String appCode;
+        /**
+         * 角色编码。
+         */
         @NotBlank(message = "roleCode 不能为空")
         private String roleCode;
+        /**
+         * 角色名称。
+         */
         @NotBlank(message = "roleName 不能为空")
         private String roleName;
+        /**
+         * 状态。
+         */
         private Integer status;
+        /**
+         * 备注。
+         */
         private String remark;
 
         public String getAppCode() {
@@ -248,11 +345,29 @@ public class AdminAppRoleController {
         }
     }
 
+    /**
+     * 角色更新请求体。
+     */
     public static class RoleUpdateRequest {
+        /**
+         * 应用编码。
+         */
         private String appCode;
+        /**
+         * 角色编码。
+         */
         private String roleCode;
+        /**
+         * 角色名称。
+         */
         private String roleName;
+        /**
+         * 状态。
+         */
         private Integer status;
+        /**
+         * 备注。
+         */
         private String remark;
 
         public String getAppCode() {
@@ -306,7 +421,13 @@ public class AdminAppRoleController {
         }
     }
 
+    /**
+     * 角色状态更新请求体。
+     */
     public static class StatusRequest {
+        /**
+         * 状态值。
+         */
         @NotNull(message = "status 不能为空")
         private Integer status;
 
@@ -319,7 +440,13 @@ public class AdminAppRoleController {
         }
     }
 
+    /**
+     * 角色授权菜单请求体。
+     */
     public static class GrantMenusRequest {
+        /**
+         * 菜单 ID 列表。
+         */
         @NotNull(message = "menuIds 不能为空")
         private List<Long> menuIds;
 
@@ -332,7 +459,13 @@ public class AdminAppRoleController {
         }
     }
 
+    /**
+     * 通用操作结果。
+     */
     public static class ActionResponse {
+        /**
+         * 是否成功。
+         */
         private final boolean success;
 
         public ActionResponse(boolean success) {

@@ -28,19 +28,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Portal 接口控制器，负责门户登录、个人资料、动作票据等与用户交互的接口入口。
+ */
 @RestController
 @RequestMapping("/portal/api")
 @Validated
-/**
- * PortalApiController。
- */
 public class PortalApiController {
 
+    /**
+     * 认证相关业务服务，用于登录、登出和 SSO 跳转处理。
+     */
     private final PortalAuthService portalAuthService;
+    /**
+     * 动作票据业务服务，提供敏感操作的入口校验。
+     */
     private final PortalActionService portalActionService;
+    /**
+     * 密码业务服务，负责密码修改等逻辑。
+     */
     private final PortalPasswordService portalPasswordService;
+    /**
+     * 个人资料业务服务，处理资料查询与更新。
+     */
     private final PortalProfileService portalProfileService;
 
+    /**
+     * 构造函数，注入门户相关的业务服务。
+     *
+     * @param portalAuthService     认证服务
+     * @param portalActionService   动作票据服务
+     * @param portalPasswordService 密码服务
+     * @param portalProfileService  个人资料服务
+     */
     public PortalApiController(PortalAuthService portalAuthService,
                                PortalActionService portalActionService,
                                PortalPasswordService portalPasswordService,
@@ -51,6 +71,13 @@ public class PortalApiController {
         this.portalProfileService = portalProfileService;
     }
 
+    /**
+     * 登录接口，校验用户凭证并返回跳转链接与用户信息。
+     *
+     * @param request  登录请求体
+     * @param response HTTP 响应对象，用于写入 cookie
+     * @return 登录结果响应
+     */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         PortalAuthService.LoginResult loginResult = portalAuthService.login(
@@ -79,12 +106,22 @@ public class PortalApiController {
         return ApiResponse.success(loginResponse);
     }
 
+    /**
+     * 查询当前登录用户基本信息。
+     *
+     * @return 当前用户 ID
+     */
     @GetMapping("/me")
     public ApiResponse<MeResponse> me() {
         Long userId = RequestContext.getUserId();
         return ApiResponse.success(new MeResponse(userId));
     }
 
+    /**
+     * 获取门户首页菜单数据（示例数据）。
+     *
+     * @return 菜单列表
+     */
     @GetMapping("/home/menus")
     public ApiResponse<List<MenuItem>> menus() {
         List<MenuItem> menus = Arrays.asList(
@@ -98,6 +135,13 @@ public class PortalApiController {
         return ApiResponse.success(menus);
     }
 
+    /**
+     * 退出登录，调用认证服务清理会话并删除 cookie。
+     *
+     * @param request  HTTP 请求，读取 cookie
+     * @param response HTTP 响应，写入清理后的 cookie
+     * @return 退出结果
+     */
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         String cookie = request.getHeader(HttpHeaders.COOKIE);
@@ -111,6 +155,13 @@ public class PortalApiController {
         return ApiResponse.success(null);
     }
 
+    /**
+     * 修改登录密码。
+     *
+     * @param request     修改密码请求体
+     * @param httpRequest HTTP 请求，用于获取动作票据
+     * @return 修改结果
+     */
     @PostMapping("/password/change")
     public ApiResponse<PasswordChangeResponse> changePassword(@Valid @RequestBody PasswordChangeRequest request,
                                                               HttpServletRequest httpRequest) {
@@ -125,6 +176,12 @@ public class PortalApiController {
         return ApiResponse.success(new PasswordChangeResponse(true, true));
     }
 
+    /**
+     * 查询个人资料。
+     *
+     * @param httpRequest HTTP 请求，用于获取 ptk
+     * @return 个人资料信息
+     */
     @GetMapping("/profile")
     public ApiResponse<ProfileResponse> profile(HttpServletRequest httpRequest) {
         String ptk = resolvePtk(httpRequest);
@@ -136,6 +193,13 @@ public class PortalApiController {
         return ApiResponse.success(response);
     }
 
+    /**
+     * 更新个人资料。
+     *
+     * @param request     更新请求
+     * @param httpRequest HTTP 请求，用于读取 ptk
+     * @return 更新结果
+     */
     @PostMapping("/profile")
     public ApiResponse<ProfileUpdateResponse> updateProfile(@Valid @RequestBody ProfileUpdateRequest request,
                                                             HttpServletRequest httpRequest) {
@@ -151,6 +215,12 @@ public class PortalApiController {
         return ApiResponse.success(new ProfileUpdateResponse(true));
     }
 
+    /**
+     * 生成单点登录跳转链接。
+     *
+     * @param request 生成跳转请求参数
+     * @return 跳转链接响应
+     */
     @PostMapping("/sso/jump-url")
     public ApiResponse<SsoJumpResponse> ssoJumpUrl(@Valid @RequestBody SsoJumpRequest request) {
         Long userId = RequestContext.getUserId();
@@ -161,18 +231,40 @@ public class PortalApiController {
         return ApiResponse.success(new SsoJumpResponse(jumpUrl));
     }
 
+    /**
+     * 进入密码校验动作。
+     *
+     * @param request  动作票据请求
+     * @param response HTTP 响应，用于写入新的 ptk
+     * @return 动作校验结果
+     */
     @PostMapping("/action/pwd/enter")
     public ApiResponse<ActionEnterResponse> enterPasswordAction(@Valid @RequestBody ActionTicketRequest request,
                                                                 HttpServletResponse response) {
         return enterActionTicket(PortalActionService.ActionType.PASSWORD, request, response);
     }
 
+    /**
+     * 进入个人资料校验动作。
+     *
+     * @param request  动作票据请求
+     * @param response HTTP 响应，用于写入新的 ptk
+     * @return 动作校验结果
+     */
     @PostMapping("/action/profile/enter")
     public ApiResponse<ActionEnterResponse> enterProfileAction(@Valid @RequestBody ActionTicketRequest request,
                                                                HttpServletResponse response) {
         return enterActionTicket(PortalActionService.ActionType.PROFILE, request, response);
     }
 
+    /**
+     * 通用动作票据处理，校验 ticket 并设置新的 ptk。
+     *
+     * @param actionType 动作类型
+     * @param request    动作票据请求
+     * @param response   HTTP 响应，用于写 cookie
+     * @return 动作进入结果
+     */
     private ApiResponse<ActionEnterResponse> enterActionTicket(PortalActionService.ActionType actionType,
                                                                ActionTicketRequest request,
                                                                HttpServletResponse response) {
@@ -190,6 +282,13 @@ public class PortalApiController {
         return ApiResponse.success(payload);
     }
 
+    /**
+     * 构造登录响应，解析返回的用户信息与跳转地址。
+     *
+     * @param data    认证服务返回的数据体
+     * @param jumpUrl 跳转地址
+     * @return 登录响应对象
+     */
     private LoginResponse buildLoginResponse(Object data, String jumpUrl) {
         Long userId = null;
         String username = null;
@@ -209,6 +308,12 @@ public class PortalApiController {
         return new LoginResponse(userId, username, jumpUrl);
     }
 
+    /**
+     * 从请求中解析 ptk cookie。
+     *
+     * @param request HTTP 请求
+     * @return ptk 值
+     */
     private String resolvePtk(HttpServletRequest request) {
         if (request == null) {
             return null;
@@ -223,12 +328,27 @@ public class PortalApiController {
         return cookie.map(Cookie::getValue).orElse(null);
     }
 
+    /**
+     * 登录请求体，包含用户名、密码及跳转参数。
+     */
     public static class LoginRequest {
+        /**
+         * 用户名。
+         */
         @NotBlank(message = "用户名不能为空")
         private String username;
+        /**
+         * 密码。
+         */
         @NotBlank(message = "密码不能为空")
         private String password;
+        /**
+         * 系统编码。
+         */
         private String systemCode;
+        /**
+         * 登录成功后的返回地址。
+         */
         private String returnUrl;
 
         public String getUsername() {
@@ -264,9 +384,21 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 登录响应体，包含用户 ID、用户名与跳转链接。
+     */
     public static class LoginResponse {
+        /**
+         * 用户主键 ID。
+         */
         private final Long userId;
+        /**
+         * 用户名。
+         */
         private final String username;
+        /**
+         * 跳转链接。
+         */
         private final String jumpUrl;
 
         public LoginResponse(Long userId, String username, String jumpUrl) {
@@ -288,9 +420,18 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 修改密码请求体。
+     */
     public static class PasswordChangeRequest {
+        /**
+         * 原密码。
+         */
         @NotBlank(message = "旧密码不能为空")
         private String oldPassword;
+        /**
+         * 新密码。
+         */
         @NotBlank(message = "新密码不能为空")
         @Size(min = 8, message = "新密码长度至少8位")
         private String newPassword;
@@ -312,8 +453,17 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 修改密码响应体，标识是否成功以及是否需要重新登录。
+     */
     public static class PasswordChangeResponse {
+        /**
+         * 是否修改成功。
+         */
         private final boolean success;
+        /**
+         * 是否需要重新登录。
+         */
         private final boolean needRelogin;
 
         public PasswordChangeResponse(boolean success, boolean needRelogin) {
@@ -330,9 +480,21 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 个人资料响应体。
+     */
     public static class ProfileResponse {
+        /**
+         * 真实姓名。
+         */
         private final String realName;
+        /**
+         * 手机号。
+         */
         private final String mobile;
+        /**
+         * 邮箱。
+         */
         private final String email;
 
         public ProfileResponse(String realName, String mobile, String email) {
@@ -354,9 +516,21 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 个人资料更新请求体。
+     */
     public static class ProfileUpdateRequest {
+        /**
+         * 真实姓名。
+         */
         private String realName;
+        /**
+         * 手机号。
+         */
         private String mobile;
+        /**
+         * 邮箱。
+         */
         private String email;
 
         public String getRealName() {
@@ -384,7 +558,13 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 个人资料更新结果。
+     */
     public static class ProfileUpdateResponse {
+        /**
+         * 是否更新成功。
+         */
         private final boolean success;
 
         public ProfileUpdateResponse(boolean success) {
@@ -396,7 +576,13 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 用户信息响应，仅包含用户 ID。
+     */
     public static class MeResponse {
+        /**
+         * 用户 ID。
+         */
         private final Long userId;
 
         public MeResponse(Long userId) {
@@ -408,9 +594,21 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 菜单项信息。
+     */
     public static class MenuItem {
+        /**
+         * 菜单编码。
+         */
         private final String code;
+        /**
+         * 菜单名称。
+         */
         private final String name;
+        /**
+         * 菜单路径。
+         */
         private final String path;
 
         public MenuItem(String code, String name, String path) {
@@ -432,9 +630,18 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 生成 SSO 跳转链接的请求。
+     */
     public static class SsoJumpRequest {
+        /**
+         * 系统编码。
+         */
         @NotBlank(message = "systemCode 不能为空")
         private String systemCode;
+        /**
+         * 目标地址。
+         */
         @NotBlank(message = "targetUrl 不能为空")
         private String targetUrl;
 
@@ -455,7 +662,13 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * SSO 跳转响应，包含完整的跳转 URL。
+     */
     public static class SsoJumpResponse {
+        /**
+         * 跳转 URL。
+         */
         private final String jumpUrl;
 
         public SsoJumpResponse(String jumpUrl) {
@@ -467,7 +680,13 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 动作票据请求，包含 ticket。
+     */
     public static class ActionTicketRequest {
+        /**
+         * 动作 ticket。
+         */
         @NotBlank(message = "ticket 不能为空")
         private String ticket;
 
@@ -480,9 +699,21 @@ public class PortalApiController {
         }
     }
 
+    /**
+     * 动作进入响应，描述动作处理结果与跳转信息。
+     */
     public static class ActionEnterResponse {
+        /**
+         * 是否处理成功。
+         */
         private final boolean ok;
+        /**
+         * 返回地址。
+         */
         private final String returnUrl;
+        /**
+         * 系统编码。
+         */
         private final String systemCode;
 
         public ActionEnterResponse(boolean ok, String returnUrl, String systemCode) {
