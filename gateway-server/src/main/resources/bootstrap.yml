@@ -17,7 +17,7 @@ spring:
         group: DEFAULT_GROUP
         file-extension: yaml
         shared-configs:
-          - data-id: share-config-test.yml
+          - data-id: portal-share-config.yml
             group: DEFAULT_GROUP
             refresh: true
           - data-id: portal-share-config.yml
