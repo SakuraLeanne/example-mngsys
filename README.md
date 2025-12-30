@@ -61,7 +61,9 @@ gateway:
   security:
     whitelist:
       - /auth/api/login
+      - /auth/api/sms/send
       - /portal/api/login
+      - /portal/api/sms/send
       - /portal/api/action/**
 ```
 

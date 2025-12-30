@@ -16,6 +16,9 @@ public interface AuthFeignClient {
     @PostMapping("/auth/api/login")
     ApiResponse<AuthClient.LoginResponse> login(@RequestBody AuthClient.LoginRequest request);
 
+    @PostMapping("/auth/api/sms/send")
+    ApiResponse<Void> sendSms(@RequestBody AuthClient.SmsSendRequest request);
+
     @PostMapping("/auth/api/logout")
     ApiResponse<Void> logout(@RequestHeader(value = "Cookie", required = false) String cookie);
 

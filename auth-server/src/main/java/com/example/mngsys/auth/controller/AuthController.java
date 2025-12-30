@@ -5,6 +5,7 @@ import com.example.mngsys.auth.common.api.ApiResponse;
 import com.example.mngsys.auth.common.api.ErrorCode;
 import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.service.AuthService;
+import com.example.mngsys.auth.service.SmsCodeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,26 +35,44 @@ public class AuthController {
      * 认证业务服务，负责用户身份校验。
      */
     private final AuthService authService;
+    /**
+     * 短信验证码服务。
+     */
+    private final SmsCodeService smsCodeService;
 
     /**
      * 认证相关配置，包含内部调用 Token 等安全参数。
      */
     private final AuthProperties authProperties;
 
-    public AuthController(AuthService authService, AuthProperties authProperties) {
+    public AuthController(AuthService authService, SmsCodeService smsCodeService, AuthProperties authProperties) {
         this.authService = authService;
+        this.smsCodeService = smsCodeService;
         this.authProperties = authProperties;
     }
 
     /**
-     * 用户登录接口，校验用户名与密码成功后创建 Sa-Token 会话。
+     * 发送登录短信验证码。
+     *
+     * @param request 请求体
+     * @return 发送结果
+     */
+    @PostMapping("/sms/send")
+    public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
+        smsCodeService.sendCode(request.getMobile());
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 用户登录接口，校验短信验证码成功后创建 Sa-Token 会话。
      *
      * @param request 登录请求体，包含用户名与密码
      * @return 携带用户基本信息的成功响应
      */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        AuthService.User user = authService.authenticate(request.getUsername(), request.getPassword());
+        smsCodeService.verifyCode(request.getMobile(), request.getCode());
+        AuthService.User user = authService.authenticateByMobile(request.getMobile());
         StpUtil.login(user.getUserId());
         return ApiResponse.success(new LoginResponse(user.getUserId(), user.getUsername()));
     }
@@ -101,27 +120,27 @@ public class AuthController {
     }
 
     public static class LoginRequest {
-        /** 用户名，必填。 */
-        @NotBlank(message = "用户名不能为空")
-        private String username;
-        /** 密码，必填。 */
-        @NotBlank(message = "密码不能为空")
-        private String password;
+        /** 手机号，必填。 */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+        /** 短信验证码，必填。 */
+        @NotBlank(message = "验证码不能为空")
+        private String code;
 
-        public String getUsername() {
-            return username;
+        public String getMobile() {
+            return mobile;
         }
 
-        public void setUsername(String username) {
-            this.username = username;
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
         }
 
-        public String getPassword() {
-            return password;
+        public String getCode() {
+            return code;
         }
 
-        public void setPassword(String password) {
-            this.password = password;
+        public void setCode(String code) {
+            this.code = code;
         }
     }
 
@@ -169,6 +188,20 @@ public class AuthController {
 
         public void setUserId(String userId) {
             this.userId = userId;
+        }
+    }
+
+    public static class SmsSendRequest {
+        /** 手机号。 */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
         }
     }
 }

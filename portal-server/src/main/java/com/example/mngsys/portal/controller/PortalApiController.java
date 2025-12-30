@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.controller;
 
+import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
@@ -52,6 +53,11 @@ public class PortalApiController {
      * 个人资料业务服务，处理资料查询与更新。
      */
     private final PortalProfileService portalProfileService;
+    /**
+     * 鉴权服务客户端，用于短信发送。
+     */
+    private final AuthClient authClient;
+    private final com.example.mngsys.portal.client.AuthClient authClient;
 
     /**
      * 构造函数，注入门户相关的业务服务。
@@ -64,11 +70,13 @@ public class PortalApiController {
     public PortalApiController(PortalAuthService portalAuthService,
                                PortalActionService portalActionService,
                                PortalPasswordService portalPasswordService,
-                               PortalProfileService portalProfileService) {
+                               PortalProfileService portalProfileService,
+                               AuthClient authClient) {
         this.portalAuthService = portalAuthService;
         this.portalActionService = portalActionService;
         this.portalPasswordService = portalPasswordService;
         this.portalProfileService = portalProfileService;
+        this.authClient = authClient;
     }
 
     /**
@@ -81,8 +89,8 @@ public class PortalApiController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         PortalAuthService.LoginResult loginResult = portalAuthService.login(
-                request.getUsername(),
-                request.getPassword(),
+                request.getMobile(),
+                request.getCode(),
                 request.getSystemCode(),
                 request.getReturnUrl());
         ResponseEntity<ApiResponse> authResponse = loginResult.getResponseEntity();
@@ -104,6 +112,24 @@ public class PortalApiController {
         }
         LoginResponse loginResponse = buildLoginResponse(authBody.getData(), loginResult.getJumpUrl());
         return ApiResponse.success(loginResponse);
+    }
+
+    /**
+     * 发送登录短信验证码。
+     *
+     * @param request 请求体
+     * @return 发送结果
+     */
+    @PostMapping("/sms/send")
+    public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
+        ApiResponse<Void> resp = authClient.sendLoginSms(request.getMobile());
+        if (resp == null) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "短信服务无响应");
+        }
+        if (resp.getCode() != 0) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
+        }
+        return ApiResponse.success(null);
     }
 
     /**
@@ -329,19 +355,19 @@ public class PortalApiController {
     }
 
     /**
-     * 登录请求体，包含用户名、密码及跳转参数。
+     * 登录请求体，包含手机号、验证码及跳转参数。
      */
     public static class LoginRequest {
         /**
-         * 用户名。
+         * 手机号。
          */
-        @NotBlank(message = "用户名不能为空")
-        private String username;
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
         /**
-         * 密码。
+         * 短信验证码。
          */
-        @NotBlank(message = "密码不能为空")
-        private String password;
+        @NotBlank(message = "验证码不能为空")
+        private String code;
         /**
          * 系统编码。
          */
@@ -351,20 +377,20 @@ public class PortalApiController {
          */
         private String returnUrl;
 
-        public String getUsername() {
-            return username;
+        public String getMobile() {
+            return mobile;
         }
 
-        public void setUsername(String username) {
-            this.username = username;
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
         }
 
-        public String getPassword() {
-            return password;
+        public String getCode() {
+            return code;
         }
 
-        public void setPassword(String password) {
-            this.password = password;
+        public void setCode(String code) {
+            this.code = code;
         }
 
         public String getSystemCode() {
@@ -381,6 +407,25 @@ public class PortalApiController {
 
         public void setReturnUrl(String returnUrl) {
             this.returnUrl = returnUrl;
+        }
+    }
+
+    /**
+     * 短信发送请求体。
+     */
+    public static class SmsSendRequest {
+        /**
+         * 手机号。
+         */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
         }
     }
 

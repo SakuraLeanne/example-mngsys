@@ -42,8 +42,8 @@ public class PortalAuthService {
         this.objectMapper = objectMapper;
     }
 
-    public LoginResult login(String username, String password, String systemCode, String returnUrl) {
-        ResponseEntity<ApiResponse> response = authClient.loginWithResponse(username, password);
+    public LoginResult login(String mobile, String code, String systemCode, String returnUrl) {
+        ResponseEntity<ApiResponse> response = authClient.loginWithResponse(mobile, code);
         ApiResponse body = response == null ? null : response.getBody();
         LoginResult result = new LoginResult(body, response);
         if (body != null && body.getCode() == 0 && StringUtils.hasText(systemCode) && StringUtils.hasText(returnUrl)) {
