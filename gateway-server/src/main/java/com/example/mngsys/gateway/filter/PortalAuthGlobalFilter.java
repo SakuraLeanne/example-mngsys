@@ -1,8 +1,10 @@
 package com.example.mngsys.gateway.filter;
 
+import com.example.mngsys.gateway.client.AuthGatewayFeignClient;
 import com.example.mngsys.gateway.config.GatewaySecurityProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.Response;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -11,9 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -30,15 +32,15 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String AUTH_SESSION_PATH = "/auth/api/session/me";
 
     private final GatewaySecurityProperties securityProperties;
-    private final WebClient.Builder webClientBuilder;
+    private final AuthGatewayFeignClient authGatewayFeignClient;
     private final ObjectMapper objectMapper;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     public PortalAuthGlobalFilter(GatewaySecurityProperties securityProperties,
-                                  WebClient.Builder webClientBuilder,
+                                  AuthGatewayFeignClient authGatewayFeignClient,
                                   ObjectMapper objectMapper) {
         this.securityProperties = securityProperties;
-        this.webClientBuilder = webClientBuilder;
+        this.authGatewayFeignClient = authGatewayFeignClient;
         this.objectMapper = objectMapper;
     }
 
@@ -52,18 +54,20 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
         String cookie = exchange.getRequest().getHeaders().getFirst(HttpHeaders.COOKIE);
-        return webClientBuilder.build()
-                .get()
-                .uri(securityProperties.getAuthServerBaseUrl() + AUTH_SESSION_PATH)
-                .header(HttpHeaders.COOKIE, cookie == null ? "" : cookie)
-                .exchange()
-                .flatMap(response -> {
-                    if (response.statusCode().is2xxSuccessful()) {
-                        return chain.filter(exchange);
-                    }
-                    return writeUnauthorized(exchange);
-                })
+        String cookieHeader = cookie == null ? "" : cookie;
+        return Mono.fromCallable(() -> authGatewayFeignClient.sessionMe(cookieHeader))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(response -> handleResponse(chain, exchange, response))
                 .onErrorResume(ex -> writeUnauthorized(exchange));
+    }
+
+    private Mono<Void> handleResponse(GatewayFilterChain chain,
+                                      ServerWebExchange exchange,
+                                      Response response) {
+        if (response.status() >= 200 && response.status() < 300) {
+            return chain.filter(exchange);
+        }
+        return writeUnauthorized(exchange);
     }
 
     private boolean isWhitelisted(String path) {

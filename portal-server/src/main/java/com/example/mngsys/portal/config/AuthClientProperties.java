@@ -8,16 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 public class AuthClientProperties {
 
-    private String serverBaseUrl;
     private String internalToken;
-
-    public String getServerBaseUrl() {
-        return serverBaseUrl;
-    }
-
-    public void setServerBaseUrl(String serverBaseUrl) {
-        this.serverBaseUrl = serverBaseUrl;
-    }
 
     public String getInternalToken() {
         return internalToken;

@@ -10,16 +10,7 @@ import java.util.List;
  * GatewaySecurityProperties。
  */
 public class GatewaySecurityProperties {
-    private String authServerBaseUrl = "lb://auth-server";
     private List<String> whitelist = new ArrayList<>();
-
-    public String getAuthServerBaseUrl() {
-        return authServerBaseUrl;
-    }
-
-    public void setAuthServerBaseUrl(String authServerBaseUrl) {
-        this.authServerBaseUrl = authServerBaseUrl;
-    }
 
     public List<String> getWhitelist() {
         return whitelist;
