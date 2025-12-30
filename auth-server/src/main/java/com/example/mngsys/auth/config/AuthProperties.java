@@ -10,6 +10,10 @@ public class AuthProperties {
 
     private String internalToken;
     private SmsProperties sms = new SmsProperties();
+    /**
+     * 登录时是否自动创建不存在的用户。
+     */
+    private boolean autoCreateUser = true;
 
     public String getInternalToken() {
         return internalToken;
@@ -25,6 +29,14 @@ public class AuthProperties {
 
     public void setSms(SmsProperties sms) {
         this.sms = sms;
+    }
+
+    public boolean isAutoCreateUser() {
+        return autoCreateUser;
+    }
+
+    public void setAutoCreateUser(boolean autoCreateUser) {
+        this.autoCreateUser = autoCreateUser;
     }
 
     public static class SmsProperties {

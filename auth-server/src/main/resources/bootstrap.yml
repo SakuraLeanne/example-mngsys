@@ -44,6 +44,8 @@ sa-token:
     http-only: true
 
 auth:
+  # 是否在手机号不存在时自动创建用户
+  auto-create-user: true
   sms:
     # 从环境变量或 Nacos 配置读取阿里云短信密钥，避免在代码或本地配置中暴露
     access-key-id: ${ALIYUN_SMS_AK:}
