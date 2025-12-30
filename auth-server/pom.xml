@@ -20,6 +20,7 @@
         <spring-cloud.version>Hoxton.SR12</spring-cloud.version>
         <spring-cloud-alibaba.version>2.2.7.RELEASE</spring-cloud-alibaba.version>
         <sa-token.version>1.44.0</sa-token.version>
+        <aliyun.dysms.version>4.3.1</aliyun.dysms.version>
     </properties>
 
     <dependencyManagement>
@@ -82,6 +83,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dysmsapi20170525</artifactId>
+            <version>${aliyun.dysms.version}</version>
         </dependency>
     </dependencies>
 

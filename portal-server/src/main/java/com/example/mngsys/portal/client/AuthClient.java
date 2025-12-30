@@ -27,18 +27,23 @@ public class AuthClient {
         this.objectMapper = objectMapper;
     }
 
-    public ApiResponse<LoginResponse> login(String username, String password) {
-        LoginRequest request = new LoginRequest(username, password);
+    public ApiResponse<LoginResponse> login(String mobile, String code) {
+        LoginRequest request = new LoginRequest(mobile, code);
         return authFeignClient.login(request);
     }
 
-    public ResponseEntity<ApiResponse> loginWithResponse(String username, String password) {
-        LoginRequest request = new LoginRequest(username, password);
+    public ResponseEntity<ApiResponse> loginWithResponse(String mobile, String code) {
+        LoginRequest request = new LoginRequest(mobile, code);
         return exchangeSafely(() -> authFeignClient.login(request));
     }
 
     public ApiResponse<Void> logout() {
         return authFeignClient.logout(null);
+    }
+
+    public ApiResponse<Void> sendLoginSms(String mobile) {
+        SmsSendRequest request = new SmsSendRequest(mobile);
+        return authFeignClient.sendSms(request);
     }
 
     public ResponseEntity<ApiResponse> logoutWithResponse(String cookie) {
@@ -80,31 +85,31 @@ public class AuthClient {
     }
 
     public static class LoginRequest {
-        private String username;
-        private String password;
+        private String mobile;
+        private String code;
 
         public LoginRequest() {
         }
 
-        public LoginRequest(String username, String password) {
-            this.username = username;
-            this.password = password;
+        public LoginRequest(String mobile, String code) {
+            this.mobile = mobile;
+            this.code = code;
         }
 
-        public String getUsername() {
-            return username;
+        public String getMobile() {
+            return mobile;
         }
 
-        public void setUsername(String username) {
-            this.username = username;
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
         }
 
-        public String getPassword() {
-            return password;
+        public String getCode() {
+            return code;
         }
 
-        public void setPassword(String password) {
-            this.password = password;
+        public void setCode(String code) {
+            this.code = code;
         }
     }
 
@@ -157,6 +162,25 @@ public class AuthClient {
 
         public void setUserId(String userId) {
             this.userId = userId;
+        }
+    }
+
+    public static class SmsSendRequest {
+        private String mobile;
+
+        public SmsSendRequest() {
+        }
+
+        public SmsSendRequest(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
         }
     }
 }
