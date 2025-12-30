@@ -1,19 +1,12 @@
 package com.example.mngsys.auth.service;
 
-import com.aliyun.dysmsapi20170525.Client;
-import com.aliyun.dysmsapi20170525.models.SendSmsRequest;
-import com.aliyun.teautil.Common;
 import com.example.mngsys.auth.config.AuthProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -25,21 +18,19 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SmsCodeService {
 
-    private static final Logger log = LoggerFactory.getLogger(SmsCodeService.class);
-
     private static final String CODE_KEY_PREFIX = "auth:sms:code:";
     private static final String SEND_GUARD_PREFIX = "auth:sms:send:";
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final StringRedisTemplate stringRedisTemplate;
-    private final Client smsClient;
+    private final AliyunSendMsgUtils aliyunSendMsgUtils;
     private final AuthProperties authProperties;
 
     public SmsCodeService(StringRedisTemplate stringRedisTemplate,
-                          Client smsClient,
+                          AliyunSendMsgUtils aliyunSendMsgUtils,
                           AuthProperties authProperties) {
         this.stringRedisTemplate = stringRedisTemplate;
-        this.smsClient = smsClient;
+        this.aliyunSendMsgUtils = aliyunSendMsgUtils;
         this.authProperties = authProperties;
     }
 
@@ -55,7 +46,7 @@ public class SmsCodeService {
         stringRedisTemplate.opsForValue().set(buildCodeKey(mobile), code, ttl);
         stringRedisTemplate.opsForValue().set(buildSendGuardKey(mobile), "1",
                 authProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
-        sendSms(mobile, code);
+        aliyunSendMsgUtils.sendCode(mobile, code);
     }
 
     /**
@@ -74,23 +65,6 @@ public class SmsCodeService {
             throw new IllegalArgumentException("验证码错误");
         }
         stringRedisTemplate.delete(key);
-    }
-
-    private void sendSms(String mobile, String code) {
-        AuthProperties.SmsProperties sms = authProperties.getSms();
-        Map<String, String> templateParams = new HashMap<>();
-        templateParams.put("code", code);
-        try {
-            SendSmsRequest request = new SendSmsRequest()
-                    .setPhoneNumbers(mobile)
-                    .setSignName(sms.getSignName())
-                    .setTemplateCode(sms.getTemplateCode())
-                    .setTemplateParam(Common.toJSONString(templateParams));
-            smsClient.sendSms(request);
-        } catch (Exception ex) {
-            log.error("发送短信验证码失败，mobile={}", mobile, ex);
-            throw new IllegalStateException("短信发送失败，请稍后重试");
-        }
     }
 
     private String generateCode(int length) {
