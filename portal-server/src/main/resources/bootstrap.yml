@@ -52,5 +52,4 @@ portal:
     streamKey: portal:events
 
 auth:
-  serverBaseUrl: http://localhost:8080
   internalToken: change-me

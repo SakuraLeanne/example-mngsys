@@ -44,4 +44,3 @@ management:
 
 gateway:
   security:
-    authServerBaseUrl: lb://auth-server
