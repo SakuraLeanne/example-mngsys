@@ -57,7 +57,6 @@ public class PortalApiController {
      * 鉴权服务客户端，用于短信发送。
      */
     private final AuthClient authClient;
-    private final com.example.mngsys.portal.client.AuthClient authClient;
 
     /**
      * 构造函数，注入门户相关的业务服务。
