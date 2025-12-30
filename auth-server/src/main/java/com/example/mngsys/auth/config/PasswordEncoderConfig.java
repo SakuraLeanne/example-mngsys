@@ -21,7 +21,7 @@ public class PasswordEncoderConfig {
     public PasswordEncoder passwordEncoder() {
         String defaultId = "argon2";
         Map<String, PasswordEncoder> encoders = new HashMap<>();
-        encoders.put(defaultId, Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8());
+        encoders.put(defaultId, new Argon2PasswordEncoder());
         encoders.put("bcrypt", new BCryptPasswordEncoder());
         return new DelegatingPasswordEncoder(defaultId, encoders);
     }
