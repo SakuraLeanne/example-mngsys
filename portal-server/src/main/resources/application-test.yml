@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    driver-class-name: ${MYSQL_DRIVERNAME:com.mysql.cj.jdbc.Driver}
+    url: ${MYSQL_PRIMARY_URL:jdbc:mysql://localhost:3306/mngsys?characterEncoding=utf8&useSSL=false&serverTimezone=UTC}
+    username: ${MYSQL_PRIMARY_USERNAME:root}
+    password: ${MYSQL_PRIMARY_PASSWORD:root}
+    hikari:
+      # Allow the application to start even if the database is temporarily unavailable.
+      initialization-fail-timeout: 0
+      minimum-idle: 1
+      maximum-pool-size: 5
