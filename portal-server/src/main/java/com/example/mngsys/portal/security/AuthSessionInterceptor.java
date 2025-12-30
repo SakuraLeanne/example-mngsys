@@ -40,7 +40,9 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
     private final ObjectMapper objectMapper;
     private final Environment environment;
 
-    public AuthSessionInterceptor(AuthClient authClient, ObjectMapper objectMapper, Environment environment) {
+    public AuthSessionInterceptor(@org.springframework.context.annotation.Lazy AuthClient authClient,
+                                  ObjectMapper objectMapper,
+                                  Environment environment) {
         this.authClient = authClient;
         this.objectMapper = objectMapper;
         this.environment = environment;
