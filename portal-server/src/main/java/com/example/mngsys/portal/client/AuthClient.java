@@ -2,17 +2,14 @@ package com.example.mngsys.portal.client;
 
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.config.AuthClientProperties;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.HttpStatusCodeException;
+import feign.FeignException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+
+import java.util.function.Supplier;
 
 @Component
 /**
@@ -20,61 +17,54 @@ import com.fasterxml.jackson.core.JsonProcessingException;
  */
 public class AuthClient {
 
-    private final RestTemplate restTemplate;
+    private final AuthFeignClient authFeignClient;
     private final AuthClientProperties authClientProperties;
     private final ObjectMapper objectMapper;
 
-    public AuthClient(RestTemplate restTemplate, AuthClientProperties authClientProperties, ObjectMapper objectMapper) {
-        this.restTemplate = restTemplate;
+    public AuthClient(AuthFeignClient authFeignClient, AuthClientProperties authClientProperties, ObjectMapper objectMapper) {
+        this.authFeignClient = authFeignClient;
         this.authClientProperties = authClientProperties;
         this.objectMapper = objectMapper;
     }
 
     public ApiResponse<LoginResponse> login(String username, String password) {
         LoginRequest request = new LoginRequest(username, password);
-        return restTemplate.postForEntity(buildUrl("/auth/api/login"), request, ApiResponse.class).getBody();
+        return authFeignClient.login(request);
     }
 
     public ResponseEntity<ApiResponse> loginWithResponse(String username, String password) {
         LoginRequest request = new LoginRequest(username, password);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<LoginRequest> entity = new HttpEntity<>(request, headers);
-        return exchangeSafely(buildUrl("/auth/api/login"), HttpMethod.POST, entity);
+        return exchangeSafely(() -> authFeignClient.login(request));
     }
 
     public ApiResponse<Void> logout() {
-        return restTemplate.postForEntity(buildUrl("/auth/api/logout"), null, ApiResponse.class).getBody();
+        return authFeignClient.logout(null);
     }
 
     public ResponseEntity<ApiResponse> logoutWithResponse(String cookie) {
-        HttpHeaders headers = new HttpHeaders();
-        if (StringUtils.hasText(cookie)) {
-            headers.add(HttpHeaders.COOKIE, cookie);
-        }
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        return exchangeSafely(buildUrl("/auth/api/logout"), HttpMethod.POST, entity);
+        return exchangeSafely(() -> authFeignClient.logout(cookie));
     }
 
     public ApiResponse<SessionResponse> sessionMe() {
-        return restTemplate.getForEntity(buildUrl("/auth/api/session/me"), ApiResponse.class).getBody();
+        return authFeignClient.sessionMe(null);
     }
 
     public ResponseEntity<ApiResponse> sessionMe(String cookie) {
-        HttpHeaders headers = new HttpHeaders();
-        if (StringUtils.hasText(cookie)) {
-            headers.add(HttpHeaders.COOKIE, cookie);
-        }
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        return exchangeSafely(buildUrl("/auth/api/session/me"), HttpMethod.GET, entity);
+        return exchangeSafely(() -> authFeignClient.sessionMe(cookie));
     }
 
-    private ResponseEntity<ApiResponse> exchangeSafely(String url, HttpMethod method, HttpEntity<?> entity) {
+    public ApiResponse<Void> kick(String userId) {
+        KickRequest request = new KickRequest(userId);
+        return authFeignClient.kick(authClientProperties.getInternalToken(), request);
+    }
+
+    private ResponseEntity<ApiResponse> exchangeSafely(Supplier<ApiResponse> supplier) {
         try {
-            return restTemplate.exchange(url, method, entity, ApiResponse.class);
-        } catch (HttpStatusCodeException ex) {
-            ApiResponse response = parseErrorResponse(ex.getResponseBodyAsString());
-            return ResponseEntity.status(ex.getStatusCode()).body(response);
+            ApiResponse response = supplier.get();
+            return ResponseEntity.ok(response);
+        } catch (FeignException ex) {
+            ApiResponse response = parseErrorResponse(ex.contentUTF8());
+            return ResponseEntity.status(ex.status()).body(response);
         }
     }
 
@@ -87,28 +77,6 @@ public class AuthClient {
         } catch (JsonProcessingException ex) {
             return ApiResponse.failure(com.example.mngsys.portal.common.api.ErrorCode.INTERNAL_ERROR, "调用鉴权服务失败");
         }
-    }
-
-    public ApiResponse<Void> kick(String userId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-Internal-Token", authClientProperties.getInternalToken());
-        KickRequest request = new KickRequest(userId);
-        HttpEntity<KickRequest> entity = new HttpEntity<>(request, headers);
-        ResponseEntity<ApiResponse> response = restTemplate.exchange(
-                buildUrl("/auth/api/session/kick"),
-                HttpMethod.POST,
-                entity,
-                ApiResponse.class);
-        return response.getBody();
-    }
-
-    private String buildUrl(String path) {
-        String baseUrl = authClientProperties.getServerBaseUrl();
-        if (baseUrl.endsWith("/")) {
-            return baseUrl.substring(0, baseUrl.length() - 1) + path;
-        }
-        return baseUrl + path;
     }
 
     public static class LoginRequest {
