@@ -4,18 +4,19 @@ import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
+import com.example.mngsys.portal.config.GatewaySecurityProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -25,27 +26,23 @@ import java.util.Map;
  */
 public class AuthSessionInterceptor implements HandlerInterceptor {
 
-    private static final List<WhitelistEntry> WHITELIST = Arrays.asList(
-            new WhitelistEntry("POST", "/portal/api/login"),
-            new WhitelistEntry("POST", "/portal/api/action/pwd/enter"),
-            new WhitelistEntry("POST", "/portal/api/action/profile/enter"),
-            new WhitelistEntry("POST", "/portal/api/password/change"),
-            new WhitelistEntry("GET", "/portal/api/profile"),
-            new WhitelistEntry("POST", "/portal/api/profile")
-    );
     private static final String APP_MENU_PATH = "/portal/api/app/menus";
     private static final String DEV_USER_HEADER = "X-User-Id";
 
     private final AuthClient authClient;
     private final ObjectMapper objectMapper;
     private final Environment environment;
+    private final GatewaySecurityProperties gatewaySecurityProperties;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     public AuthSessionInterceptor(@org.springframework.context.annotation.Lazy AuthClient authClient,
                                   ObjectMapper objectMapper,
-                                  Environment environment) {
+                                  Environment environment,
+                                  GatewaySecurityProperties gatewaySecurityProperties) {
         this.authClient = authClient;
         this.objectMapper = objectMapper;
         this.environment = environment;
+        this.gatewaySecurityProperties = gatewaySecurityProperties;
     }
 
     @Override
@@ -88,7 +85,25 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
     private boolean isWhitelisted(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
-        return WHITELIST.stream().anyMatch(entry -> entry.matches(method, path));
+        List<String> whitelist = gatewaySecurityProperties.getWhitelist();
+        if (whitelist == null || whitelist.isEmpty()) {
+            return false;
+        }
+        return whitelist.stream().anyMatch(entry -> matches(entry, method, path));
+    }
+
+    private boolean matches(String pattern, String method, String path) {
+        String normalized = pattern.trim();
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        int firstSpace = normalized.indexOf(' ');
+        if (firstSpace <= 0) {
+            return pathMatcher.match(normalized, path);
+        }
+        String configuredMethod = normalized.substring(0, firstSpace).trim();
+        String configuredPath = normalized.substring(firstSpace + 1).trim();
+        return configuredMethod.equalsIgnoreCase(method) && pathMatcher.match(configuredPath, path);
     }
 
     private void writeUnauthorized(HttpServletResponse response) throws IOException {
@@ -138,17 +153,4 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         return text.isEmpty() ? null : text;
     }
 
-    private static class WhitelistEntry {
-        private final String method;
-        private final String path;
-
-        private WhitelistEntry(String method, String path) {
-            this.method = method;
-            this.path = path;
-        }
-
-        private boolean matches(String method, String path) {
-            return this.method.equalsIgnoreCase(method) && this.path.equalsIgnoreCase(path);
-        }
-    }
 }
