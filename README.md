@@ -26,6 +26,44 @@
 
 > 端口以各服务 `application.yml` 为准。
 
+## 认证登录方式
+
+认证服务（`auth-server`）目前支持三种登录方式的协议，其中前两种已实现：
+
+- **用户名密码登录**：校验用户名与明文密码，用户不存在会返回错误，不会自动创建。
+- **手机号验证码登录**：先调用短信发送接口获取验证码，登录时校验验证码；如手机号用户不存在且配置 `auth.auto-create-user=true`（默认）会自动创建用户。
+- **手机号扫码二维码登录**：预留扩展能力，当前接口会返回“暂未支持二维码登录”。
+
+### 接口调用示例（curl）
+
+1. 发送短信验证码
+   ```bash
+   curl -X POST http://localhost:8080/auth/api/sms/send \
+     -H 'Content-Type: application/json' \
+     -d '{"mobile":"13800000001"}'
+   ```
+
+2. 手机号验证码登录（默认方式）
+   ```bash
+   curl -X POST http://localhost:8080/auth/api/login \
+     -H 'Content-Type: application/json' \
+     -d '{"mobile":"13800000001","code":"123456"}'
+   ```
+
+3. 用户名密码登录
+   ```bash
+   curl -X POST http://localhost:8080/auth/api/login \
+     -H 'Content-Type: application/json' \
+     -d '{"loginType":"USERNAME_PASSWORD","username":"admin","password":"admin123456"}'
+   ```
+
+4. 二维码登录占位（当前会返回未支持错误）
+   ```bash
+   curl -X POST http://localhost:8080/auth/api/login \
+     -H 'Content-Type: application/json' \
+     -d '{"loginType":"QR_CODE","mobile":"13800000001"}'
+   ```
+
 ## 构建说明
 
 - 根目录新增聚合 `pom.xml`，统一管理各模块版本，可直接执行 `mvn -DskipTests package` 进行多模块构建。
