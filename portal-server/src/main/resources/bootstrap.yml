@@ -51,5 +51,9 @@ portal:
   events:
     streamKey: portal:events
 
+gateway:
+  security:
+    whitelist: []
+
 auth:
   internalToken: change-me
