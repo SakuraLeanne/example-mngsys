@@ -116,6 +116,10 @@ public class AuthClient {
     public static class LoginResponse {
         private String userId;
         private String username;
+        private String mobile;
+        private String realName;
+        private String satoken;
+        private Long loginTime;
 
         public String getUserId() {
             return userId;
@@ -131,6 +135,38 @@ public class AuthClient {
 
         public void setUsername(String username) {
             this.username = username;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getRealName() {
+            return realName;
+        }
+
+        public void setRealName(String realName) {
+            this.realName = realName;
+        }
+
+        public String getSatoken() {
+            return satoken;
+        }
+
+        public void setSatoken(String satoken) {
+            this.satoken = satoken;
+        }
+
+        public Long getLoginTime() {
+            return loginTime;
+        }
+
+        public void setLoginTime(Long loginTime) {
+            this.loginTime = loginTime;
         }
     }
 

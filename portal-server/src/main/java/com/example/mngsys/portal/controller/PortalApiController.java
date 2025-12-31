@@ -317,6 +317,10 @@ public class PortalApiController {
     private LoginResponse buildLoginResponse(Object data, String jumpUrl) {
         String userId = null;
         String username = null;
+        String mobile = null;
+        String realName = null;
+        String satoken = null;
+        Long loginTime = null;
         if (data instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) data;
             Object userIdValue = map.get("userId");
@@ -329,8 +333,29 @@ public class PortalApiController {
             if (usernameValue != null) {
                 username = usernameValue.toString();
             }
+            Object mobileValue = map.get("mobile");
+            if (mobileValue != null) {
+                mobile = mobileValue.toString();
+            }
+            Object realNameValue = map.get("realName");
+            if (realNameValue != null) {
+                realName = realNameValue.toString();
+            }
+            Object tokenValue = map.get("satoken");
+            if (tokenValue != null) {
+                satoken = tokenValue.toString();
+            }
+            Object loginTimeValue = map.get("loginTime");
+            if (loginTimeValue instanceof Number) {
+                loginTime = ((Number) loginTimeValue).longValue();
+            } else if (loginTimeValue != null) {
+                try {
+                    loginTime = Long.parseLong(loginTimeValue.toString());
+                } catch (NumberFormatException ignored) {
+                }
+            }
         }
-        return new LoginResponse(userId, username, jumpUrl);
+        return new LoginResponse(userId, username, mobile, realName, satoken, loginTime, jumpUrl);
     }
 
     /**
@@ -441,13 +466,33 @@ public class PortalApiController {
          */
         private final String username;
         /**
+         * 手机号。
+         */
+        private final String mobile;
+        /**
+         * 真实姓名。
+         */
+        private final String realName;
+        /**
+         * Sa-Token token 值。
+         */
+        private final String satoken;
+        /**
+         * 登录时间戳（毫秒）。
+         */
+        private final Long loginTime;
+        /**
          * 跳转链接。
          */
         private final String jumpUrl;
 
-        public LoginResponse(String userId, String username, String jumpUrl) {
+        public LoginResponse(String userId, String username, String mobile, String realName, String satoken, Long loginTime, String jumpUrl) {
             this.userId = userId;
             this.username = username;
+            this.mobile = mobile;
+            this.realName = realName;
+            this.satoken = satoken;
+            this.loginTime = loginTime;
             this.jumpUrl = jumpUrl;
         }
 
@@ -457,6 +502,22 @@ public class PortalApiController {
 
         public String getUsername() {
             return username;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public String getRealName() {
+            return realName;
+        }
+
+        public String getSatoken() {
+            return satoken;
+        }
+
+        public Long getLoginTime() {
+            return loginTime;
         }
 
         public String getJumpUrl() {

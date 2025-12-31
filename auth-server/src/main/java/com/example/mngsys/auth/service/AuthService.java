@@ -34,6 +34,7 @@ public class AuthService {
     public User authenticateByMobile(String mobile) {
         AuthUser authUser = findByMobile(mobile);
         if (authUser != null) {
+            validateUserStatus(authUser);
             return toUser(authUser);
         }
         if (!authProperties.isAutoCreateUser()) {
@@ -48,6 +49,7 @@ public class AuthService {
         if (authUser == null) {
             throw new IllegalArgumentException("用户不存在");
         }
+        validateUserStatus(authUser);
         if (!StringUtils.hasText(authUser.getPassword()) || !passwordEncoder.matches(password, authUser.getPassword())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
@@ -112,8 +114,24 @@ public class AuthService {
         authUserMapper.insert(authUser);
     }
 
+    private void validateUserStatus(AuthUser authUser) {
+        Integer status = authUser.getStatus();
+        if (status == null || status == 0) {
+            throw new IllegalArgumentException("用户已禁用");
+        }
+        if (status == 2) {
+            throw new IllegalArgumentException("用户已冻结");
+        }
+    }
+
     private User toUser(AuthUser authUser) {
-        return new User(authUser.getId(), authUser.getUsername(), authUser.getMobile(), authUser.getPassword());
+        return new User(
+                authUser.getId(),
+                authUser.getUsername(),
+                authUser.getMobile(),
+                authUser.getPassword(),
+                authUser.getRealName(),
+                authUser.getStatus());
     }
 
     public static class User {
@@ -121,12 +139,16 @@ public class AuthService {
         private final String username;
         private final String mobile;
         private final String password;
+        private final String realName;
+        private final Integer status;
 
-        public User(String userId, String username, String mobile, String password) {
+        public User(String userId, String username, String mobile, String password, String realName, Integer status) {
             this.userId = userId;
             this.username = username;
             this.mobile = mobile;
             this.password = password;
+            this.realName = realName;
+            this.status = status;
         }
 
         public String getUserId() {
@@ -143,6 +165,14 @@ public class AuthService {
 
         public String getPassword() {
             return password;
+        }
+
+        public String getRealName() {
+            return realName;
+        }
+
+        public Integer getStatus() {
+            return status;
         }
 
         public boolean passwordMatches(String rawPassword, PasswordEncoder passwordEncoder) {
