@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @RestController
 @RequestMapping("/auth/api")
@@ -71,10 +72,33 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        smsCodeService.verifyCode(request.getMobile(), request.getCode());
-        AuthService.User user = authService.authenticateByMobile(request.getMobile());
+        LoginType loginType = request.getLoginType();
+        AuthService.User user;
+        switch (loginType) {
+            case SMS:
+                smsCodeService.verifyCode(request.getMobile(), request.getCode());
+                user = authService.authenticateByMobile(request.getMobile());
+                break;
+            case USERNAME_PASSWORD:
+                validatePasswordPayload(request);
+                user = authService.authenticateByUsernameAndPassword(request.getUsername(), request.getPassword());
+                break;
+            case QR_CODE:
+                throw new IllegalArgumentException("暂未支持二维码登录");
+            default:
+                throw new IllegalArgumentException("不支持的登录方式");
+        }
         StpUtil.login(user.getUserId());
         return ApiResponse.success(new LoginResponse(user.getUserId(), user.getUsername()));
+    }
+
+    private void validatePasswordPayload(LoginRequest request) {
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("用户名不能为空");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("密码不能为空");
+        }
     }
 
     /**
@@ -120,12 +144,25 @@ public class AuthController {
     }
 
     public static class LoginRequest {
-        /** 手机号，必填。 */
-        @NotBlank(message = "手机号不能为空")
+        /** 登录方式，默认为短信验证码登录。 */
+        private LoginType loginType = LoginType.SMS;
+        /** 手机号，短信登录必填。 */
         private String mobile;
-        /** 短信验证码，必填。 */
-        @NotBlank(message = "验证码不能为空")
+        /** 短信验证码，短信登录必填。 */
         private String code;
+        /** 用户名，用户名密码登录必填。 */
+        private String username;
+        /** 密码，用户名密码登录必填。 */
+        @Size(max = 128, message = "密码长度过长")
+        private String password;
+
+        public LoginType getLoginType() {
+            return loginType == null ? LoginType.SMS : loginType;
+        }
+
+        public void setLoginType(LoginType loginType) {
+            this.loginType = loginType;
+        }
 
         public String getMobile() {
             return mobile;
@@ -141,6 +178,22 @@ public class AuthController {
 
         public void setCode(String code) {
             this.code = code;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
         }
     }
 
@@ -162,6 +215,15 @@ public class AuthController {
         public String getUsername() {
             return username;
         }
+    }
+
+    public enum LoginType {
+        /** 手机号验证码登录。 */
+        SMS,
+        /** 用户名密码登录。 */
+        USERNAME_PASSWORD,
+        /** 二维码登录，预留扩展。 */
+        QR_CODE
     }
 
     public static class SessionResponse {
