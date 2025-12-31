@@ -99,11 +99,30 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         }
         int firstSpace = normalized.indexOf(' ');
         if (firstSpace <= 0) {
-            return pathMatcher.match(normalized, path);
+            return matchesPath(normalized, path);
         }
         String configuredMethod = normalized.substring(0, firstSpace).trim();
         String configuredPath = normalized.substring(firstSpace + 1).trim();
-        return configuredMethod.equalsIgnoreCase(method) && pathMatcher.match(configuredPath, path);
+        return configuredMethod.equalsIgnoreCase(method) && matchesPath(configuredPath, path);
+    }
+
+    private boolean matchesPath(String configuredPath, String requestPath) {
+        if (pathMatcher.match(configuredPath, requestPath)) {
+            return true;
+        }
+        String normalizedConfigured = normalizePortalPrefix(configuredPath);
+        String normalizedRequest = normalizePortalPrefix(requestPath);
+        if (configuredPath.equals(normalizedConfigured) && requestPath.equals(normalizedRequest)) {
+            return false;
+        }
+        return pathMatcher.match(normalizedConfigured, normalizedRequest);
+    }
+
+    private String normalizePortalPrefix(String path) {
+        if (path == null) {
+            return null;
+        }
+        return path.replaceFirst("^/portal-server", "/portalserver");
     }
 
     private void writeUnauthorized(HttpServletResponse response) throws IOException {
