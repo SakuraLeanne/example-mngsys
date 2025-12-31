@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
  * 调用认证服务的 Feign 客户端，负责校验会话。
  * </p>
  */
-@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server/auth/api}")
+@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth/api}")
 public interface AuthGatewayFeignClient {
 
     /**
