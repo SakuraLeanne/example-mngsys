@@ -9,11 +9,18 @@ import org.springframework.context.annotation.Configuration;
  * AliyunSmsConfiguration。
  * <p>
  * 提供阿里云短信客户端 Bean。
- * </p>
- */
+    * </p>
+     */
 @Configuration
 public class AliyunSmsConfiguration {
 
+    /**
+     * 构建阿里云短信客户端。
+     *
+     * @param authProperties 认证配置，提供短信密钥
+     * @return 阿里云短信客户端
+     * @throws Exception 初始化失败时抛出
+     */
     @Bean
     public Client smsClient(AuthProperties authProperties) throws Exception {
         AuthProperties.SmsProperties sms = authProperties.getSms();
