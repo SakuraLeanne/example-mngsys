@@ -57,3 +57,12 @@ gateway:
 
 auth:
   internalToken: change-me
+
+feign:
+  client:
+    config:
+      default:
+        # 连接超时时间（毫秒）
+        connectTimeout: 5000
+        # 读取超时时间（毫秒）
+        readTimeout: 10000
