@@ -105,6 +105,21 @@ gateway:
       - /portal/api/action/**
 ```
 
+#### 白名单设计逻辑
+
+- **入口职责**：白名单由网关统一校验，只有命中白名单的路径才会跳过登录态校验，其余请求会先调用认证服务 `/auth/api/session/me` 校验。
+- **最小暴露**：仅登录、验证码发送、动作票据入口等必须匿名的接口应该被加入白名单；业务查询、修改接口不应放行。
+- **粒度控制**：支持精确路径与 Ant 风格通配（如 `/portal/api/action/**`）。建议优先使用精确路径，通配仅用于同一动作前缀的入口。
+- **配置优先级**：本地配置可覆盖 Nacos 中的白名单（如需集中管理，可在 Nacos 配置新增 `gateway.security.whitelist`）。
+
+#### 如何配置白名单
+
+1. **本地配置文件**：在 `gateway-server/src/main/resources/application.yml` 下的 `gateway.security.whitelist` 数组中添加/删除路径。
+2. **Nacos 配置中心**（可选）：若通过 Nacos 统一管理网关配置，在对应的 `gateway-server` 配置文件中添加相同层级的 `gateway.security.whitelist`。
+3. **重启/热更新**：
+   - 本地修改需要重启 `gateway-server` 生效。
+   - 若开启了 Nacos `refresh-enabled: true`，则在 Nacos 更新后会自动刷新。
+
 ### Portal 登录态校验 Filter
 
 网关在 `PortalAuthGlobalFilter` 中对 `/portal/api/**`（除白名单）调用 `GET /auth/api/session/me` 校验登录态，并透传 Cookie。失败则返回 `401`，响应体 `code=100100`。
