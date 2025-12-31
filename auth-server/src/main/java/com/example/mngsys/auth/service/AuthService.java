@@ -1,10 +1,17 @@
 package com.example.mngsys.auth.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.mngsys.auth.config.AuthProperties;
+import com.example.mngsys.auth.entity.AuthUser;
+import com.example.mngsys.auth.mapper.AuthUserMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 /**
@@ -12,55 +19,106 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AuthService {
 
-    private final Map<String, User> usersByMobile;
-    private final Map<String, User> usersByUsername;
+    private final AuthUserMapper authUserMapper;
+    private final PasswordEncoder passwordEncoder;
     private final AuthProperties authProperties;
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    public AuthService(AuthProperties authProperties) {
+    public AuthService(AuthUserMapper authUserMapper, PasswordEncoder passwordEncoder, AuthProperties authProperties) {
+        this.authUserMapper = authUserMapper;
+        this.passwordEncoder = passwordEncoder;
         this.authProperties = authProperties;
-        Map<String, User> mobileIndex = new ConcurrentHashMap<>();
-        Map<String, User> usernameIndex = new ConcurrentHashMap<>();
-        registerUser(mobileIndex, usernameIndex, new User("u-admin-0001", "admin", "13800000001", "admin123456"));
-        registerUser(mobileIndex, usernameIndex, new User("u-user-0002", "user", "13800000002", "user123456"));
-        this.usersByMobile = mobileIndex;
-        this.usersByUsername = usernameIndex;
+        initializeBuiltinUsersSafely();
     }
 
     public User authenticateByMobile(String mobile) {
-        User user = usersByMobile.get(mobile);
-        if (user != null) {
-            return user;
+        AuthUser authUser = findByMobile(mobile);
+        if (authUser != null) {
+            return toUser(authUser);
         }
         if (!authProperties.isAutoCreateUser()) {
             throw new IllegalArgumentException("用户不存在");
         }
-        return usersByMobile.computeIfAbsent(mobile, key -> registerUser(createUser(key)));
+        authUser = createAndPersistUser(mobile);
+        return toUser(authUser);
     }
 
     public User authenticateByUsernameAndPassword(String username, String password) {
-        User user = usersByUsername.get(username);
-        if (user == null) {
+        AuthUser authUser = findByUsername(username);
+        if (authUser == null) {
             throw new IllegalArgumentException("用户不存在");
         }
-        if (!user.passwordMatches(password)) {
+        if (!StringUtils.hasText(authUser.getPassword()) || !passwordEncoder.matches(password, authUser.getPassword())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
-        return user;
+        return toUser(authUser);
     }
 
-    private User createUser(String mobile) {
-        String userId = "u-" + mobile;
-        return new User(userId, mobile, mobile, null);
+    private AuthUser findByMobile(String mobile) {
+        LambdaQueryWrapper<AuthUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AuthUser::getMobile, mobile).last("LIMIT 1");
+        return authUserMapper.selectOne(wrapper);
     }
 
-    private User registerUser(User user) {
-        return registerUser(usersByMobile, usersByUsername, user);
+    private AuthUser findByUsername(String username) {
+        LambdaQueryWrapper<AuthUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AuthUser::getUsername, username).last("LIMIT 1");
+        return authUserMapper.selectOne(wrapper);
     }
 
-    private User registerUser(Map<String, User> mobileIndex, Map<String, User> usernameIndex, User user) {
-        mobileIndex.put(user.getMobile(), user);
-        usernameIndex.put(user.getUsername(), user);
-        return user;
+    private AuthUser createAndPersistUser(String mobile) {
+        AuthUser authUser = newUserWithDefaults(buildUserId(mobile), mobile, mobile);
+        authUser.setPassword(generateRandomPassword());
+        authUserMapper.insert(authUser);
+        return authUser;
+    }
+
+    private String buildUserId(String mobile) {
+        return "u-" + mobile;
+    }
+
+    private String generateRandomPassword() {
+        return passwordEncoder.encode(UUID.randomUUID().toString());
+    }
+
+    private AuthUser newUserWithDefaults(String userId, String username, String mobile) {
+        AuthUser authUser = new AuthUser();
+        authUser.setId(userId);
+        authUser.setUsername(username);
+        authUser.setMobile(mobile);
+        authUser.setMobileVerified(1);
+        authUser.setEmailVerified(0);
+        authUser.setStatus(1);
+        LocalDateTime now = LocalDateTime.now();
+        authUser.setCreateTime(now);
+        authUser.setUpdateTime(now);
+        return authUser;
+    }
+
+    private void initializeBuiltinUsers() {
+        registerBuiltinUser("u-admin-0001", "admin", "13800000001", "admin123456");
+        registerBuiltinUser("u-user-0002", "user", "13800000002", "user123456");
+    }
+
+    private void initializeBuiltinUsersSafely() {
+        try {
+            initializeBuiltinUsers();
+        } catch (Exception ex) {
+            log.warn("Skip initializing builtin users because database is unavailable: {}", ex.getMessage());
+        }
+    }
+
+    private void registerBuiltinUser(String userId, String username, String mobile, String rawPassword) {
+        if (findByUsername(username) != null || findByMobile(mobile) != null) {
+            return;
+        }
+        AuthUser authUser = newUserWithDefaults(userId, username, mobile);
+        authUser.setPassword(passwordEncoder.encode(rawPassword));
+        authUserMapper.insert(authUser);
+    }
+
+    private User toUser(AuthUser authUser) {
+        return new User(authUser.getId(), authUser.getUsername(), authUser.getMobile(), authUser.getPassword());
     }
 
     public static class User {
@@ -92,11 +150,8 @@ public class AuthService {
             return password;
         }
 
-        public boolean passwordMatches(String rawPassword) {
-            if (password == null) {
-                return false;
-            }
-            return password.equals(rawPassword);
+        public boolean passwordMatches(String rawPassword, PasswordEncoder passwordEncoder) {
+            return StringUtils.hasText(password) && passwordEncoder.matches(rawPassword, password);
         }
     }
 }
