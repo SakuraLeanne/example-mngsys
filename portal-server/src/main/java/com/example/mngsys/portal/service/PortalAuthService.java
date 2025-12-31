@@ -6,11 +6,11 @@ import com.example.mngsys.portal.common.exception.InvalidReturnUrlException;
 import com.example.mngsys.portal.config.PortalProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.net.URI;
 import java.time.Instant;
@@ -21,17 +21,27 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-@Service
 /**
  * PortalAuthService。
+ * <p>
+ * 负责对接认证中心完成登录、登出，并提供 SSO Ticket 生成与校验。
+ * </p>
  */
+@Service
 public class PortalAuthService {
 
+    /** 认证中心客户端。 */
     private final AuthClient authClient;
+    /** 门户配置。 */
     private final PortalProperties portalProperties;
+    /** Redis 模板。 */
     private final StringRedisTemplate stringRedisTemplate;
+    /** JSON 序列化器。 */
     private final ObjectMapper objectMapper;
 
+    /**
+     * 构造函数，注入依赖。
+     */
     public PortalAuthService(AuthClient authClient,
                              PortalProperties portalProperties,
                              StringRedisTemplate stringRedisTemplate,
@@ -42,6 +52,9 @@ public class PortalAuthService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 登录操作，必要时生成单点登录跳转地址。
+     */
     public LoginResult login(String mobile, String code, String systemCode, String returnUrl) {
         ResponseEntity<ApiResponse> response = authClient.loginWithResponse(mobile, code);
         ApiResponse body = response == null ? null : response.getBody();
@@ -55,10 +68,16 @@ public class PortalAuthService {
         return result;
     }
 
+    /**
+     * 调用认证中心登出接口。
+     */
     public ResponseEntity<ApiResponse> logout(String cookie) {
         return authClient.logoutWithResponse(cookie);
     }
 
+    /**
+     * 创建单点登录跳转地址并写入 Ticket 缓存。
+     */
     public String createSsoJumpUrl(String userId, String systemCode, String targetUrl) {
         validateReturnUrl(targetUrl);
         if (userId == null) {
@@ -81,12 +100,18 @@ public class PortalAuthService {
                 .toUriString();
     }
 
+    /**
+     * 校验回调地址合法性。
+     */
     private void validateReturnUrl(String returnUrl) {
         if (!isAllowedHost(returnUrl)) {
             throw new InvalidReturnUrlException("非法回调地址");
         }
     }
 
+    /**
+     * 判断回调 host 是否在白名单。
+     */
     private boolean isAllowedHost(String returnUrl) {
         if (!StringUtils.hasText(returnUrl)) {
             return false;
@@ -112,6 +137,9 @@ public class PortalAuthService {
                 .anyMatch(normalized::equals);
     }
 
+    /**
+     * 对象转 JSON 字符串。
+     */
     private String toJson(Object payload) {
         try {
             return objectMapper.writeValueAsString(payload);
@@ -120,10 +148,16 @@ public class PortalAuthService {
         }
     }
 
+    /**
+     * 构建 Ticket 的缓存键。
+     */
     private String buildTicketKey(String ticket) {
         return "sso:ticket:" + ticket;
     }
 
+    /**
+     * 从登录返回中解析用户 ID。
+     */
     private String extractUserId(Object data) {
         if (data instanceof Map) {
             Object value = ((Map<?, ?>) data).get("userId");
@@ -135,9 +169,15 @@ public class PortalAuthService {
         return null;
     }
 
+    /**
+     * 登录结果封装。
+     */
     public static class LoginResult {
+        /** 登录响应体。 */
         private final ApiResponse responseBody;
+        /** 原始 ResponseEntity。 */
         private final ResponseEntity<ApiResponse> responseEntity;
+        /** 单点登录跳转地址。 */
         private String jumpUrl;
 
         public LoginResult(ApiResponse responseBody, ResponseEntity<ApiResponse> responseEntity) {
@@ -145,18 +185,22 @@ public class PortalAuthService {
             this.responseEntity = responseEntity;
         }
 
+        /** 获取响应体。 */
         public ApiResponse getResponseBody() {
             return responseBody;
         }
 
+        /** 获取 ResponseEntity。 */
         public ResponseEntity<ApiResponse> getResponseEntity() {
             return responseEntity;
         }
 
+        /** 获取跳转地址。 */
         public String getJumpUrl() {
             return jumpUrl;
         }
 
+        /** 设置跳转地址。 */
         public void setJumpUrl(String jumpUrl) {
             this.jumpUrl = jumpUrl;
         }

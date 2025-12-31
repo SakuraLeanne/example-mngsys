@@ -22,20 +22,37 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
 /**
  * PortalAuthGlobalFilter。
+ * <p>
+ * 全局鉴权过滤器，拦截 Portal API 请求，调用认证服务校验登录状态，
+ * 未通过校验时返回 401 JSON 响应。
+ * </p>
  */
+@Component
 public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
 
+    /** Portal API 前缀，只有匹配路径才会做鉴权。 */
     private static final String PORTAL_API_PREFIX = "/portal/api/";
+    /** 会话校验接口路径，用于透传调用认证服务。 */
     private static final String AUTH_SESSION_PATH = "/auth/api/session/me";
 
+    /** 安全配置，包含白名单配置。 */
     private final GatewaySecurityProperties securityProperties;
+    /** 调用认证服务的 Feign 客户端。 */
     private final AuthGatewayFeignClient authGatewayFeignClient;
+    /** JSON 序列化工具。 */
     private final ObjectMapper objectMapper;
+    /** 路径匹配器，用于匹配白名单。 */
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    /**
+     * 构造函数，注入依赖。
+     *
+     * @param securityProperties 安全配置项
+     * @param authGatewayFeignClient 认证服务 Feign 客户端
+     * @param objectMapper JSON 序列化工具
+     */
     public PortalAuthGlobalFilter(GatewaySecurityProperties securityProperties,
                                   AuthGatewayFeignClient authGatewayFeignClient,
                                   ObjectMapper objectMapper) {
@@ -44,6 +61,13 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 过滤入口，对 Portal API 请求执行登录校验。
+     *
+     * @param exchange 当前请求上下文
+     * @param chain    过滤器链
+     * @return 继续链路或返回未登录响应的 Mono
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
@@ -61,6 +85,14 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
                 .onErrorResume(ex -> writeUnauthorized(exchange));
     }
 
+    /**
+     * 处理认证服务返回结果，成功则放行，失败则返回 401。
+     *
+     * @param chain    过滤器链
+     * @param exchange 请求上下文
+     * @param response 认证服务响应
+     * @return 下一步处理的 Mono
+     */
     private Mono<Void> handleResponse(GatewayFilterChain chain,
                                       ServerWebExchange exchange,
                                       Response response) {
@@ -70,6 +102,12 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         return writeUnauthorized(exchange);
     }
 
+    /**
+     * 判断请求路径是否命中白名单。
+     *
+     * @param path 请求路径
+     * @return true 表示命中白名单
+     */
     private boolean isWhitelisted(String path) {
         List<String> whitelist = securityProperties.getWhitelist();
         if (whitelist == null || whitelist.isEmpty()) {
@@ -78,6 +116,12 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         return whitelist.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
+    /**
+     * 返回未登录的 401 JSON 响应。
+     *
+     * @param exchange 请求上下文
+     * @return 写入响应的 Mono
+     */
     private Mono<Void> writeUnauthorized(ServerWebExchange exchange) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
@@ -87,6 +131,11 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
                 .wrap(payload)));
     }
 
+    /**
+     * 构建未登录响应的 JSON 字节数组。
+     *
+     * @return JSON 内容字节
+     */
     private byte[] buildUnauthorizedPayload() {
         Map<String, Object> body = new HashMap<>();
         body.put("code", 100100);
@@ -99,6 +148,11 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         }
     }
 
+    /**
+     * 设置过滤器排序，值越小越先执行。
+     *
+     * @return 排序值
+     */
     @Override
     public int getOrder() {
         return -100;

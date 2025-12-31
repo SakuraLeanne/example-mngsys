@@ -17,6 +17,11 @@ import java.util.Map;
 @Configuration
 public class PasswordEncoderConfig {
 
+    /**
+     * 配置密码编码器，默认使用 Argon2id，兼容 bcrypt。
+     *
+     * @return DelegatingPasswordEncoder 实例
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         String defaultId = "argon2";

@@ -9,24 +9,45 @@ import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
-@Service
 /**
  * PortalUserServiceImpl。
+ * <p>
+ * 用户服务实现，统一在持久化前做数据标准化与唯一性校验。
+ * </p>
  */
+@Service
 public class PortalUserServiceImpl extends ServiceImpl<PortalUserMapper, PortalUser> implements PortalUserService {
 
+    /**
+     * 保存用户前进行标准化处理。
+     *
+     * @param entity 用户实体
+     * @return 是否保存成功
+     */
     @Override
     public boolean save(PortalUser entity) {
         normalizeUser(entity);
         return super.save(entity);
     }
 
+    /**
+     * 保存或更新用户前进行标准化处理。
+     *
+     * @param entity 用户实体
+     * @return 是否保存成功
+     */
     @Override
     public boolean saveOrUpdate(PortalUser entity) {
         normalizeUser(entity);
         return super.saveOrUpdate(entity);
     }
 
+    /**
+     * 根据 ID 更新用户前进行标准化处理。
+     *
+     * @param entity 用户实体
+     * @return 是否更新成功
+     */
     @Override
     public boolean updateById(PortalUser entity) {
         normalizeUser(entity);
