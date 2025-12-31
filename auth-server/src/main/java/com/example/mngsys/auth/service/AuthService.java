@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.entity.AuthUser;
 import com.example.mngsys.auth.mapper.AuthUserMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -20,12 +22,13 @@ public class AuthService {
     private final AuthUserMapper authUserMapper;
     private final PasswordEncoder passwordEncoder;
     private final AuthProperties authProperties;
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthService(AuthUserMapper authUserMapper, PasswordEncoder passwordEncoder, AuthProperties authProperties) {
         this.authUserMapper = authUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.authProperties = authProperties;
-        initializeBuiltinUsers();
+        initializeBuiltinUsersSafely();
     }
 
     public User authenticateByMobile(String mobile) {
@@ -95,6 +98,14 @@ public class AuthService {
     private void initializeBuiltinUsers() {
         registerBuiltinUser("u-admin-0001", "admin", "13800000001", "admin123456");
         registerBuiltinUser("u-user-0002", "user", "13800000002", "user123456");
+    }
+
+    private void initializeBuiltinUsersSafely() {
+        try {
+            initializeBuiltinUsers();
+        } catch (Exception ex) {
+            log.warn("Skip initializing builtin users because database is unavailable: {}", ex.getMessage());
+        }
     }
 
     private void registerBuiltinUser(String userId, String username, String mobile, String rawPassword) {
