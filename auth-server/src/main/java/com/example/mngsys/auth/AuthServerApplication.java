@@ -1,12 +1,14 @@
 package com.example.mngsys.auth;
 
 import com.example.mngsys.auth.config.AuthProperties;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
 @EnableConfigurationProperties(AuthProperties.class)
+@MapperScan("com.example.mngsys.auth.mapper")
 /**
  * AuthServerApplication。
  */

@@ -21,6 +21,7 @@
         <spring-cloud-alibaba.version>2.2.7.RELEASE</spring-cloud-alibaba.version>
         <sa-token.version>1.44.0</sa-token.version>
         <aliyun.dysms.version>4.3.1</aliyun.dysms.version>
+        <mybatis-plus.version>3.4.3.4</mybatis-plus.version>
     </properties>
 
     <dependencyManagement>
@@ -89,6 +90,16 @@
             <groupId>com.aliyun</groupId>
             <artifactId>dysmsapi20170525</artifactId>
             <version>${aliyun.dysms.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 
