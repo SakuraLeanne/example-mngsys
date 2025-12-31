@@ -33,9 +33,9 @@ import java.util.Map;
 public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
 
     /** Portal API 前缀，只有匹配路径才会做鉴权。 */
-    private static final String PORTAL_API_PREFIX = "/portal/api/";
+    private static final String PORTAL_API_PREFIX = "/portalserver/portal/api/";
     /** 会话校验接口路径，用于透传调用认证服务。 */
-    private static final String AUTH_SESSION_PATH = "/auth/api/session/me";
+    private static final String AUTH_SESSION_PATH = "/authserver/auth/api/session/me";
 
     /** 安全配置，包含白名单配置。 */
     private final GatewaySecurityProperties securityProperties;
