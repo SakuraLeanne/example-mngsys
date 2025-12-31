@@ -67,23 +67,18 @@ public class AuthService {
     }
 
     private AuthUser createAndPersistUser(String mobile) {
-        AuthUser authUser = newUserWithDefaults(buildUserId(mobile), mobile, mobile);
+        AuthUser authUser = newUserWithDefaults(mobile, mobile);
         authUser.setPassword(generateRandomPassword());
         authUserMapper.insert(authUser);
         return authUser;
-    }
-
-    private String buildUserId(String mobile) {
-        return "u-" + mobile;
     }
 
     private String generateRandomPassword() {
         return passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
-    private AuthUser newUserWithDefaults(String userId, String username, String mobile) {
+    private AuthUser newUserWithDefaults(String username, String mobile) {
         AuthUser authUser = new AuthUser();
-        authUser.setId(userId);
         authUser.setUsername(username);
         authUser.setMobile(mobile);
         authUser.setMobileVerified(1);
@@ -96,8 +91,8 @@ public class AuthService {
     }
 
     private void initializeBuiltinUsers() {
-        registerBuiltinUser("u-admin-0001", "admin", "13800000001", "admin123456");
-        registerBuiltinUser("u-user-0002", "user", "13800000002", "user123456");
+        registerBuiltinUser("admin", "13800000001", "admin123456");
+        registerBuiltinUser("user", "13800000002", "user123456");
     }
 
     private void initializeBuiltinUsersSafely() {
@@ -108,11 +103,11 @@ public class AuthService {
         }
     }
 
-    private void registerBuiltinUser(String userId, String username, String mobile, String rawPassword) {
+    private void registerBuiltinUser(String username, String mobile, String rawPassword) {
         if (findByUsername(username) != null || findByMobile(mobile) != null) {
             return;
         }
-        AuthUser authUser = newUserWithDefaults(userId, username, mobile);
+        AuthUser authUser = newUserWithDefaults(username, mobile);
         authUser.setPassword(passwordEncoder.encode(rawPassword));
         authUserMapper.insert(authUser);
     }
