@@ -89,7 +89,13 @@ public class AuthController {
                 throw new IllegalArgumentException("不支持的登录方式");
         }
         StpUtil.login(user.getUserId());
-        return ApiResponse.success(new LoginResponse(user.getUserId(), user.getUsername()));
+        return ApiResponse.success(new LoginResponse(
+                user.getUserId(),
+                user.getUsername(),
+                user.getMobile(),
+                user.getRealName(),
+                StpUtil.getTokenValue(),
+                StpUtil.getSession().getCreateTime()));
     }
 
     private void validatePasswordPayload(LoginRequest request) {
@@ -202,10 +208,22 @@ public class AuthController {
         private final String userId;
         /** 用户名。 */
         private final String username;
+        /** 手机号。 */
+        private final String mobile;
+        /** 真实姓名。 */
+        private final String realName;
+        /** Sa-Token。 */
+        private final String satoken;
+        /** 登录时间戳。 */
+        private final long loginTime;
 
-        public LoginResponse(String userId, String username) {
+        public LoginResponse(String userId, String username, String mobile, String realName, String satoken, long loginTime) {
             this.userId = userId;
             this.username = username;
+            this.mobile = mobile;
+            this.realName = realName;
+            this.satoken = satoken;
+            this.loginTime = loginTime;
         }
 
         public String getUserId() {
@@ -214,6 +232,22 @@ public class AuthController {
 
         public String getUsername() {
             return username;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public String getRealName() {
+            return realName;
+        }
+
+        public String getSatoken() {
+            return satoken;
+        }
+
+        public long getLoginTime() {
+            return loginTime;
         }
     }
 
