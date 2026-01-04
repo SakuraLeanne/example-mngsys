@@ -60,7 +60,7 @@ public class AuthController {
      */
     @PostMapping("/sms/send")
     public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
-        smsCodeService.sendCode(request.getMobile());
+        smsCodeService.sendCode(request.getMobile(), SmsCodeService.TemplateScene.LOGIN);
         return ApiResponse.success(null);
     }
 
