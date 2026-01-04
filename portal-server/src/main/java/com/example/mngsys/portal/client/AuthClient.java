@@ -42,8 +42,28 @@ public class AuthClient {
     }
 
     public ApiResponse<Void> sendLoginSms(String mobile) {
-        SmsSendRequest request = new SmsSendRequest(mobile);
+        SmsSendRequest request = SmsSendRequest.loginScene(mobile);
         return authFeignClient.sendSms(request);
+    }
+
+    public ApiResponse<Void> verifySms(String mobile, String code) {
+        SmsVerifyRequest request = new SmsVerifyRequest(mobile, code);
+        return authFeignClient.verifySms(request);
+    }
+
+    public ApiResponse<Void> sendForgotPasswordSms(String mobile) {
+        SmsSendRequest request = SmsSendRequest.verificationScene(mobile);
+        return authFeignClient.sendForgotPassword(request);
+    }
+
+    public ApiResponse<ResetTokenResponse> verifyForgotPassword(String mobile, String code) {
+        SmsVerifyRequest request = new SmsVerifyRequest(mobile, code);
+        return authFeignClient.verifyForgotPassword(request);
+    }
+
+    public ApiResponse<Void> resetForgotPassword(String mobile, String resetToken, String encryptedPassword, String newPassword) {
+        PasswordResetRequest request = new PasswordResetRequest(mobile, resetToken, encryptedPassword, newPassword);
+        return authFeignClient.resetForgotPassword(request);
     }
 
     public ResponseEntity<ApiResponse> logoutWithResponse(String cookie) {
@@ -203,12 +223,22 @@ public class AuthClient {
 
     public static class SmsSendRequest {
         private String mobile;
+        private String scene;
 
         public SmsSendRequest() {
         }
 
-        public SmsSendRequest(String mobile) {
+        public SmsSendRequest(String mobile, String scene) {
             this.mobile = mobile;
+            this.scene = scene;
+        }
+
+        public static SmsSendRequest loginScene(String mobile) {
+            return new SmsSendRequest(mobile, "LOGIN");
+        }
+
+        public static SmsSendRequest verificationScene(String mobile) {
+            return new SmsSendRequest(mobile, "VERIFICATION");
         }
 
         public String getMobile() {
@@ -217,6 +247,104 @@ public class AuthClient {
 
         public void setMobile(String mobile) {
             this.mobile = mobile;
+        }
+
+        public String getScene() {
+            return scene;
+        }
+
+        public void setScene(String scene) {
+            this.scene = scene;
+        }
+    }
+
+    public static class SmsVerifyRequest {
+        private String mobile;
+        private String code;
+
+        public SmsVerifyRequest() {
+        }
+
+        public SmsVerifyRequest(String mobile, String code) {
+            this.mobile = mobile;
+            this.code = code;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+    }
+
+    public static class PasswordResetRequest {
+        private String mobile;
+        private String resetToken;
+        private String encryptedPassword;
+        private String newPassword;
+
+        public PasswordResetRequest() {
+        }
+
+        public PasswordResetRequest(String mobile, String resetToken, String encryptedPassword, String newPassword) {
+            this.mobile = mobile;
+            this.resetToken = resetToken;
+            this.encryptedPassword = encryptedPassword;
+            this.newPassword = newPassword;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getResetToken() {
+            return resetToken;
+        }
+
+        public void setResetToken(String resetToken) {
+            this.resetToken = resetToken;
+        }
+
+        public String getEncryptedPassword() {
+            return encryptedPassword;
+        }
+
+        public void setEncryptedPassword(String encryptedPassword) {
+            this.encryptedPassword = encryptedPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class ResetTokenResponse {
+        private String resetToken;
+
+        public String getResetToken() {
+            return resetToken;
+        }
+
+        public void setResetToken(String resetToken) {
+            this.resetToken = resetToken;
         }
     }
 }

@@ -17,6 +17,10 @@ public class AuthProperties {
     private SmsProperties sms = new SmsProperties();
     /** 登录时是否自动创建用户。 */
     private boolean autoCreateUser = true;
+    /** 密码重置配置。 */
+    private PasswordResetProperties passwordReset = new PasswordResetProperties();
+    /** 密码传输加密配置。 */
+    private PasswordEncryptProperties passwordEncrypt = new PasswordEncryptProperties();
 
     /**
      * 获取内部 Token。
@@ -58,6 +62,26 @@ public class AuthProperties {
      */
     public void setAutoCreateUser(boolean autoCreateUser) {
         this.autoCreateUser = autoCreateUser;
+    }
+
+    /** 获取密码重置配置。 */
+    public PasswordResetProperties getPasswordReset() {
+        return passwordReset;
+    }
+
+    /** 设置密码重置配置。 */
+    public void setPasswordReset(PasswordResetProperties passwordReset) {
+        this.passwordReset = passwordReset;
+    }
+
+    /** 获取密码传输加密配置。 */
+    public PasswordEncryptProperties getPasswordEncrypt() {
+        return passwordEncrypt;
+    }
+
+    /** 设置密码传输加密配置。 */
+    public void setPasswordEncrypt(PasswordEncryptProperties passwordEncrypt) {
+        this.passwordEncrypt = passwordEncrypt;
     }
 
     /**
@@ -185,6 +209,51 @@ public class AuthProperties {
             public void setLoginVerificationCode(String loginVerificationCode) {
                 this.loginVerificationCode = loginVerificationCode;
             }
+        }
+    }
+
+    /**
+     * 密码重置相关配置。
+     */
+    public static class PasswordResetProperties {
+        /** 重置令牌有效期（秒）。 */
+        private long tokenTtlSeconds = 600;
+
+        public long getTokenTtlSeconds() {
+            return tokenTtlSeconds;
+        }
+
+        public void setTokenTtlSeconds(long tokenTtlSeconds) {
+            this.tokenTtlSeconds = tokenTtlSeconds;
+        }
+    }
+
+    /**
+     * 密码传输加密配置。
+     */
+    public static class PasswordEncryptProperties {
+        /** 是否开启加密传输校验。 */
+        private boolean enabled = false;
+        /**
+         * AES 密钥（长度建议 16/24/32 字节），用于解密前端传输的密码。
+         * 为安全起见，应通过配置中心下发。
+         */
+        private String aesKey;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getAesKey() {
+            return aesKey;
+        }
+
+        public void setAesKey(String aesKey) {
+            this.aesKey = aesKey;
         }
     }
 }

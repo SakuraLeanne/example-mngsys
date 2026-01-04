@@ -19,6 +19,18 @@ public interface AuthFeignClient {
     @PostMapping("/sms/send")
     ApiResponse<Void> sendSms(@RequestBody AuthClient.SmsSendRequest request);
 
+    @PostMapping("/sms/verify")
+    ApiResponse<Void> verifySms(@RequestBody AuthClient.SmsVerifyRequest request);
+
+    @PostMapping("/password/forgot/send")
+    ApiResponse<Void> sendForgotPassword(@RequestBody AuthClient.SmsSendRequest request);
+
+    @PostMapping("/password/forgot/verify")
+    ApiResponse<AuthClient.ResetTokenResponse> verifyForgotPassword(@RequestBody AuthClient.SmsVerifyRequest request);
+
+    @PostMapping("/password/forgot/reset")
+    ApiResponse<Void> resetForgotPassword(@RequestBody AuthClient.PasswordResetRequest request);
+
     @PostMapping("/logout")
     ApiResponse<Void> logout(@RequestHeader(value = "Cookie", required = false) String cookie);
 
