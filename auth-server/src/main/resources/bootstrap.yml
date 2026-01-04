@@ -52,4 +52,6 @@ auth:
     access-key-id: ${ALIYUN_SMS_AK:}
     access-key-secret: ${ALIYUN_SMS_SK:}
     sign-name: ${ALIYUN_SMS_SIGN_NAME:}
-    template-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
+    template-code:
+      verification-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
+      login-verification-code: ${ALIYUN_SMS_LOGIN_TEMPLATE_CODE:${ALIYUN_SMS_TEMPLATE_CODE:}}

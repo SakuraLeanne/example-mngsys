@@ -72,8 +72,8 @@ public class AuthProperties {
         private String endpoint = "dysmsapi.aliyuncs.com";
         /** 短信签名。 */
         private String signName;
-        /** 模板编码。 */
-        private String templateCode;
+        /** 模板编码集合。 */
+        private TemplateCodeProperties templateCode = new TemplateCodeProperties();
         /** 验证码长度。 */
         private int codeLength = 6;
         /** 验证码有效期（秒）。 */
@@ -122,12 +122,12 @@ public class AuthProperties {
         }
 
         /** 获取模板编码。 */
-        public String getTemplateCode() {
+        public TemplateCodeProperties getTemplateCode() {
             return templateCode;
         }
 
         /** 设置模板编码。 */
-        public void setTemplateCode(String templateCode) {
+        public void setTemplateCode(TemplateCodeProperties templateCode) {
             this.templateCode = templateCode;
         }
 
@@ -159,6 +159,32 @@ public class AuthProperties {
         /** 设置发送间隔。 */
         public void setSendIntervalSeconds(long sendIntervalSeconds) {
             this.sendIntervalSeconds = sendIntervalSeconds;
+        }
+
+        /**
+         * 模板编码配置。
+         */
+        public static class TemplateCodeProperties {
+            /** 注册/通用验证码模板。 */
+            private String verificationCode;
+            /** 登录验证码模板。 */
+            private String loginVerificationCode;
+
+            public String getVerificationCode() {
+                return verificationCode;
+            }
+
+            public void setVerificationCode(String verificationCode) {
+                this.verificationCode = verificationCode;
+            }
+
+            public String getLoginVerificationCode() {
+                return loginVerificationCode;
+            }
+
+            public void setLoginVerificationCode(String loginVerificationCode) {
+                this.loginVerificationCode = loginVerificationCode;
+            }
         }
     }
 }
