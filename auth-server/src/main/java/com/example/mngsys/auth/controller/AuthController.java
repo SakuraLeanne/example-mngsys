@@ -5,8 +5,11 @@ import com.example.mngsys.auth.common.api.ApiResponse;
 import com.example.mngsys.auth.common.api.ErrorCode;
 import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.service.AuthService;
+import com.example.mngsys.auth.service.PasswordCryptoService;
+import com.example.mngsys.auth.service.PasswordResetService;
 import com.example.mngsys.auth.service.SmsCodeService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,15 +43,29 @@ public class AuthController {
      * 短信验证码服务。
      */
     private final SmsCodeService smsCodeService;
+    /**
+     * 密码重置服务。
+     */
+    private final PasswordResetService passwordResetService;
+    /**
+     * 密码解密服务。
+     */
+    private final PasswordCryptoService passwordCryptoService;
 
     /**
      * 认证相关配置，包含内部调用 Token 等安全参数。
      */
     private final AuthProperties authProperties;
 
-    public AuthController(AuthService authService, SmsCodeService smsCodeService, AuthProperties authProperties) {
+    public AuthController(AuthService authService,
+                          SmsCodeService smsCodeService,
+                          PasswordResetService passwordResetService,
+                          PasswordCryptoService passwordCryptoService,
+                          AuthProperties authProperties) {
         this.authService = authService;
         this.smsCodeService = smsCodeService;
+        this.passwordResetService = passwordResetService;
+        this.passwordCryptoService = passwordCryptoService;
         this.authProperties = authProperties;
     }
 
@@ -60,7 +77,57 @@ public class AuthController {
      */
     @PostMapping("/sms/send")
     public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
-        smsCodeService.sendCode(request.getMobile(), SmsCodeService.TemplateScene.LOGIN);
+        smsCodeService.sendCode(request.getMobile(), request.getSceneOrDefault());
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 校验短信验证码。
+     *
+     * @param request 请求体
+     * @return 校验结果
+     */
+    @PostMapping("/sms/verify")
+    public ApiResponse<Void> verifySms(@Valid @RequestBody SmsVerifyRequest request) {
+        smsCodeService.verifyCode(request.getMobile(), request.getCode());
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 发送忘记密码短信验证码。
+     *
+     * @param request 请求体
+     * @return 发送结果
+     */
+    @PostMapping("/password/forgot/send")
+    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody SmsSendRequest request) {
+        smsCodeService.sendCode(request.getMobile(), SmsCodeService.TemplateScene.VERIFICATION);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 校验忘记密码验证码并下发重置令牌。
+     *
+     * @param request 请求体
+     * @return 重置令牌
+     */
+    @PostMapping("/password/forgot/verify")
+    public ApiResponse<ResetTokenResponse> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
+        smsCodeService.verifyCode(request.getMobile(), request.getCode());
+        String token = passwordResetService.issueResetToken(request.getMobile());
+        return ApiResponse.success(new ResetTokenResponse(token));
+    }
+
+    /**
+     * 根据手机号与重置令牌重置密码。
+     *
+     * @param request 重置请求
+     * @return 重置结果
+     */
+    @PostMapping("/password/forgot/reset")
+    public ApiResponse<Void> resetForgotPassword(@Valid @RequestBody PasswordResetRequest request) {
+        String decryptedPassword = passwordCryptoService.decrypt(request.getEncryptedPassword(), request.getNewPassword());
+        passwordResetService.resetPassword(request.getMobile(), request.getResetToken(), decryptedPassword);
         return ApiResponse.success(null);
     }
 
@@ -80,8 +147,8 @@ public class AuthController {
                 user = authService.authenticateByMobile(request.getMobile());
                 break;
             case USERNAME_PASSWORD:
-                validatePasswordPayload(request);
-                user = authService.authenticateByUsernameAndPassword(request.getUsername(), request.getPassword());
+                String decryptedPassword = resolvePasswordPayload(request);
+                user = authService.authenticateByUsernameAndPassword(request.getUsername(), decryptedPassword);
                 break;
             case QR_CODE:
                 throw new IllegalArgumentException("暂未支持二维码登录");
@@ -98,13 +165,22 @@ public class AuthController {
                 StpUtil.getSession().getCreateTime()));
     }
 
-    private void validatePasswordPayload(LoginRequest request) {
-        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+    private String resolvePasswordPayload(LoginRequest request) {
+        if (!StringUtils.hasText(request.getUsername())) {
             throw new IllegalArgumentException("用户名不能为空");
         }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+        AuthProperties.PasswordEncryptProperties encryptProps = authProperties.getPasswordEncrypt();
+        boolean encryptEnabled = encryptProps != null && encryptProps.isEnabled();
+        if (encryptEnabled) {
+            if (!StringUtils.hasText(request.getEncryptedPassword())) {
+                throw new IllegalArgumentException("密码密文不能为空");
+            }
+            return passwordCryptoService.decrypt(request.getEncryptedPassword(), null);
+        }
+        if (!StringUtils.hasText(request.getPassword())) {
             throw new IllegalArgumentException("密码不能为空");
         }
+        return request.getPassword();
     }
 
     /**
@@ -161,6 +237,8 @@ public class AuthController {
         /** 密码，用户名密码登录必填。 */
         @Size(max = 128, message = "密码长度过长")
         private String password;
+        /** 密码密文（Base64 AES/GCM），当启用密码传输加密时必填。 */
+        private String encryptedPassword;
 
         public LoginType getLoginType() {
             return loginType == null ? LoginType.SMS : loginType;
@@ -200,6 +278,14 @@ public class AuthController {
 
         public void setPassword(String password) {
             this.password = password;
+        }
+
+        public String getEncryptedPassword() {
+            return encryptedPassword;
+        }
+
+        public void setEncryptedPassword(String encryptedPassword) {
+            this.encryptedPassword = encryptedPassword;
         }
     }
 
@@ -291,6 +377,8 @@ public class AuthController {
         /** 手机号。 */
         @NotBlank(message = "手机号不能为空")
         private String mobile;
+        /** 短信场景。 */
+        private SmsCodeService.TemplateScene scene = SmsCodeService.TemplateScene.LOGIN;
 
         public String getMobile() {
             return mobile;
@@ -298,6 +386,101 @@ public class AuthController {
 
         public void setMobile(String mobile) {
             this.mobile = mobile;
+        }
+
+        public SmsCodeService.TemplateScene getScene() {
+            return scene;
+        }
+
+        public void setScene(SmsCodeService.TemplateScene scene) {
+            this.scene = scene;
+        }
+
+        public SmsCodeService.TemplateScene getSceneOrDefault() {
+            return scene == null ? SmsCodeService.TemplateScene.LOGIN : scene;
+        }
+    }
+
+    public static class SmsVerifyRequest {
+        /** 手机号。 */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+        /** 短信验证码。 */
+        @NotBlank(message = "验证码不能为空")
+        private String code;
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+    }
+
+    public static class PasswordResetRequest {
+        /** 手机号。 */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+        /** 重置令牌。 */
+        @NotBlank(message = "重置令牌不能为空")
+        private String resetToken;
+        /** 密码密文（Base64 AES/GCM）。 */
+        private String encryptedPassword;
+        /** 明文密码（仅在未开启加密校验时生效）。 */
+        @Size(max = 128, message = "密码长度过长")
+        private String newPassword;
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getResetToken() {
+            return resetToken;
+        }
+
+        public void setResetToken(String resetToken) {
+            this.resetToken = resetToken;
+        }
+
+        public String getEncryptedPassword() {
+            return encryptedPassword;
+        }
+
+        public void setEncryptedPassword(String encryptedPassword) {
+            this.encryptedPassword = encryptedPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class ResetTokenResponse {
+        private final String resetToken;
+
+        public ResetTokenResponse(String resetToken) {
+            this.resetToken = resetToken;
+        }
+
+        public String getResetToken() {
+            return resetToken;
         }
     }
 }
