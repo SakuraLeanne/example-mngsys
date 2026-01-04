@@ -140,6 +140,64 @@ public class PortalApiController {
     }
 
     /**
+     * 忘记密码 - 发送验证码。
+     *
+     * @param request 请求体
+     * @return 发送结果
+     */
+    @PostMapping("/password/forgot/send")
+    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody SmsSendRequest request) {
+        ApiResponse<Void> resp = authClient.sendForgotPasswordSms(request.getMobile());
+        if (resp == null) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "短信服务无响应");
+        }
+        if (resp.getCode() != 0) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
+        }
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 忘记密码 - 校验验证码并获取重置令牌。
+     *
+     * @param request 请求体
+     * @return 重置令牌
+     */
+    @PostMapping("/password/forgot/verify")
+    public ApiResponse<ForgotPasswordVerifyResponse> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
+        ApiResponse<AuthClient.ResetTokenResponse> resp = authClient.verifyForgotPassword(request.getMobile(), request.getCode());
+        if (resp == null) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
+        }
+        if (resp.getCode() != 0 || resp.getData() == null) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
+        }
+        return ApiResponse.success(new ForgotPasswordVerifyResponse(resp.getData().getResetToken()));
+    }
+
+    /**
+     * 忘记密码 - 重置密码（需加密传输）。
+     *
+     * @param request 重置请求
+     * @return 重置结果
+     */
+    @PostMapping("/password/forgot/reset")
+    public ApiResponse<ForgotPasswordResetResponse> resetForgotPassword(@Valid @RequestBody ForgotPasswordResetRequest request) {
+        ApiResponse<Void> resp = authClient.resetForgotPassword(
+                request.getMobile(),
+                request.getResetToken(),
+                request.getEncryptedPassword(),
+                request.getNewPassword());
+        if (resp == null) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
+        }
+        if (resp.getCode() != 0) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
+        }
+        return ApiResponse.success(new ForgotPasswordResetResponse(true));
+    }
+
+    /**
      * 查询当前登录用户基本信息。
      *
      * @return 当前用户基础信息
@@ -481,6 +539,119 @@ public class PortalApiController {
 
         public void setMobile(String mobile) {
             this.mobile = mobile;
+        }
+    }
+
+    /**
+     * 短信校验请求体。
+     */
+    public static class SmsVerifyRequest {
+        /**
+         * 手机号。
+         */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+        /**
+         * 验证码。
+         */
+        @NotBlank(message = "验证码不能为空")
+        private String code;
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+    }
+
+    /**
+     * 忘记密码重置请求体。
+     */
+    public static class ForgotPasswordResetRequest {
+        /**
+         * 手机号。
+         */
+        @NotBlank(message = "手机号不能为空")
+        private String mobile;
+        /**
+         * 重置令牌。
+         */
+        @NotBlank(message = "重置令牌不能为空")
+        private String resetToken;
+        /**
+         * 密码密文（Base64 AES/GCM）。
+         */
+        private String encryptedPassword;
+        /**
+         * 明文密码（仅在未开启加密校验时生效）。
+         */
+        @Size(max = 128, message = "密码长度过长")
+        private String newPassword;
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public void setMobile(String mobile) {
+            this.mobile = mobile;
+        }
+
+        public String getResetToken() {
+            return resetToken;
+        }
+
+        public void setResetToken(String resetToken) {
+            this.resetToken = resetToken;
+        }
+
+        public String getEncryptedPassword() {
+            return encryptedPassword;
+        }
+
+        public void setEncryptedPassword(String encryptedPassword) {
+            this.encryptedPassword = encryptedPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class ForgotPasswordVerifyResponse {
+        private final String resetToken;
+
+        public ForgotPasswordVerifyResponse(String resetToken) {
+            this.resetToken = resetToken;
+        }
+
+        public String getResetToken() {
+            return resetToken;
+        }
+    }
+
+    public static class ForgotPasswordResetResponse {
+        private final boolean success;
+
+        public ForgotPasswordResetResponse(boolean success) {
+            this.success = success;
+        }
+
+        public boolean isSuccess() {
+            return success;
         }
     }
 
