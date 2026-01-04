@@ -47,7 +47,7 @@ public class SmsCodeService {
         stringRedisTemplate.opsForValue().set(buildSendGuardKey(mobile), "1",
                 authProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
         System.out.println("================= 短信验证码 : "+code+" ================= ");
-//        aliyunSendMsgUtils.sendCode(mobile, code);
+//        aliyunSendMsgUtils.sendCode(mobile, code, resolveLoginTemplateCode());
     }
 
     /**
@@ -89,5 +89,17 @@ public class SmsCodeService {
 
     private String buildSendGuardKey(String mobile) {
         return SEND_GUARD_PREFIX + mobile;
+    }
+
+    private String resolveLoginTemplateCode() {
+        AuthProperties.SmsProperties.TemplateCodeProperties templateCode = authProperties.getSms().getTemplateCode();
+        String loginTemplate = templateCode == null ? null : templateCode.getLoginVerificationCode();
+        if (!StringUtils.hasText(loginTemplate) && templateCode != null) {
+            loginTemplate = templateCode.getVerificationCode();
+        }
+        if (!StringUtils.hasText(loginTemplate)) {
+            throw new IllegalStateException("短信模板未配置");
+        }
+        return loginTemplate;
     }
 }
