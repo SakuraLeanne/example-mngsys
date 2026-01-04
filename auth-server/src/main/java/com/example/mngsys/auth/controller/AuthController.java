@@ -9,6 +9,7 @@ import com.example.mngsys.auth.service.PasswordCryptoService;
 import com.example.mngsys.auth.service.PasswordResetService;
 import com.example.mngsys.auth.service.SmsCodeService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -146,8 +147,8 @@ public class AuthController {
                 user = authService.authenticateByMobile(request.getMobile());
                 break;
             case USERNAME_PASSWORD:
-                validatePasswordPayload(request);
-                user = authService.authenticateByUsernameAndPassword(request.getUsername(), request.getPassword());
+                String decryptedPassword = resolvePasswordPayload(request);
+                user = authService.authenticateByUsernameAndPassword(request.getUsername(), decryptedPassword);
                 break;
             case QR_CODE:
                 throw new IllegalArgumentException("暂未支持二维码登录");
@@ -164,13 +165,22 @@ public class AuthController {
                 StpUtil.getSession().getCreateTime()));
     }
 
-    private void validatePasswordPayload(LoginRequest request) {
-        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+    private String resolvePasswordPayload(LoginRequest request) {
+        if (!StringUtils.hasText(request.getUsername())) {
             throw new IllegalArgumentException("用户名不能为空");
         }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+        AuthProperties.PasswordEncryptProperties encryptProps = authProperties.getPasswordEncrypt();
+        boolean encryptEnabled = encryptProps != null && encryptProps.isEnabled();
+        if (encryptEnabled) {
+            if (!StringUtils.hasText(request.getEncryptedPassword())) {
+                throw new IllegalArgumentException("密码密文不能为空");
+            }
+            return passwordCryptoService.decrypt(request.getEncryptedPassword(), null);
+        }
+        if (!StringUtils.hasText(request.getPassword())) {
             throw new IllegalArgumentException("密码不能为空");
         }
+        return request.getPassword();
     }
 
     /**
@@ -227,6 +237,8 @@ public class AuthController {
         /** 密码，用户名密码登录必填。 */
         @Size(max = 128, message = "密码长度过长")
         private String password;
+        /** 密码密文（Base64 AES/GCM），当启用密码传输加密时必填。 */
+        private String encryptedPassword;
 
         public LoginType getLoginType() {
             return loginType == null ? LoginType.SMS : loginType;
@@ -266,6 +278,14 @@ public class AuthController {
 
         public void setPassword(String password) {
             this.password = password;
+        }
+
+        public String getEncryptedPassword() {
+            return encryptedPassword;
+        }
+
+        public void setEncryptedPassword(String encryptedPassword) {
+            this.encryptedPassword = encryptedPassword;
         }
     }
 
