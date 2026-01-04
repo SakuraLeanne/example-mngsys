@@ -63,7 +63,7 @@ public class PortalProfileService {
         if (status == null || status != 1) {
             return ProfileResult.failure(ErrorCode.USER_DISABLED);
         }
-        return ProfileResult.success(user.getRealName(), user.getMobile(), user.getEmail());
+        return ProfileResult.success(user.getId(), user.getUsername(), user.getRealName(), user.getMobile(), user.getEmail(), status);
     }
 
     @Transactional
@@ -188,24 +188,31 @@ public class PortalProfileService {
     public static class ProfileResult {
         private final boolean success;
         private final ErrorCode errorCode;
+        private final String userId;
+        private final String username;
         private final String realName;
         private final String mobile;
         private final String email;
+        private final Integer status;
 
-        private ProfileResult(boolean success, ErrorCode errorCode, String realName, String mobile, String email) {
+        private ProfileResult(boolean success, ErrorCode errorCode, String userId, String username,
+                              String realName, String mobile, String email, Integer status) {
             this.success = success;
             this.errorCode = errorCode;
+            this.userId = userId;
+            this.username = username;
             this.realName = realName;
             this.mobile = mobile;
             this.email = email;
+            this.status = status;
         }
 
-        public static ProfileResult success(String realName, String mobile, String email) {
-            return new ProfileResult(true, null, realName, mobile, email);
+        public static ProfileResult success(String userId, String username, String realName, String mobile, String email, Integer status) {
+            return new ProfileResult(true, null, userId, username, realName, mobile, email, status);
         }
 
         public static ProfileResult failure(ErrorCode errorCode) {
-            return new ProfileResult(false, errorCode, null, null, null);
+            return new ProfileResult(false, errorCode, null, null, null, null, null, null);
         }
 
         public boolean isSuccess() {
@@ -214,6 +221,14 @@ public class PortalProfileService {
 
         public ErrorCode getErrorCode() {
             return errorCode;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public String getUsername() {
+            return username;
         }
 
         public String getRealName() {
@@ -226,6 +241,10 @@ public class PortalProfileService {
 
         public String getEmail() {
             return email;
+        }
+
+        public Integer getStatus() {
+            return status;
         }
     }
 

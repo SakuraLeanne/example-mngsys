@@ -8,6 +8,7 @@ import com.example.mngsys.portal.service.PortalActionService;
 import com.example.mngsys.portal.service.PortalAuthService;
 import com.example.mngsys.portal.service.PortalPasswordService;
 import com.example.mngsys.portal.service.PortalProfileService;
+import com.example.mngsys.portal.service.PortalUserService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Optional;
 
@@ -54,6 +56,10 @@ public class PortalApiController {
      */
     private final PortalProfileService portalProfileService;
     /**
+     * 用户基础信息服务。
+     */
+    private final PortalUserService portalUserService;
+    /**
      * 鉴权服务客户端，用于短信发送。
      */
     private final AuthClient authClient;
@@ -70,11 +76,13 @@ public class PortalApiController {
                                PortalActionService portalActionService,
                                PortalPasswordService portalPasswordService,
                                PortalProfileService portalProfileService,
+                               PortalUserService portalUserService,
                                AuthClient authClient) {
         this.portalAuthService = portalAuthService;
         this.portalActionService = portalActionService;
         this.portalPasswordService = portalPasswordService;
         this.portalProfileService = portalProfileService;
+        this.portalUserService = portalUserService;
         this.authClient = authClient;
     }
 
@@ -134,12 +142,29 @@ public class PortalApiController {
     /**
      * 查询当前登录用户基本信息。
      *
-     * @return 当前用户 ID
+     * @return 当前用户基础信息
      */
     @GetMapping("/me")
     public ApiResponse<MeResponse> me() {
         String userId = RequestContext.getUserId();
-        return ApiResponse.success(new MeResponse(userId));
+        if (userId == null) {
+            return ApiResponse.failure(ErrorCode.UNAUTHENTICATED);
+        }
+        com.example.mngsys.portal.entity.PortalUser user = portalUserService.getById(userId);
+        if (user == null) {
+            return ApiResponse.failure(ErrorCode.NOT_FOUND);
+        }
+        Integer status = user.getStatus();
+        if (!Objects.equals(status, 1)) {
+            return ApiResponse.failure(ErrorCode.USER_DISABLED);
+        }
+        MeResponse response = new MeResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getMobile(),
+                user.getEmail(),
+                status);
+        return ApiResponse.success(response);
     }
 
     /**
@@ -214,7 +239,13 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        ProfileResponse response = new ProfileResponse(result.getRealName(), result.getMobile(), result.getEmail());
+        ProfileResponse response = new ProfileResponse(
+                result.getUserId(),
+                result.getUsername(),
+                result.getRealName(),
+                result.getMobile(),
+                result.getEmail(),
+                result.getStatus());
         return ApiResponse.success(response);
     }
 
@@ -590,6 +621,14 @@ public class PortalApiController {
      */
     public static class ProfileResponse {
         /**
+         * 用户 ID。
+         */
+        private final String userId;
+        /**
+         * 用户名。
+         */
+        private final String username;
+        /**
          * 真实姓名。
          */
         private final String realName;
@@ -601,11 +640,26 @@ public class PortalApiController {
          * 邮箱。
          */
         private final String email;
+        /**
+         * 用户状态。
+         */
+        private final Integer status;
 
-        public ProfileResponse(String realName, String mobile, String email) {
+        public ProfileResponse(String userId, String username, String realName, String mobile, String email, Integer status) {
+            this.userId = userId;
+            this.username = username;
             this.realName = realName;
             this.mobile = mobile;
             this.email = email;
+            this.status = status;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public String getUsername() {
+            return username;
         }
 
         public String getRealName() {
@@ -618,6 +672,10 @@ public class PortalApiController {
 
         public String getEmail() {
             return email;
+        }
+
+        public Integer getStatus() {
+            return status;
         }
     }
 
@@ -690,13 +748,49 @@ public class PortalApiController {
          * 用户 ID。
          */
         private final String userId;
+        /**
+         * 用户名。
+         */
+        private final String username;
+        /**
+         * 手机号。
+         */
+        private final String mobile;
+        /**
+         * 邮箱。
+         */
+        private final String email;
+        /**
+         * 用户状态。
+         */
+        private final Integer status;
 
-        public MeResponse(String userId) {
+        public MeResponse(String userId, String username, String mobile, String email, Integer status) {
             this.userId = userId;
+            this.username = username;
+            this.mobile = mobile;
+            this.email = email;
+            this.status = status;
         }
 
         public String getUserId() {
             return userId;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getMobile() {
+            return mobile;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public Integer getStatus() {
+            return status;
         }
     }
 
