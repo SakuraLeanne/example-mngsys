@@ -38,8 +38,9 @@ public class SmsCodeService {
      * 生成并发送短信验证码。
      *
      * @param mobile 手机号
+     * @param scene  模板场景
      */
-    public void sendCode(String mobile) {
+    public void sendCode(String mobile, TemplateScene scene) {
         guardSendFrequency(mobile);
         String code = generateCode(authProperties.getSms().getCodeLength());
         Duration ttl = Duration.ofSeconds(authProperties.getSms().getTtlSeconds());
@@ -47,7 +48,14 @@ public class SmsCodeService {
         stringRedisTemplate.opsForValue().set(buildSendGuardKey(mobile), "1",
                 authProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
         System.out.println("================= 短信验证码 : "+code+" ================= ");
-//        aliyunSendMsgUtils.sendCode(mobile, code);
+//        aliyunSendMsgUtils.sendCode(mobile, code, resolveTemplateCode(scene));
+    }
+
+    /**
+     * 默认登录场景的短信验证码发送入口，兼容旧调用。
+     */
+    public void sendCode(String mobile) {
+        sendCode(mobile, TemplateScene.LOGIN);
     }
 
     /**
@@ -89,5 +97,37 @@ public class SmsCodeService {
 
     private String buildSendGuardKey(String mobile) {
         return SEND_GUARD_PREFIX + mobile;
+    }
+
+    private String resolveTemplateCode(TemplateScene scene) {
+        AuthProperties.SmsProperties.TemplateCodeProperties templateCode = authProperties.getSms().getTemplateCode();
+        if (templateCode == null) {
+            throw new IllegalStateException("短信模板未配置");
+        }
+        String resolved;
+        switch (scene) {
+            case LOGIN:
+                resolved = templateCode.getLoginVerificationCode();
+                if (!StringUtils.hasText(resolved)) {
+                    resolved = templateCode.getVerificationCode();
+                }
+                break;
+            case VERIFICATION:
+            default:
+                resolved = templateCode.getVerificationCode();
+                if (!StringUtils.hasText(resolved)) {
+                    resolved = templateCode.getLoginVerificationCode();
+                }
+                break;
+        }
+        if (!StringUtils.hasText(resolved)) {
+            throw new IllegalStateException("短信模板未配置");
+        }
+        return resolved;
+    }
+
+    public enum TemplateScene {
+        LOGIN,
+        VERIFICATION
     }
 }

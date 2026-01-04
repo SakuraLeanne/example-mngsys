@@ -35,15 +35,16 @@ public class AliyunSendMsgUtils {
      *
      * @param mobile 接收手机号
      * @param code   验证码
+     * @param templateCode 短信模板编码
      */
-    public void sendCode(String mobile, String code) {
+    public void sendCode(String mobile, String code, String templateCode) {
         Map<String, String> templateParams = new HashMap<>();
         templateParams.put("code", code);
         try {
             SendSmsRequest request = new SendSmsRequest()
                     .setPhoneNumbers(mobile)
                     .setSignName(smsProperties.getSignName())
-                    .setTemplateCode(smsProperties.getTemplateCode())
+                    .setTemplateCode(templateCode)
                     .setTemplateParam(Common.toJSONString(templateParams));
             smsClient.sendSms(request);
         } catch (Exception ex) {
