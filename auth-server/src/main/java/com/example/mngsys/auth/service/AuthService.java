@@ -114,6 +114,18 @@ public class AuthService {
         authUserMapper.insert(authUser);
     }
 
+    public void resetPasswordByMobile(String mobile, String rawPassword) {
+        AuthUser authUser = findByMobile(mobile);
+        if (authUser == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        validateUserStatus(authUser);
+        String encoded = passwordEncoder.encode(rawPassword);
+        authUser.setPassword(encoded);
+        authUser.setUpdateTime(LocalDateTime.now());
+        authUserMapper.updateById(authUser);
+    }
+
     private void validateUserStatus(AuthUser authUser) {
         Integer status = authUser.getStatus();
         if (status == null || status == 0) {
