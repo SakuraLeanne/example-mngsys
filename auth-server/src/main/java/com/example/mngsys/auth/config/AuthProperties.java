@@ -218,6 +218,10 @@ public class AuthProperties {
     public static class PasswordResetProperties {
         /** 重置令牌有效期（秒）。 */
         private long tokenTtlSeconds = 600;
+        /** 重置令牌发放频控（秒）。 */
+        private long issueIntervalSeconds = 60;
+        /** 令牌校验最大失败次数。 */
+        private int maxVerifyFailures = 5;
 
         public long getTokenTtlSeconds() {
             return tokenTtlSeconds;
@@ -225,6 +229,22 @@ public class AuthProperties {
 
         public void setTokenTtlSeconds(long tokenTtlSeconds) {
             this.tokenTtlSeconds = tokenTtlSeconds;
+        }
+
+        public long getIssueIntervalSeconds() {
+            return issueIntervalSeconds;
+        }
+
+        public void setIssueIntervalSeconds(long issueIntervalSeconds) {
+            this.issueIntervalSeconds = issueIntervalSeconds;
+        }
+
+        public int getMaxVerifyFailures() {
+            return maxVerifyFailures;
+        }
+
+        public void setMaxVerifyFailures(int maxVerifyFailures) {
+            this.maxVerifyFailures = maxVerifyFailures;
         }
     }
 

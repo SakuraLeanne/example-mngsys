@@ -53,6 +53,7 @@ public class AuthService {
         if (!StringUtils.hasText(authUser.getPassword()) || !passwordEncoder.matches(password, authUser.getPassword())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
+        upgradePasswordHashIfNeeded(authUser, password);
         return toUser(authUser);
     }
 
@@ -124,6 +125,28 @@ public class AuthService {
         authUser.setPassword(encoded);
         authUser.setUpdateTime(LocalDateTime.now());
         authUserMapper.updateById(authUser);
+    }
+
+    /**
+     * 登录成功后自动升级为默认算法哈希（如从 bcrypt 迁移到 argon2）。
+     */
+    private void upgradePasswordHashIfNeeded(AuthUser authUser, String rawPassword) {
+        String encoded = authUser.getPassword();
+        if (!StringUtils.hasText(encoded)) {
+            return;
+        }
+        if (encoded.startsWith("{argon2}")) {
+            return;
+        }
+        try {
+            String rehashed = passwordEncoder.encode(rawPassword);
+            authUser.setPassword(rehashed);
+            authUser.setUpdateTime(LocalDateTime.now());
+            authUserMapper.updateById(authUser);
+            log.info("Upgraded password hash algorithm for user {}", authUser.getId());
+        } catch (Exception ex) {
+            log.warn("Skip upgrading password hash for user {}: {}", authUser.getId(), ex.getMessage());
+        }
     }
 
     private void validateUserStatus(AuthUser authUser) {
