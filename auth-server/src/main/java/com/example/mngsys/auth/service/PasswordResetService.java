@@ -1,5 +1,7 @@
 package com.example.mngsys.auth.service;
 
+import com.example.mngsys.auth.common.api.ErrorCode;
+import com.example.mngsys.auth.common.exception.LocalizedBusinessException;
 import com.example.mngsys.auth.config.AuthProperties;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -61,21 +63,37 @@ public class PasswordResetService {
      */
     public void resetPassword(String mobile, String token, String password) {
         if (!StringUtils.hasText(mobile) || !StringUtils.hasText(token)) {
-            throw new IllegalArgumentException("重置信息不完整");
+            throw new LocalizedBusinessException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "error.reset.incomplete",
+                    "重置信息不完整，请重试"
+            );
         }
         if (exceedFailureLimit(mobile)) {
-            throw new IllegalArgumentException("重置失败次数过多，请重新获取验证码");
+            throw new LocalizedBusinessException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "error.reset.too-many-failures",
+                    "重置失败次数过多，请重新获取验证码"
+            );
         }
         String resetKey = buildResetKey(mobile);
         String cached = stringRedisTemplate.opsForValue().get(resetKey);
         if (!StringUtils.hasText(cached)) {
-            throw new IllegalArgumentException("重置令牌已失效");
+            throw new LocalizedBusinessException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "error.reset.token.expired",
+                    "重置令牌已失效，请重新获取验证码"
+            );
         }
         String inputHash = hash(token);
         if (!MessageDigest.isEqual(inputHash.getBytes(java.nio.charset.StandardCharsets.UTF_8),
                 cached.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             incrementFailure(mobile, resetKey);
-            throw new IllegalArgumentException("重置令牌不匹配");
+            throw new LocalizedBusinessException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "error.reset.token.mismatch",
+                    "重置验证失败，请重新获取验证码"
+            );
         }
         authService.resetPasswordByMobile(mobile, password);
         stringRedisTemplate.delete(resetKey);
@@ -97,7 +115,11 @@ public class PasswordResetService {
     private void guardIssueFrequency(String mobile) {
         String guardKey = buildGuardKey(mobile);
         if (StringUtils.hasText(stringRedisTemplate.opsForValue().get(guardKey))) {
-            throw new IllegalArgumentException("请求过于频繁，请稍后再试");
+            throw new LocalizedBusinessException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "error.request.too-frequent",
+                    "请求过于频繁，请稍后再试"
+            );
         }
     }
 
