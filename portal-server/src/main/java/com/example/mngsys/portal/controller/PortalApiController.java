@@ -130,13 +130,7 @@ public class PortalApiController {
     @PostMapping("/sms/send")
     public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
         ApiResponse<Void> resp = authClient.sendLoginSms(request.getMobile());
-        if (resp == null) {
-            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "短信服务无响应");
-        }
-        if (resp.getCode() != 0) {
-            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
-        }
-        return ApiResponse.success(null);
+        return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
 
     /**
@@ -148,13 +142,7 @@ public class PortalApiController {
     @PostMapping("/password/forgot/send")
     public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody SmsSendRequest request) {
         ApiResponse<Void> resp = authClient.sendForgotPasswordSms(request.getMobile());
-        if (resp == null) {
-            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "短信服务无响应");
-        }
-        if (resp.getCode() != 0) {
-            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
-        }
-        return ApiResponse.success(null);
+        return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
 
     /**
@@ -164,15 +152,12 @@ public class PortalApiController {
      * @return 重置令牌
      */
     @PostMapping("/password/forgot/verify")
-    public ApiResponse<ForgotPasswordVerifyResponse> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
+    public ApiResponse<?> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
         ApiResponse<AuthClient.ResetTokenResponse> resp = authClient.verifyForgotPassword(request.getMobile(), request.getCode());
         if (resp == null) {
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
         }
-        if (resp.getCode() != 0 || resp.getData() == null) {
-            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
-        }
-        return ApiResponse.success(new ForgotPasswordVerifyResponse(resp.getData().getResetToken()));
+        return resp;
     }
 
     /**
@@ -182,19 +167,13 @@ public class PortalApiController {
      * @return 重置结果
      */
     @PostMapping("/password/forgot/reset")
-    public ApiResponse<ForgotPasswordResetResponse> resetForgotPassword(@Valid @RequestBody ForgotPasswordResetRequest request) {
+    public ApiResponse<?> resetForgotPassword(@Valid @RequestBody ForgotPasswordResetRequest request) {
         ApiResponse<Void> resp = authClient.resetForgotPassword(
                 request.getMobile(),
                 request.getResetToken(),
                 request.getEncryptedPassword(),
                 request.getNewPassword());
-        if (resp == null) {
-            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
-        }
-        if (resp.getCode() != 0) {
-            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, resp.getMessage());
-        }
-        return ApiResponse.success(new ForgotPasswordResetResponse(true));
+        return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
 
     /**
@@ -628,30 +607,6 @@ public class PortalApiController {
 
         public void setNewPassword(String newPassword) {
             this.newPassword = newPassword;
-        }
-    }
-
-    public static class ForgotPasswordVerifyResponse {
-        private final String resetToken;
-
-        public ForgotPasswordVerifyResponse(String resetToken) {
-            this.resetToken = resetToken;
-        }
-
-        public String getResetToken() {
-            return resetToken;
-        }
-    }
-
-    public static class ForgotPasswordResetResponse {
-        private final boolean success;
-
-        public ForgotPasswordResetResponse(boolean success) {
-            this.success = success;
-        }
-
-        public boolean isSuccess() {
-            return success;
         }
     }
 
