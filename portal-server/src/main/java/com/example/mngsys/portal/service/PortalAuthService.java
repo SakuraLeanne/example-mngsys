@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.service;
 
+import com.example.mngsys.common.feign.dto.AuthLoginResponse;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.exception.InvalidReturnUrlException;
@@ -56,8 +57,8 @@ public class PortalAuthService {
      * 登录操作，必要时生成单点登录跳转地址。
      */
     public LoginResult login(String mobile, String code, String systemCode, String returnUrl) {
-        ResponseEntity<ApiResponse> response = authClient.loginWithResponse(mobile, code);
-        ApiResponse body = response == null ? null : response.getBody();
+        ResponseEntity<ApiResponse<AuthLoginResponse>> response = authClient.loginWithResponse(mobile, code);
+        ApiResponse<AuthLoginResponse> body = response == null ? null : response.getBody();
         LoginResult result = new LoginResult(body, response);
         if (body != null && body.getCode() == 0 && StringUtils.hasText(systemCode) && StringUtils.hasText(returnUrl)) {
             String jumpUrl = createSsoJumpUrl(extractUserId(body.getData()), systemCode, returnUrl);
@@ -159,6 +160,10 @@ public class PortalAuthService {
      * 从登录返回中解析用户 ID。
      */
     private String extractUserId(Object data) {
+        if (data instanceof AuthLoginResponse) {
+            String userId = ((AuthLoginResponse) data).getUserId();
+            return StringUtils.hasText(userId) ? userId : null;
+        }
         if (data instanceof Map) {
             Object value = ((Map<?, ?>) data).get("userId");
             if (value != null) {
@@ -174,24 +179,24 @@ public class PortalAuthService {
      */
     public static class LoginResult {
         /** 登录响应体。 */
-        private final ApiResponse responseBody;
+        private final ApiResponse<?> responseBody;
         /** 原始 ResponseEntity。 */
-        private final ResponseEntity<ApiResponse> responseEntity;
+        private final ResponseEntity<? extends ApiResponse<?>> responseEntity;
         /** 单点登录跳转地址。 */
         private String jumpUrl;
 
-        public LoginResult(ApiResponse responseBody, ResponseEntity<ApiResponse> responseEntity) {
+        public LoginResult(ApiResponse<?> responseBody, ResponseEntity<? extends ApiResponse<?>> responseEntity) {
             this.responseBody = responseBody;
             this.responseEntity = responseEntity;
         }
 
         /** 获取响应体。 */
-        public ApiResponse getResponseBody() {
+        public ApiResponse<?> getResponseBody() {
             return responseBody;
         }
 
         /** 获取 ResponseEntity。 */
-        public ResponseEntity<ApiResponse> getResponseEntity() {
+        public ResponseEntity<? extends ApiResponse<?>> getResponseEntity() {
             return responseEntity;
         }
 

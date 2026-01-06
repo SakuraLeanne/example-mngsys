@@ -100,14 +100,14 @@ public class PortalApiController {
                 request.getCode(),
                 request.getSystemCode(),
                 request.getReturnUrl());
-        ResponseEntity<ApiResponse> authResponse = loginResult.getResponseEntity();
+        ResponseEntity<? extends ApiResponse<?>> authResponse = loginResult.getResponseEntity();
         if (authResponse != null) {
             List<String> setCookies = authResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
             if (setCookies != null) {
                 setCookies.forEach(cookie -> response.addHeader(HttpHeaders.SET_COOKIE, cookie));
             }
         }
-        ApiResponse authBody = loginResult.getResponseBody();
+        ApiResponse<?> authBody = loginResult.getResponseBody();
         if (authBody == null) {
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
         }
@@ -153,7 +153,7 @@ public class PortalApiController {
      */
     @PostMapping("/password/forgot/verify")
     public ApiResponse<?> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
-        ApiResponse<AuthClient.ResetTokenResponse> resp = authClient.verifyForgotPassword(request.getMobile(), request.getCode());
+        ApiResponse<?> resp = authClient.verifyForgotPassword(request.getMobile(), request.getCode());
         if (resp == null) {
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
         }
