@@ -90,9 +90,9 @@ public class AuthClient {
                 });
     }
 
-    public ApiResponse<AuthResetTokenResponse> verifyForgotPassword(String mobile, String code) {
+    public ApiResponse<ResetTokenResponse> verifyForgotPassword(String mobile, String code) {
         return parseResponseBody(authFeignClient.verifyForgotPassword(new AuthSmsVerifyRequest(mobile, code)),
-                new TypeReference<ApiResponse<AuthResetTokenResponse>>() {
+                new TypeReference<ApiResponse<ResetTokenResponse>>() {
                 });
     }
 
@@ -194,5 +194,11 @@ public class AuthClient {
             }
         });
         return httpHeaders;
+    }
+
+    /**
+     * 保持向后兼容的重置令牌返回对象，继承自共享 DTO。
+     */
+    public static class ResetTokenResponse extends AuthResetTokenResponse {
     }
 }
