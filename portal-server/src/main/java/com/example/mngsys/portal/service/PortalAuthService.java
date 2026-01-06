@@ -72,7 +72,7 @@ public class PortalAuthService {
     /**
      * 调用认证中心登出接口。
      */
-    public ResponseEntity<ApiResponse> logout(String cookie) {
+    public ResponseEntity<ApiResponse<Void>> logout(String cookie) {
         return authClient.logoutWithResponse(cookie);
     }
 

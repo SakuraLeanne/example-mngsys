@@ -69,8 +69,8 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
             writeUnauthorized(response);
             return false;
         }
-        ResponseEntity<ApiResponse> authResponse = authClient.sessionMe(cookie);
-        ApiResponse body = authResponse == null ? null : authResponse.getBody();
+        ResponseEntity<ApiResponse<AuthSessionResponse>> authResponse = authClient.sessionMe(cookie);
+        ApiResponse<AuthSessionResponse> body = authResponse == null ? null : authResponse.getBody();
         if (body == null || body.getCode() != 0 || body.getData() == null) {
             writeUnauthorized(response);
             return false;

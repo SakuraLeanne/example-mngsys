@@ -232,7 +232,7 @@ public class PortalApiController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         String cookie = request.getHeader(HttpHeaders.COOKIE);
-        ResponseEntity<ApiResponse> authResponse = portalAuthService.logout(cookie);
+        ResponseEntity<ApiResponse<Void>> authResponse = portalAuthService.logout(cookie);
         if (authResponse != null) {
             List<String> setCookies = authResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
             if (setCookies != null) {
