@@ -1,10 +1,11 @@
 package com.example.mngsys.portal.security;
 
+import com.example.mngsys.common.feign.dto.AuthSessionResponse;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
-import com.example.mngsys.portal.config.GatewaySecurityProperties;
+import com.example.mngsys.common.gateway.GatewaySecurityProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -68,8 +69,8 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
             writeUnauthorized(response);
             return false;
         }
-        ResponseEntity<ApiResponse> authResponse = authClient.sessionMe(cookie);
-        ApiResponse body = authResponse == null ? null : authResponse.getBody();
+        ResponseEntity<ApiResponse<AuthSessionResponse>> authResponse = authClient.sessionMe(cookie);
+        ApiResponse<AuthSessionResponse> body = authResponse == null ? null : authResponse.getBody();
         if (body == null || body.getCode() != 0 || body.getData() == null) {
             writeUnauthorized(response);
             return false;
@@ -172,8 +173,8 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
     }
 
     private String extractUserId(Object data) {
-        if (data instanceof AuthClient.SessionResponse) {
-            return ((AuthClient.SessionResponse) data).getUserId();
+        if (data instanceof AuthSessionResponse) {
+            return ((AuthSessionResponse) data).getUserId();
         }
         if (data instanceof Map) {
             Object value = ((Map<?, ?>) data).get("userId");

@@ -1,4 +1,4 @@
-package com.example.mngsys.gateway.config;
+package com.example.mngsys.common.gateway;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * GatewaySecurityProperties。
  * <p>
- * 网关安全配置属性，主要包含接口白名单。
+ * 网关与门户共用的接口白名单配置，集中在 common-utils 统一维护。
  * </p>
  */
 @ConfigurationProperties(prefix = "gateway.security")
