@@ -8,23 +8,35 @@ import com.example.mngsys.auth.service.AuthService;
 import com.example.mngsys.auth.service.PasswordCryptoService;
 import com.example.mngsys.auth.service.PasswordResetService;
 import com.example.mngsys.auth.service.SmsCodeService;
+import com.example.mngsys.common.feign.dto.AuthKickRequest;
+import com.example.mngsys.common.feign.dto.AuthLoginRequest;
+import com.example.mngsys.common.feign.dto.AuthLoginResponse;
+import com.example.mngsys.common.feign.dto.AuthLoginType;
+import com.example.mngsys.common.feign.dto.AuthPasswordResetRequest;
+import com.example.mngsys.common.feign.dto.AuthResetTokenResponse;
+import com.example.mngsys.common.feign.dto.AuthSessionResponse;
+import com.example.mngsys.common.feign.dto.AuthSmsScene;
+import com.example.mngsys.common.feign.dto.AuthSmsSendRequest;
+import com.example.mngsys.common.feign.dto.AuthSmsVerifyRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 @RestController
 @Validated
+@RequestMapping("/auth-server")
 /**
  * AuthController。
  * <p>
@@ -33,6 +45,8 @@ import javax.validation.constraints.Size;
  * </p>
  */
 public class AuthController {
+
+    private static final DateTimeFormatter LOGIN_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 认证业务服务，负责用户身份校验。
@@ -75,8 +89,8 @@ public class AuthController {
      * @return 发送结果
      */
     @PostMapping("/login/sms/send")
-    public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
-        smsCodeService.sendCode(request.getMobile(), request.getSceneOrDefault());
+    public ApiResponse<Void> sendSms(@Valid @RequestBody AuthSmsSendRequest request) {
+        smsCodeService.sendCode(request.getMobile(), convertScene(request.getSceneOrDefault()));
         return ApiResponse.success(null);
     }
 
@@ -87,7 +101,7 @@ public class AuthController {
      * @return 校验结果
      */
     @PostMapping("/login/sms/verify")
-    public ApiResponse<Void> verifySms(@Valid @RequestBody SmsVerifyRequest request) {
+    public ApiResponse<Void> verifySms(@Valid @RequestBody AuthSmsVerifyRequest request) {
         smsCodeService.verifyCode(request.getMobile(), request.getCode());
         return ApiResponse.success(null);
     }
@@ -99,7 +113,7 @@ public class AuthController {
      * @return 发送结果
      */
     @PostMapping("/password/forgot/send")
-    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody SmsSendRequest request) {
+    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody AuthSmsSendRequest request) {
         smsCodeService.sendCode(request.getMobile(), SmsCodeService.TemplateScene.VERIFICATION);
         return ApiResponse.success(null);
     }
@@ -111,10 +125,13 @@ public class AuthController {
      * @return 重置令牌
      */
     @PostMapping("/password/forgot/verify")
-    public ApiResponse<ResetTokenResponse> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
+    public ApiResponse<AuthResetTokenResponse> verifyForgotPassword(@Valid @RequestBody AuthSmsVerifyRequest request) {
         smsCodeService.verifyCode(request.getMobile(), request.getCode());
         String token = passwordResetService.issueResetToken(request.getMobile());
-        return ApiResponse.success(new ResetTokenResponse(token));
+        AuthResetTokenResponse response = new AuthResetTokenResponse();
+        response.setResetToken(token);
+        response.setMobile(request.getMobile());
+        return ApiResponse.success(response);
     }
 
     /**
@@ -124,7 +141,7 @@ public class AuthController {
      * @return 重置结果
      */
     @PostMapping("/password/forgot/reset")
-    public ApiResponse<Void> resetForgotPassword(@Valid @RequestBody PasswordResetRequest request) {
+    public ApiResponse<Void> resetForgotPassword(@Valid @RequestBody AuthPasswordResetRequest request) {
         String decryptedPassword = passwordCryptoService.decrypt(request.getEncryptedPassword(), request.getNewPassword());
         passwordResetService.resetPassword(request.getMobile(), request.getResetToken(), decryptedPassword);
         return ApiResponse.success(null);
@@ -137,8 +154,8 @@ public class AuthController {
      * @return 携带用户基本信息的成功响应
      */
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginType loginType = request.getLoginType();
+    public ApiResponse<AuthLoginResponse> login(@Valid @RequestBody AuthLoginRequest request) {
+        AuthLoginType loginType = request.getLoginTypeOrDefault();
         AuthService.User user;
         switch (loginType) {
             case SMS:
@@ -155,16 +172,18 @@ public class AuthController {
                 throw new IllegalArgumentException("不支持的登录方式");
         }
         StpUtil.login(user.getUserId());
-        return ApiResponse.success(new LoginResponse(
-                user.getUserId(),
-                user.getUsername(),
-                user.getMobile(),
-                user.getRealName(),
-                StpUtil.getTokenValue(),
-                StpUtil.getSession().getCreateTime()));
+        long loginTime = StpUtil.getSession().getCreateTime();
+        AuthLoginResponse response = new AuthLoginResponse();
+        response.setUserId(user.getUserId());
+        response.setUsername(user.getUsername());
+        response.setMobile(user.getMobile());
+        response.setRealName(user.getRealName());
+        response.setSatoken(StpUtil.getTokenValue());
+        response.setLoginTime(formatLoginTime(loginTime));
+        return ApiResponse.success(response);
     }
 
-    private String resolvePasswordPayload(LoginRequest request) {
+    private String resolvePasswordPayload(AuthLoginRequest request) {
         if (!StringUtils.hasText(request.getUsername())) {
             throw new IllegalArgumentException("用户名不能为空");
         }
@@ -199,10 +218,10 @@ public class AuthController {
      * @return 包含用户 ID 的会话信息
      */
     @GetMapping("/session-info")
-    public ApiResponse<SessionResponse> sessionMe() {
+    public ApiResponse<AuthSessionResponse> sessionMe() {
         StpUtil.checkLogin();
         String userId = String.valueOf(StpUtil.getLoginId());
-        return ApiResponse.success(new SessionResponse(userId));
+        return ApiResponse.success(new AuthSessionResponse(userId));
     }
 
     /**
@@ -215,7 +234,7 @@ public class AuthController {
     @PostMapping("/session/kick")
     public ResponseEntity<ApiResponse<Void>> kickSession(
             @RequestHeader(value = "X-Internal-Token", required = false) String internalToken,
-            @Valid @RequestBody KickRequest request) {
+            @Valid @RequestBody AuthKickRequest request) {
         if (internalToken == null || !internalToken.equals(authProperties.getInternalToken())) {
             return ResponseEntity.status(ErrorCode.UNAUTHENTICATED.getHttpStatus())
                     .body(ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "内部鉴权失败"));
@@ -224,262 +243,19 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    public static class LoginRequest {
-        /** 登录方式，默认为短信验证码登录。 */
-        private LoginType loginType = LoginType.SMS;
-        /** 手机号，短信登录必填。 */
-        private String mobile;
-        /** 短信验证码，短信登录必填。 */
-        private String code;
-        /** 用户名，用户名密码登录必填。 */
-        private String username;
-        /** 密码，用户名密码登录必填。 */
-        @Size(max = 128, message = "密码长度过长")
-        private String password;
-        /** 密码密文（Base64 AES/GCM），当启用密码传输加密时必填。 */
-        private String encryptedPassword;
-
-        public LoginType getLoginType() {
-            return loginType == null ? LoginType.SMS : loginType;
-        }
-
-        public void setLoginType(LoginType loginType) {
-            this.loginType = loginType;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public void setCode(String code) {
-            this.code = code;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        public String getEncryptedPassword() {
-            return encryptedPassword;
-        }
-
-        public void setEncryptedPassword(String encryptedPassword) {
-            this.encryptedPassword = encryptedPassword;
+    private SmsCodeService.TemplateScene convertScene(AuthSmsScene scene) {
+        AuthSmsScene resolved = scene == null ? AuthSmsScene.LOGIN : scene;
+        switch (resolved) {
+            case VERIFICATION:
+                return SmsCodeService.TemplateScene.VERIFICATION;
+            case LOGIN:
+            default:
+                return SmsCodeService.TemplateScene.LOGIN;
         }
     }
 
-    public static class LoginResponse {
-        /** 用户 ID。 */
-        private final String userId;
-        /** 用户名。 */
-        private final String username;
-        /** 手机号。 */
-        private final String mobile;
-        /** 真实姓名。 */
-        private final String realName;
-        /** Sa-Token。 */
-        private final String satoken;
-        /** 登录时间戳。 */
-        private final long loginTime;
-
-        public LoginResponse(String userId, String username, String mobile, String realName, String satoken, long loginTime) {
-            this.userId = userId;
-            this.username = username;
-            this.mobile = mobile;
-            this.realName = realName;
-            this.satoken = satoken;
-            this.loginTime = loginTime;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public String getSatoken() {
-            return satoken;
-        }
-
-        public long getLoginTime() {
-            return loginTime;
-        }
-    }
-
-    public enum LoginType {
-        /** 手机号验证码登录。 */
-        SMS,
-        /** 用户名密码登录。 */
-        USERNAME_PASSWORD,
-        /** 二维码登录，预留扩展。 */
-        QR_CODE
-    }
-
-    public static class SessionResponse {
-        /** 当前会话对应的用户 ID。 */
-        private final String userId;
-
-        public SessionResponse(String userId) {
-            this.userId = userId;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-    }
-
-    public static class KickRequest {
-        /** 被踢出的用户 ID。 */
-        @NotNull(message = "用户ID不能为空")
-        private String userId;
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
-    }
-
-    public static class SmsSendRequest {
-        /** 手机号。 */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /** 短信场景。 */
-        private SmsCodeService.TemplateScene scene = SmsCodeService.TemplateScene.LOGIN;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public SmsCodeService.TemplateScene getScene() {
-            return scene;
-        }
-
-        public void setScene(SmsCodeService.TemplateScene scene) {
-            this.scene = scene;
-        }
-
-        public SmsCodeService.TemplateScene getSceneOrDefault() {
-            return scene == null ? SmsCodeService.TemplateScene.LOGIN : scene;
-        }
-    }
-
-    public static class SmsVerifyRequest {
-        /** 手机号。 */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /** 短信验证码。 */
-        @NotBlank(message = "验证码不能为空")
-        private String code;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public void setCode(String code) {
-            this.code = code;
-        }
-    }
-
-    public static class PasswordResetRequest {
-        /** 手机号。 */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /** 重置令牌。 */
-        @NotBlank(message = "重置令牌不能为空")
-        private String resetToken;
-        /** 密码密文（Base64 AES/GCM）。 */
-        private String encryptedPassword;
-        /** 明文密码（仅在未开启加密校验时生效）。 */
-        @Size(max = 128, message = "密码长度过长")
-        private String newPassword;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getResetToken() {
-            return resetToken;
-        }
-
-        public void setResetToken(String resetToken) {
-            this.resetToken = resetToken;
-        }
-
-        public String getEncryptedPassword() {
-            return encryptedPassword;
-        }
-
-        public void setEncryptedPassword(String encryptedPassword) {
-            this.encryptedPassword = encryptedPassword;
-        }
-
-        public String getNewPassword() {
-            return newPassword;
-        }
-
-        public void setNewPassword(String newPassword) {
-            this.newPassword = newPassword;
-        }
-    }
-
-    public static class ResetTokenResponse {
-        private final String resetToken;
-
-        public ResetTokenResponse(String resetToken) {
-            this.resetToken = resetToken;
-        }
-
-        public String getResetToken() {
-            return resetToken;
-        }
+    private String formatLoginTime(long loginTime) {
+        return LocalDateTime.ofInstant(Instant.ofEpochMilli(loginTime), ZoneId.systemDefault())
+                .format(LOGIN_TIME_FORMATTER);
     }
 }

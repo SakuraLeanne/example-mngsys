@@ -54,14 +54,12 @@ public class AuthClient {
         this.objectMapper = objectMapper;
     }
 
-    public ApiResponse<AuthLoginResponse> login(String mobile, String code) {
-        AuthLoginRequest request = new AuthLoginRequest(mobile, code);
+    public ApiResponse<AuthLoginResponse> login(AuthLoginRequest request) {
         return parseResponseBody(authFeignClient.login(request), new TypeReference<ApiResponse<AuthLoginResponse>>() {
         });
     }
 
-    public ResponseEntity<ApiResponse<AuthLoginResponse>> loginWithResponse(String mobile, String code) {
-        AuthLoginRequest request = new AuthLoginRequest(mobile, code);
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> loginWithResponse(AuthLoginRequest request) {
         return exchangeSafely(() -> authFeignClient.login(request),
                 new TypeReference<ApiResponse<AuthLoginResponse>>() {
                 });

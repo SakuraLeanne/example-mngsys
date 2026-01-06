@@ -9,7 +9,10 @@ public class AuthLoginResponse {
     private String mobile;
     private String realName;
     private String satoken;
-    private Long loginTime;
+    /**
+     * 登录时间（格式：yyyy-MM-dd HH:mm:ss）。
+     */
+    private String loginTime;
 
     public String getUserId() {
         return userId;
@@ -51,11 +54,11 @@ public class AuthLoginResponse {
         this.satoken = satoken;
     }
 
-    public Long getLoginTime() {
+    public String getLoginTime() {
         return loginTime;
     }
 
-    public void setLoginTime(Long loginTime) {
+    public void setLoginTime(String loginTime) {
         this.loginTime = loginTime;
     }
 }

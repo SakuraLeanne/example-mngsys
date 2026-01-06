@@ -4,6 +4,7 @@ package com.example.mngsys.common.feign.dto;
  * AuthKickRequest。
  */
 public class AuthKickRequest {
+    @javax.validation.constraints.NotNull(message = "用户ID不能为空")
     private String userId;
 
     public AuthKickRequest() {

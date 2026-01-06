@@ -1,6 +1,8 @@
 package com.example.mngsys.portal.service;
 
+import com.example.mngsys.common.feign.dto.AuthLoginRequest;
 import com.example.mngsys.common.feign.dto.AuthLoginResponse;
+import com.example.mngsys.common.portal.dto.PortalLoginRequest;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.exception.InvalidReturnUrlException;
@@ -56,10 +58,23 @@ public class PortalAuthService {
     /**
      * 登录操作，必要时生成单点登录跳转地址。
      */
-    public LoginResult login(String mobile, String code, String systemCode, String returnUrl) {
-        ResponseEntity<ApiResponse<AuthLoginResponse>> response = authClient.loginWithResponse(mobile, code);
+    public LoginResult login(PortalLoginRequest loginRequest) {
+        if (loginRequest == null) {
+            throw new IllegalArgumentException("登录请求不能为空");
+        }
+        AuthLoginRequest authLoginRequest = new AuthLoginRequest();
+        authLoginRequest.setLoginType(loginRequest.getLoginType());
+        authLoginRequest.setMobile(loginRequest.getMobile());
+        authLoginRequest.setCode(loginRequest.getCode());
+        authLoginRequest.setUsername(loginRequest.getUsername());
+        authLoginRequest.setPassword(loginRequest.getPassword());
+        authLoginRequest.setEncryptedPassword(loginRequest.getEncryptedPassword());
+
+        ResponseEntity<ApiResponse<AuthLoginResponse>> response = authClient.loginWithResponse(authLoginRequest);
         ApiResponse<AuthLoginResponse> body = response == null ? null : response.getBody();
         LoginResult result = new LoginResult(body, response);
+        String systemCode = loginRequest.getSystemCode();
+        String returnUrl = loginRequest.getReturnUrl();
         if (body != null && body.getCode() == 0 && StringUtils.hasText(systemCode) && StringUtils.hasText(returnUrl)) {
             String jumpUrl = createSsoJumpUrl(extractUserId(body.getData()), systemCode, returnUrl);
             result.setJumpUrl(jumpUrl);

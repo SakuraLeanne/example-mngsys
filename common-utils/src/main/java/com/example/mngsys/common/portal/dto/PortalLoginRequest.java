@@ -1,18 +1,14 @@
-package com.example.mngsys.common.feign.dto;
+package com.example.mngsys.common.portal.dto;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import com.example.mngsys.common.feign.dto.AuthLoginType;
+
 import javax.validation.constraints.Size;
 
 /**
- * AuthLoginRequest。
- * <p>
- * 统一的登录请求 DTO，支持短信验证码、用户名密码等方式。
- * </p>
+ * 门户登录请求。
  */
-public class AuthLoginRequest {
+public class PortalLoginRequest {
     /** 登录方式，默认为短信验证码登录。 */
-    @NotNull(message = "登录方式不能为空")
     private AuthLoginType loginType = AuthLoginType.SMS;
     /** 手机号，短信登录必填。 */
     private String mobile;
@@ -20,20 +16,15 @@ public class AuthLoginRequest {
     private String code;
     /** 用户名，用户名密码登录必填。 */
     private String username;
-    /** 密码，用户名密码登录必填。 */
+    /** 明文密码，用户名密码登录时可选。 */
     @Size(max = 128, message = "密码长度过长")
     private String password;
-    /** 密码密文（Base64 AES/GCM），当启用密码传输加密时必填。 */
+    /** 密码密文，启用前端加密时使用。 */
     private String encryptedPassword;
-
-    public AuthLoginRequest() {
-    }
-
-    public AuthLoginRequest(String mobile, String code) {
-        this.mobile = mobile;
-        this.code = code;
-        this.loginType = AuthLoginType.SMS;
-    }
+    /** 系统编码。 */
+    private String systemCode;
+    /** 登录成功后的返回地址。 */
+    private String returnUrl;
 
     public AuthLoginType getLoginType() {
         return loginType;
@@ -85,5 +76,21 @@ public class AuthLoginRequest {
 
     public void setEncryptedPassword(String encryptedPassword) {
         this.encryptedPassword = encryptedPassword;
+    }
+
+    public String getSystemCode() {
+        return systemCode;
+    }
+
+    public void setSystemCode(String systemCode) {
+        this.systemCode = systemCode;
+    }
+
+    public String getReturnUrl() {
+        return returnUrl;
+    }
+
+    public void setReturnUrl(String returnUrl) {
+        this.returnUrl = returnUrl;
     }
 }
