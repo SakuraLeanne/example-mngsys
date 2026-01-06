@@ -35,7 +35,7 @@ import java.util.Optional;
  * Portal 接口控制器，负责门户登录、个人资料、动作票据等与用户交互的接口入口。
  */
 @RestController
-@RequestMapping("/portal/api")
+//@RequestMapping("/portal/api")
 @Validated
 public class PortalApiController {
 
@@ -127,7 +127,7 @@ public class PortalApiController {
      * @param request 请求体
      * @return 发送结果
      */
-    @PostMapping("/sms/send")
+    @PostMapping("/login/sms/send")
     public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
         ApiResponse<Void> resp = authClient.sendLoginSms(request.getMobile());
         return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
@@ -181,7 +181,7 @@ public class PortalApiController {
      *
      * @return 当前用户基础信息
      */
-    @GetMapping("/me")
+    @GetMapping("/loginuser/session-info")
     public ApiResponse<MeResponse> me() {
         String userId = RequestContext.getUserId();
         if (userId == null) {

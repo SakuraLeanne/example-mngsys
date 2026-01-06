@@ -198,7 +198,7 @@ public class AuthController {
      *
      * @return 包含用户 ID 的会话信息
      */
-    @GetMapping("/login/session-info")
+    @GetMapping("/session-info")
     public ApiResponse<SessionResponse> sessionMe() {
         StpUtil.checkLogin();
         String userId = String.valueOf(StpUtil.getLoginId());

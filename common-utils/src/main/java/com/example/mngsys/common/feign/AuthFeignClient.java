@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
  * 以避免多处定义导致路径或模型不一致。
  * </p>
  */
-@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server/auth/api}")
+@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server}")
 public interface AuthFeignClient {
 
     /**
@@ -37,7 +37,7 @@ public interface AuthFeignClient {
      * @param request 短信请求
      * @return 原始响应
      */
-    @PostMapping("/sms/send")
+    @PostMapping("/login/sms/send")
     Response sendSms(@RequestBody AuthSmsSendRequest request);
 
     /**
@@ -46,7 +46,7 @@ public interface AuthFeignClient {
      * @param request 校验请求
      * @return 原始响应
      */
-    @PostMapping("/sms/verify")
+    @PostMapping("/login/sms/verify")
     Response verifySms(@RequestBody AuthSmsVerifyRequest request);
 
     /**
@@ -91,7 +91,7 @@ public interface AuthFeignClient {
      * @param cookie Cookie 头
      * @return 原始响应
      */
-    @GetMapping("/login/session-info")
+    @GetMapping("/session-info")
     Response sessionMe(@RequestHeader(value = "Cookie", required = false) String cookie);
 
     /**

@@ -47,7 +47,7 @@ public class SmsCodeService {
         stringRedisTemplate.opsForValue().set(buildCodeKey(mobile), code, ttl);
         stringRedisTemplate.opsForValue().set(buildSendGuardKey(mobile), "1",
                 authProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
-        System.out.println("================= 短信验证码 : "+code+" ================= ");
+        System.out.println("=================手机号 : "+mobile+", 短信验证码 : "+code+" ================= ");
 //        aliyunSendMsgUtils.sendCode(mobile, code, resolveTemplateCode(scene));
     }
 
