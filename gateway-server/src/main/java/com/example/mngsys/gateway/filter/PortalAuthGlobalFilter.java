@@ -1,7 +1,7 @@
 package com.example.mngsys.gateway.filter;
 
-import com.example.mngsys.gateway.client.AuthGatewayFeignClient;
-import com.example.mngsys.gateway.config.GatewaySecurityProperties;
+import com.example.mngsys.common.feign.AuthFeignClient;
+import com.example.mngsys.common.gateway.GatewaySecurityProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
@@ -35,7 +35,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
     /** 安全配置，包含白名单配置。 */
     private final GatewaySecurityProperties securityProperties;
     /** 调用认证服务的 Feign 客户端。 */
-    private final AuthGatewayFeignClient authGatewayFeignClient;
+    private final AuthFeignClient authFeignClient;
     /** JSON 序列化工具。 */
     private final ObjectMapper objectMapper;
     /** 路径匹配器，用于匹配白名单。 */
@@ -45,14 +45,14 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
      * 构造函数，注入依赖。
      *
      * @param securityProperties 安全配置项
-     * @param authGatewayFeignClient 认证服务 Feign 客户端
+     * @param authFeignClient 认证服务 Feign 客户端
      * @param objectMapper JSON 序列化工具
      */
     public PortalAuthGlobalFilter(GatewaySecurityProperties securityProperties,
-                                  AuthGatewayFeignClient authGatewayFeignClient,
+                                  AuthFeignClient authFeignClient,
                                   ObjectMapper objectMapper) {
         this.securityProperties = securityProperties;
-        this.authGatewayFeignClient = authGatewayFeignClient;
+        this.authFeignClient = authFeignClient;
         this.objectMapper = objectMapper;
     }
 
@@ -72,7 +72,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         }
         String cookie = exchange.getRequest().getHeaders().getFirst(HttpHeaders.COOKIE);
         String cookieHeader = cookie == null ? "" : cookie;
-        return Mono.fromCallable(() -> authGatewayFeignClient.sessionMe(cookieHeader))
+        return Mono.fromCallable(() -> authFeignClient.sessionMe(cookieHeader))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(response -> handleResponse(chain, exchange, response))
                 .onErrorResume(ex -> writeUnauthorized(exchange));
