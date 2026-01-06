@@ -42,7 +42,9 @@ mybatis-plus:
 
 portal:
   security:
-    allowedHosts: []
+    allowedHosts:
+      - biz-a.com
+      - biz-b.com
   sso:
     ticketTtlSeconds: 60
   ptk:

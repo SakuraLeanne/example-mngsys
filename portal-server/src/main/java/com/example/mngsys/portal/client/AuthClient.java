@@ -70,9 +70,9 @@ public class AuthClient {
         });
     }
 
-    public ApiResponse<Void> sendLoginSms(String mobile) {
+    public ApiResponse<String> sendLoginSms(String mobile) {
         return parseResponseBody(authFeignClient.sendSms(AuthSmsSendRequest.loginScene(mobile)),
-                new TypeReference<ApiResponse<Void>>() {
+                new TypeReference<ApiResponse<String>>() {
                 });
     }
 
@@ -82,9 +82,9 @@ public class AuthClient {
                 });
     }
 
-    public ApiResponse<Void> sendForgotPasswordSms(String mobile) {
+    public ApiResponse<String> sendForgotPasswordSms(String mobile) {
         return parseResponseBody(authFeignClient.sendForgotPassword(AuthSmsSendRequest.verificationScene(mobile)),
-                new TypeReference<ApiResponse<Void>>() {
+                new TypeReference<ApiResponse<String>>() {
                 });
     }
 

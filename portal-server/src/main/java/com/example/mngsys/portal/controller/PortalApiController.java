@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.controller;
 
+import com.example.mngsys.common.feign.dto.AuthLoginResponse;
 import com.example.mngsys.common.portal.dto.PortalActionEnterResponse;
 import com.example.mngsys.common.portal.dto.PortalActionTicketRequest;
 import com.example.mngsys.common.portal.dto.PortalForgotPasswordResetRequest;
@@ -126,7 +127,8 @@ public class PortalApiController {
             }
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, authBody.getMessage());
         }
-        PortalLoginResponse loginResponse = buildLoginResponse(authBody.getData(), loginResult.getJumpUrl());
+        AuthLoginResponse data = (AuthLoginResponse) authBody.getData();
+        PortalLoginResponse loginResponse = buildLoginResponse(data, loginResult.getJumpUrl());
         return ApiResponse.success(loginResponse);
     }
 
@@ -137,8 +139,8 @@ public class PortalApiController {
      * @return 发送结果
      */
     @PostMapping("/login/sms/send")
-    public ApiResponse<Void> sendSms(@Valid @RequestBody PortalSmsSendRequest request) {
-        ApiResponse<Void> resp = authClient.sendLoginSms(request.getMobile());
+    public ApiResponse<String> sendSms(@Valid @RequestBody PortalSmsSendRequest request) {
+        ApiResponse<String> resp = authClient.sendLoginSms(request.getMobile());
         return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
 
@@ -149,8 +151,8 @@ public class PortalApiController {
      * @return 发送结果
      */
     @PostMapping("/password/forgot/send")
-    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody PortalSmsSendRequest request) {
-        ApiResponse<Void> resp = authClient.sendForgotPasswordSms(request.getMobile());
+    public ApiResponse<String> sendForgotPasswordSms(@Valid @RequestBody PortalSmsSendRequest request) {
+        ApiResponse<String> resp = authClient.sendForgotPasswordSms(request.getMobile());
         return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
 
@@ -391,42 +393,14 @@ public class PortalApiController {
      * @param jumpUrl 跳转地址
      * @return 登录响应对象
      */
-    private PortalLoginResponse buildLoginResponse(Object data, String jumpUrl) {
-        String userId = null;
-        String username = null;
-        String mobile = null;
-        String realName = null;
-        String satoken = null;
-        String loginTime = null;
-        if (data instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) data;
-            Object userIdValue = map.get("userId");
-            if (userIdValue instanceof Number) {
-                userId = userIdValue.toString();
-            } else if (userIdValue != null) {
-                userId = userIdValue.toString();
-            }
-            Object usernameValue = map.get("username");
-            if (usernameValue != null) {
-                username = usernameValue.toString();
-            }
-            Object mobileValue = map.get("mobile");
-            if (mobileValue != null) {
-                mobile = mobileValue.toString();
-            }
-            Object realNameValue = map.get("realName");
-            if (realNameValue != null) {
-                realName = realNameValue.toString();
-            }
-            Object tokenValue = map.get("satoken");
-            if (tokenValue != null) {
-                satoken = tokenValue.toString();
-            }
-            Object loginTimeValue = map.get("loginTime");
-            if (loginTimeValue != null) {
-                loginTime = loginTimeValue.toString();
-            }
-        }
+    private PortalLoginResponse buildLoginResponse(AuthLoginResponse data, String jumpUrl) {
+        String userId = data.getUserId();
+        String username = data.getUsername();
+        String mobile = data.getMobile();
+        String realName = data.getRealName();
+        String satoken = data.getSatoken();
+        String loginTime = data.getLoginTime();
+
         return new PortalLoginResponse(userId, username, mobile, realName, satoken, loginTime, jumpUrl);
     }
 

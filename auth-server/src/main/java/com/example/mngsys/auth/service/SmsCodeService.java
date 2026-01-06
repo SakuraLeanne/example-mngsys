@@ -40,7 +40,7 @@ public class SmsCodeService {
      * @param mobile 手机号
      * @param scene  模板场景
      */
-    public void sendCode(String mobile, TemplateScene scene) {
+    public String sendCode(String mobile, TemplateScene scene) {
         guardSendFrequency(mobile);
         String code = generateCode(authProperties.getSms().getCodeLength());
         Duration ttl = Duration.ofSeconds(authProperties.getSms().getTtlSeconds());
@@ -49,6 +49,7 @@ public class SmsCodeService {
                 authProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
         System.out.println("=================手机号 : "+mobile+", 短信验证码 : "+code+" ================= ");
 //        aliyunSendMsgUtils.sendCode(mobile, code, resolveTemplateCode(scene));
+        return code;
     }
 
     /**

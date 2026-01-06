@@ -36,7 +36,6 @@ import java.time.format.DateTimeFormatter;
 
 @RestController
 @Validated
-@RequestMapping("/auth-server")
 /**
  * AuthController。
  * <p>
@@ -89,9 +88,9 @@ public class AuthController {
      * @return 发送结果
      */
     @PostMapping("/login/sms/send")
-    public ApiResponse<Void> sendSms(@Valid @RequestBody AuthSmsSendRequest request) {
-        smsCodeService.sendCode(request.getMobile(), convertScene(request.getSceneOrDefault()));
-        return ApiResponse.success(null);
+    public ApiResponse<String> sendSms(@Valid @RequestBody AuthSmsSendRequest request) {
+        String s = smsCodeService.sendCode(request.getMobile(), convertScene(request.getSceneOrDefault()));
+        return ApiResponse.success(s);
     }
 
     /**
@@ -113,9 +112,9 @@ public class AuthController {
      * @return 发送结果
      */
     @PostMapping("/password/forgot/send")
-    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody AuthSmsSendRequest request) {
-        smsCodeService.sendCode(request.getMobile(), SmsCodeService.TemplateScene.VERIFICATION);
-        return ApiResponse.success(null);
+    public ApiResponse<String> sendForgotPasswordSms(@Valid @RequestBody AuthSmsSendRequest request) {
+        String s = smsCodeService.sendCode(request.getMobile(), SmsCodeService.TemplateScene.VERIFICATION);
+        return ApiResponse.success(s);
     }
 
     /**
