@@ -1,21 +1,48 @@
 package com.example.mngsys.portal.client;
 
+import com.example.mngsys.common.feign.AuthFeignClient;
+import com.example.mngsys.common.feign.dto.AuthKickRequest;
+import com.example.mngsys.common.feign.dto.AuthLoginRequest;
+import com.example.mngsys.common.feign.dto.AuthLoginResponse;
+import com.example.mngsys.common.feign.dto.AuthPasswordResetRequest;
+import com.example.mngsys.common.feign.dto.AuthResetTokenResponse;
+import com.example.mngsys.common.feign.dto.AuthSessionResponse;
+import com.example.mngsys.common.feign.dto.AuthSmsSendRequest;
+import com.example.mngsys.common.feign.dto.AuthSmsVerifyRequest;
 import com.example.mngsys.portal.common.api.ApiResponse;
+import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.config.AuthClientProperties;
-import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
-import org.springframework.stereotype.Component;
-import feign.FeignException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.FeignException;
+import feign.Response;
+import feign.Util;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 import java.util.function.Supplier;
 
 @Component
 /**
  * AuthClient。
+ * <p>
+ * 使用 common-utils 中的 Feign 接口，集中处理响应解析与错误转换，
+ * 避免在多个模块重复维护调用逻辑。
+ * </p>
  */
 public class AuthClient {
+
+    private static final String GENERIC_AUTH_FAILURE_MESSAGE = "调用鉴权服务失败";
 
     private final AuthFeignClient authFeignClient;
     private final AuthClientProperties authClientProperties;
@@ -27,324 +54,151 @@ public class AuthClient {
         this.objectMapper = objectMapper;
     }
 
-    public ApiResponse<LoginResponse> login(String mobile, String code) {
-        LoginRequest request = new LoginRequest(mobile, code);
-        return authFeignClient.login(request);
+    public ApiResponse<AuthLoginResponse> login(String mobile, String code) {
+        AuthLoginRequest request = new AuthLoginRequest(mobile, code);
+        return parseResponseBody(authFeignClient.login(request), new TypeReference<ApiResponse<AuthLoginResponse>>() {
+        });
     }
 
-    public ResponseEntity<ApiResponse> loginWithResponse(String mobile, String code) {
-        LoginRequest request = new LoginRequest(mobile, code);
-        return exchangeSafely(() -> authFeignClient.login(request));
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> loginWithResponse(String mobile, String code) {
+        AuthLoginRequest request = new AuthLoginRequest(mobile, code);
+        return exchangeSafely(() -> authFeignClient.login(request),
+                new TypeReference<ApiResponse<AuthLoginResponse>>() {
+                });
     }
 
     public ApiResponse<Void> logout() {
-        return authFeignClient.logout(null);
+        return parseResponseBody(authFeignClient.logout(null), new TypeReference<ApiResponse<Void>>() {
+        });
     }
 
     public ApiResponse<Void> sendLoginSms(String mobile) {
-        SmsSendRequest request = SmsSendRequest.loginScene(mobile);
-        return authFeignClient.sendSms(request);
+        return parseResponseBody(authFeignClient.sendSms(AuthSmsSendRequest.loginScene(mobile)),
+                new TypeReference<ApiResponse<Void>>() {
+                });
     }
 
     public ApiResponse<Void> verifySms(String mobile, String code) {
-        SmsVerifyRequest request = new SmsVerifyRequest(mobile, code);
-        return authFeignClient.verifySms(request);
+        return parseResponseBody(authFeignClient.verifySms(new AuthSmsVerifyRequest(mobile, code)),
+                new TypeReference<ApiResponse<Void>>() {
+                });
     }
 
     public ApiResponse<Void> sendForgotPasswordSms(String mobile) {
-        SmsSendRequest request = SmsSendRequest.verificationScene(mobile);
-        return authFeignClient.sendForgotPassword(request);
+        return parseResponseBody(authFeignClient.sendForgotPassword(AuthSmsSendRequest.verificationScene(mobile)),
+                new TypeReference<ApiResponse<Void>>() {
+                });
     }
 
     public ApiResponse<ResetTokenResponse> verifyForgotPassword(String mobile, String code) {
-        SmsVerifyRequest request = new SmsVerifyRequest(mobile, code);
-        return authFeignClient.verifyForgotPassword(request);
+        return parseResponseBody(authFeignClient.verifyForgotPassword(new AuthSmsVerifyRequest(mobile, code)),
+                new TypeReference<ApiResponse<ResetTokenResponse>>() {
+                });
     }
 
     public ApiResponse<Void> resetForgotPassword(String mobile, String resetToken, String encryptedPassword, String newPassword) {
-        PasswordResetRequest request = new PasswordResetRequest(mobile, resetToken, encryptedPassword, newPassword);
-        return authFeignClient.resetForgotPassword(request);
+        AuthPasswordResetRequest request = new AuthPasswordResetRequest(mobile, resetToken, encryptedPassword, newPassword);
+        return parseResponseBody(authFeignClient.resetForgotPassword(request),
+                new TypeReference<ApiResponse<Void>>() {
+                });
     }
 
-    public ResponseEntity<ApiResponse> logoutWithResponse(String cookie) {
-        return exchangeSafely(() -> authFeignClient.logout(cookie));
+    public ResponseEntity<ApiResponse<Void>> logoutWithResponse(String cookie) {
+        return exchangeSafely(() -> authFeignClient.logout(cookie), new TypeReference<ApiResponse<Void>>() {
+        });
     }
 
-    public ApiResponse<SessionResponse> sessionMe() {
-        return authFeignClient.sessionMe(null);
+    public ApiResponse<AuthSessionResponse> sessionMe() {
+        return parseResponseBody(authFeignClient.sessionMe(null), new TypeReference<ApiResponse<AuthSessionResponse>>() {
+        });
     }
 
-    public ResponseEntity<ApiResponse> sessionMe(String cookie) {
-        return exchangeSafely(() -> authFeignClient.sessionMe(cookie));
+    public ResponseEntity<ApiResponse<AuthSessionResponse>> sessionMe(String cookie) {
+        return exchangeSafely(() -> authFeignClient.sessionMe(cookie),
+                new TypeReference<ApiResponse<AuthSessionResponse>>() {
+                });
     }
 
     public ApiResponse<Void> kick(String userId) {
-        KickRequest request = new KickRequest(userId);
-        return authFeignClient.kick(authClientProperties.getInternalToken(), request);
+        AuthKickRequest request = new AuthKickRequest(userId);
+        return parseResponseBody(authFeignClient.kick(authClientProperties.getInternalToken(), request),
+                new TypeReference<ApiResponse<Void>>() {
+                });
     }
 
-    private ResponseEntity<ApiResponse> exchangeSafely(Supplier<ApiResponse> supplier) {
+    private <T> ResponseEntity<ApiResponse<T>> exchangeSafely(Supplier<Response> supplier,
+                                                              TypeReference<ApiResponse<T>> typeReference) {
         try {
-            ApiResponse response = supplier.get();
-            return ResponseEntity.ok(response);
+            Response response = supplier.get();
+            ApiResponse<T> body = parseResponseBody(response, typeReference);
+            HttpHeaders headers = toHttpHeaders(response.headers());
+            HttpStatus status = HttpStatus.resolve(response.status());
+            if (status == null) {
+                status = HttpStatus.INTERNAL_SERVER_ERROR;
+            }
+            return ResponseEntity.status(status)
+                    .headers(headers)
+                    .body(body);
         } catch (FeignException ex) {
-            ApiResponse response = parseErrorResponse(ex.contentUTF8());
+            ApiResponse<T> response = parseErrorResponse(ex.contentUTF8());
             return ResponseEntity.status(ex.status()).body(response);
         }
     }
 
-    private ApiResponse parseErrorResponse(String body) {
+    private <T> ApiResponse<T> parseResponseBody(Response response, TypeReference<ApiResponse<T>> typeReference) {
+        if (response == null) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, GENERIC_AUTH_FAILURE_MESSAGE);
+        }
+        String body = readBody(response);
         if (!StringUtils.hasText(body)) {
-            return ApiResponse.failure(com.example.mngsys.portal.common.api.ErrorCode.INTERNAL_ERROR, "调用鉴权服务失败");
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, GENERIC_AUTH_FAILURE_MESSAGE);
         }
         try {
-            return objectMapper.readValue(body, ApiResponse.class);
+            return objectMapper.readValue(body, typeReference);
+        } catch (IOException ex) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, GENERIC_AUTH_FAILURE_MESSAGE);
+        }
+    }
+
+    private <T> ApiResponse<T> parseErrorResponse(String body) {
+        if (!StringUtils.hasText(body)) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, GENERIC_AUTH_FAILURE_MESSAGE);
+        }
+        try {
+            return objectMapper.readValue(body, new TypeReference<ApiResponse<T>>() {
+            });
         } catch (JsonProcessingException ex) {
-            return ApiResponse.failure(com.example.mngsys.portal.common.api.ErrorCode.INTERNAL_ERROR, "调用鉴权服务失败");
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, GENERIC_AUTH_FAILURE_MESSAGE);
         }
     }
 
-    public static class LoginRequest {
-        private String mobile;
-        private String code;
-
-        public LoginRequest() {
+    private String readBody(Response response) {
+        if (response == null || response.body() == null) {
+            return null;
         }
-
-        public LoginRequest(String mobile, String code) {
-            this.mobile = mobile;
-            this.code = code;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public void setCode(String code) {
-            this.code = code;
+        try (Reader reader = response.body().asReader(StandardCharsets.UTF_8)) {
+            return Util.toString(reader);
+        } catch (IOException ex) {
+            return null;
         }
     }
 
-    public static class LoginResponse {
-        private String userId;
-        private String username;
-        private String mobile;
-        private String realName;
-        private String satoken;
-        private Long loginTime;
-
-        public String getUserId() {
-            return userId;
+    private HttpHeaders toHttpHeaders(Map<String, Collection<String>> feignHeaders) {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        if (feignHeaders == null || feignHeaders.isEmpty()) {
+            return httpHeaders;
         }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public void setRealName(String realName) {
-            this.realName = realName;
-        }
-
-        public String getSatoken() {
-            return satoken;
-        }
-
-        public void setSatoken(String satoken) {
-            this.satoken = satoken;
-        }
-
-        public Long getLoginTime() {
-            return loginTime;
-        }
-
-        public void setLoginTime(Long loginTime) {
-            this.loginTime = loginTime;
-        }
+        feignHeaders.forEach((key, values) -> {
+            if (values != null) {
+                httpHeaders.put(key, new ArrayList<>(values));
+            }
+        });
+        return httpHeaders;
     }
 
-    public static class SessionResponse {
-        private String userId;
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
-    }
-
-    public static class KickRequest {
-        private String userId;
-
-        public KickRequest() {
-        }
-
-        public KickRequest(String userId) {
-            this.userId = userId;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
-    }
-
-    public static class SmsSendRequest {
-        private String mobile;
-        private String scene;
-
-        public SmsSendRequest() {
-        }
-
-        public SmsSendRequest(String mobile, String scene) {
-            this.mobile = mobile;
-            this.scene = scene;
-        }
-
-        public static SmsSendRequest loginScene(String mobile) {
-            return new SmsSendRequest(mobile, "LOGIN");
-        }
-
-        public static SmsSendRequest verificationScene(String mobile) {
-            return new SmsSendRequest(mobile, "VERIFICATION");
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getScene() {
-            return scene;
-        }
-
-        public void setScene(String scene) {
-            this.scene = scene;
-        }
-    }
-
-    public static class SmsVerifyRequest {
-        private String mobile;
-        private String code;
-
-        public SmsVerifyRequest() {
-        }
-
-        public SmsVerifyRequest(String mobile, String code) {
-            this.mobile = mobile;
-            this.code = code;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public void setCode(String code) {
-            this.code = code;
-        }
-    }
-
-    public static class PasswordResetRequest {
-        private String mobile;
-        private String resetToken;
-        private String encryptedPassword;
-        private String newPassword;
-
-        public PasswordResetRequest() {
-        }
-
-        public PasswordResetRequest(String mobile, String resetToken, String encryptedPassword, String newPassword) {
-            this.mobile = mobile;
-            this.resetToken = resetToken;
-            this.encryptedPassword = encryptedPassword;
-            this.newPassword = newPassword;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getResetToken() {
-            return resetToken;
-        }
-
-        public void setResetToken(String resetToken) {
-            this.resetToken = resetToken;
-        }
-
-        public String getEncryptedPassword() {
-            return encryptedPassword;
-        }
-
-        public void setEncryptedPassword(String encryptedPassword) {
-            this.encryptedPassword = encryptedPassword;
-        }
-
-        public String getNewPassword() {
-            return newPassword;
-        }
-
-        public void setNewPassword(String newPassword) {
-            this.newPassword = newPassword;
-        }
-    }
-
-    public static class ResetTokenResponse {
-        private String resetToken;
-
-        public String getResetToken() {
-            return resetToken;
-        }
-
-        public void setResetToken(String resetToken) {
-            this.resetToken = resetToken;
-        }
+    /**
+     * 保持向后兼容的重置令牌返回对象，继承自共享 DTO。
+     */
+    public static class ResetTokenResponse extends AuthResetTokenResponse {
     }
 }
