@@ -1,5 +1,21 @@
 package com.example.mngsys.portal.controller;
 
+import com.example.mngsys.common.portal.dto.PortalActionEnterResponse;
+import com.example.mngsys.common.portal.dto.PortalActionTicketRequest;
+import com.example.mngsys.common.portal.dto.PortalForgotPasswordResetRequest;
+import com.example.mngsys.common.portal.dto.PortalLoginRequest;
+import com.example.mngsys.common.portal.dto.PortalLoginResponse;
+import com.example.mngsys.common.portal.dto.PortalMeResponse;
+import com.example.mngsys.common.portal.dto.PortalMenuItem;
+import com.example.mngsys.common.portal.dto.PortalPasswordChangeRequest;
+import com.example.mngsys.common.portal.dto.PortalPasswordChangeResponse;
+import com.example.mngsys.common.portal.dto.PortalProfileResponse;
+import com.example.mngsys.common.portal.dto.PortalProfileUpdateRequest;
+import com.example.mngsys.common.portal.dto.PortalProfileUpdateResponse;
+import com.example.mngsys.common.portal.dto.PortalSmsSendRequest;
+import com.example.mngsys.common.portal.dto.PortalSmsVerifyRequest;
+import com.example.mngsys.common.portal.dto.PortalSsoJumpRequest;
+import com.example.mngsys.common.portal.dto.PortalSsoJumpResponse;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
@@ -16,15 +32,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -94,12 +107,8 @@ public class PortalApiController {
      * @return 登录结果响应
      */
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-        PortalAuthService.LoginResult loginResult = portalAuthService.login(
-                request.getMobile(),
-                request.getCode(),
-                request.getSystemCode(),
-                request.getReturnUrl());
+    public ApiResponse<PortalLoginResponse> login(@Valid @RequestBody PortalLoginRequest request, HttpServletResponse response) {
+        PortalAuthService.LoginResult loginResult = portalAuthService.login(request);
         ResponseEntity<? extends ApiResponse<?>> authResponse = loginResult.getResponseEntity();
         if (authResponse != null) {
             List<String> setCookies = authResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
@@ -117,7 +126,7 @@ public class PortalApiController {
             }
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, authBody.getMessage());
         }
-        LoginResponse loginResponse = buildLoginResponse(authBody.getData(), loginResult.getJumpUrl());
+        PortalLoginResponse loginResponse = buildLoginResponse(authBody.getData(), loginResult.getJumpUrl());
         return ApiResponse.success(loginResponse);
     }
 
@@ -128,7 +137,7 @@ public class PortalApiController {
      * @return 发送结果
      */
     @PostMapping("/login/sms/send")
-    public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
+    public ApiResponse<Void> sendSms(@Valid @RequestBody PortalSmsSendRequest request) {
         ApiResponse<Void> resp = authClient.sendLoginSms(request.getMobile());
         return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
@@ -140,7 +149,7 @@ public class PortalApiController {
      * @return 发送结果
      */
     @PostMapping("/password/forgot/send")
-    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody SmsSendRequest request) {
+    public ApiResponse<Void> sendForgotPasswordSms(@Valid @RequestBody PortalSmsSendRequest request) {
         ApiResponse<Void> resp = authClient.sendForgotPasswordSms(request.getMobile());
         return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
     }
@@ -152,7 +161,7 @@ public class PortalApiController {
      * @return 重置令牌
      */
     @PostMapping("/password/forgot/verify")
-    public ApiResponse<?> verifyForgotPassword(@Valid @RequestBody SmsVerifyRequest request) {
+    public ApiResponse<?> verifyForgotPassword(@Valid @RequestBody PortalSmsVerifyRequest request) {
         ApiResponse<?> resp = authClient.verifyForgotPassword(request.getMobile(), request.getCode());
         if (resp == null) {
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
@@ -167,7 +176,7 @@ public class PortalApiController {
      * @return 重置结果
      */
     @PostMapping("/password/forgot/reset")
-    public ApiResponse<?> resetForgotPassword(@Valid @RequestBody ForgotPasswordResetRequest request) {
+    public ApiResponse<?> resetForgotPassword(@Valid @RequestBody PortalForgotPasswordResetRequest request) {
         ApiResponse<Void> resp = authClient.resetForgotPassword(
                 request.getMobile(),
                 request.getResetToken(),
@@ -182,7 +191,7 @@ public class PortalApiController {
      * @return 当前用户基础信息
      */
     @GetMapping("/loginuser/session-info")
-    public ApiResponse<MeResponse> me() {
+    public ApiResponse<PortalMeResponse> me() {
         String userId = RequestContext.getUserId();
         if (userId == null) {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED);
@@ -195,7 +204,7 @@ public class PortalApiController {
         if (!Objects.equals(status, 1)) {
             return ApiResponse.failure(ErrorCode.USER_DISABLED);
         }
-        MeResponse response = new MeResponse(
+        PortalMeResponse response = new PortalMeResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getMobile(),
@@ -210,14 +219,14 @@ public class PortalApiController {
      * @return 菜单列表
      */
     @GetMapping("/home/menus")
-    public ApiResponse<List<MenuItem>> menus() {
-        List<MenuItem> menus = Arrays.asList(
-                new MenuItem("dashboard", "仪表盘", "/portal/dashboard"),
-                new MenuItem("users", "用户管理", "/portal/users"),
-                new MenuItem("roles", "角色管理", "/portal/roles"),
-                new MenuItem("menus", "菜单资源", "/portal/menus"),
-                new MenuItem("audit", "审计日志", "/portal/audit"),
-                new MenuItem("settings", "系统设置", "/portal/settings")
+    public ApiResponse<List<PortalMenuItem>> menus() {
+        List<PortalMenuItem> menus = Arrays.asList(
+                new PortalMenuItem("dashboard", "仪表盘", "/portal/dashboard"),
+                new PortalMenuItem("users", "用户管理", "/portal/users"),
+                new PortalMenuItem("roles", "角色管理", "/portal/roles"),
+                new PortalMenuItem("menus", "菜单资源", "/portal/menus"),
+                new PortalMenuItem("audit", "审计日志", "/portal/audit"),
+                new PortalMenuItem("settings", "系统设置", "/portal/settings")
         );
         return ApiResponse.success(menus);
     }
@@ -250,8 +259,8 @@ public class PortalApiController {
      * @return 修改结果
      */
     @PostMapping("/password/change")
-    public ApiResponse<PasswordChangeResponse> changePassword(@Valid @RequestBody PasswordChangeRequest request,
-                                                              HttpServletRequest httpRequest) {
+    public ApiResponse<PortalPasswordChangeResponse> changePassword(@Valid @RequestBody PortalPasswordChangeRequest request,
+                                                                    HttpServletRequest httpRequest) {
         String ptk = resolvePtk(httpRequest);
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
                 request.getOldPassword(),
@@ -260,7 +269,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        return ApiResponse.success(new PasswordChangeResponse(true, true));
+        return ApiResponse.success(new PortalPasswordChangeResponse(true, true));
     }
 
     /**
@@ -270,13 +279,13 @@ public class PortalApiController {
      * @return 个人资料信息
      */
     @GetMapping("/profile")
-    public ApiResponse<ProfileResponse> profile(HttpServletRequest httpRequest) {
+    public ApiResponse<PortalProfileResponse> profile(HttpServletRequest httpRequest) {
         String ptk = resolvePtk(httpRequest);
         PortalProfileService.ProfileResult result = portalProfileService.getProfile(ptk);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        ProfileResponse response = new ProfileResponse(
+        PortalProfileResponse response = new PortalProfileResponse(
                 result.getUserId(),
                 result.getUsername(),
                 result.getRealName(),
@@ -294,8 +303,8 @@ public class PortalApiController {
      * @return 更新结果
      */
     @PostMapping("/profile")
-    public ApiResponse<ProfileUpdateResponse> updateProfile(@Valid @RequestBody ProfileUpdateRequest request,
-                                                            HttpServletRequest httpRequest) {
+    public ApiResponse<PortalProfileUpdateResponse> updateProfile(@Valid @RequestBody PortalProfileUpdateRequest request,
+                                                                  HttpServletRequest httpRequest) {
         String ptk = resolvePtk(httpRequest);
         PortalProfileService.UpdateResult result = portalProfileService.updateProfile(
                 ptk,
@@ -305,7 +314,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        return ApiResponse.success(new ProfileUpdateResponse(true));
+        return ApiResponse.success(new PortalProfileUpdateResponse(true));
     }
 
     /**
@@ -315,13 +324,13 @@ public class PortalApiController {
      * @return 跳转链接响应
      */
     @PostMapping("/sso/jump-url")
-    public ApiResponse<SsoJumpResponse> ssoJumpUrl(@Valid @RequestBody SsoJumpRequest request) {
+    public ApiResponse<PortalSsoJumpResponse> ssoJumpUrl(@Valid @RequestBody PortalSsoJumpRequest request) {
         String userId = RequestContext.getUserId();
         if (userId == null) {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED);
         }
         String jumpUrl = portalAuthService.createSsoJumpUrl(userId, request.getSystemCode(), request.getTargetUrl());
-        return ApiResponse.success(new SsoJumpResponse(jumpUrl));
+        return ApiResponse.success(new PortalSsoJumpResponse(jumpUrl));
     }
 
     /**
@@ -332,8 +341,8 @@ public class PortalApiController {
      * @return 动作校验结果
      */
     @PostMapping("/action/pwd/enter")
-    public ApiResponse<ActionEnterResponse> enterPasswordAction(@Valid @RequestBody ActionTicketRequest request,
-                                                                HttpServletResponse response) {
+    public ApiResponse<PortalActionEnterResponse> enterPasswordAction(@Valid @RequestBody PortalActionTicketRequest request,
+                                                                      HttpServletResponse response) {
         return enterActionTicket(PortalActionService.ActionType.PASSWORD, request, response);
     }
 
@@ -345,8 +354,8 @@ public class PortalApiController {
      * @return 动作校验结果
      */
     @PostMapping("/action/profile/enter")
-    public ApiResponse<ActionEnterResponse> enterProfileAction(@Valid @RequestBody ActionTicketRequest request,
-                                                               HttpServletResponse response) {
+    public ApiResponse<PortalActionEnterResponse> enterProfileAction(@Valid @RequestBody PortalActionTicketRequest request,
+                                                                     HttpServletResponse response) {
         return enterActionTicket(PortalActionService.ActionType.PROFILE, request, response);
     }
 
@@ -358,9 +367,9 @@ public class PortalApiController {
      * @param response   HTTP 响应，用于写 cookie
      * @return 动作进入结果
      */
-    private ApiResponse<ActionEnterResponse> enterActionTicket(PortalActionService.ActionType actionType,
-                                                               ActionTicketRequest request,
-                                                               HttpServletResponse response) {
+    private ApiResponse<PortalActionEnterResponse> enterActionTicket(PortalActionService.ActionType actionType,
+                                                                     PortalActionTicketRequest request,
+                                                                     HttpServletResponse response) {
         PortalActionService.EnterResult result = portalActionService.enter(actionType, request.getTicket());
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
@@ -371,7 +380,7 @@ public class PortalApiController {
                 .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        ActionEnterResponse payload = new ActionEnterResponse(true, result.getReturnUrl(), result.getSystemCode());
+        PortalActionEnterResponse payload = new PortalActionEnterResponse(true, result.getReturnUrl(), result.getSystemCode());
         return ApiResponse.success(payload);
     }
 
@@ -382,13 +391,13 @@ public class PortalApiController {
      * @param jumpUrl 跳转地址
      * @return 登录响应对象
      */
-    private LoginResponse buildLoginResponse(Object data, String jumpUrl) {
+    private PortalLoginResponse buildLoginResponse(Object data, String jumpUrl) {
         String userId = null;
         String username = null;
         String mobile = null;
         String realName = null;
         String satoken = null;
-        Long loginTime = null;
+        String loginTime = null;
         if (data instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) data;
             Object userIdValue = map.get("userId");
@@ -414,16 +423,11 @@ public class PortalApiController {
                 satoken = tokenValue.toString();
             }
             Object loginTimeValue = map.get("loginTime");
-            if (loginTimeValue instanceof Number) {
-                loginTime = ((Number) loginTimeValue).longValue();
-            } else if (loginTimeValue != null) {
-                try {
-                    loginTime = Long.parseLong(loginTimeValue.toString());
-                } catch (NumberFormatException ignored) {
-                }
+            if (loginTimeValue != null) {
+                loginTime = loginTimeValue.toString();
             }
         }
-        return new LoginResponse(userId, username, mobile, realName, satoken, loginTime, jumpUrl);
+        return new PortalLoginResponse(userId, username, mobile, realName, satoken, loginTime, jumpUrl);
     }
 
     /**
@@ -444,620 +448,5 @@ public class PortalApiController {
                 .filter(item -> "ptk".equals(item.getName()))
                 .findFirst();
         return cookie.map(Cookie::getValue).orElse(null);
-    }
-
-    /**
-     * 登录请求体，包含手机号、验证码及跳转参数。
-     */
-    public static class LoginRequest {
-        /**
-         * 手机号。
-         */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /**
-         * 短信验证码。
-         */
-        @NotBlank(message = "验证码不能为空")
-        private String code;
-        /**
-         * 系统编码。
-         */
-        private String systemCode;
-        /**
-         * 登录成功后的返回地址。
-         */
-        private String returnUrl;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public void setCode(String code) {
-            this.code = code;
-        }
-
-        public String getSystemCode() {
-            return systemCode;
-        }
-
-        public void setSystemCode(String systemCode) {
-            this.systemCode = systemCode;
-        }
-
-        public String getReturnUrl() {
-            return returnUrl;
-        }
-
-        public void setReturnUrl(String returnUrl) {
-            this.returnUrl = returnUrl;
-        }
-    }
-
-    /**
-     * 短信发送请求体。
-     */
-    public static class SmsSendRequest {
-        /**
-         * 手机号。
-         */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-    }
-
-    /**
-     * 短信校验请求体。
-     */
-    public static class SmsVerifyRequest {
-        /**
-         * 手机号。
-         */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /**
-         * 验证码。
-         */
-        @NotBlank(message = "验证码不能为空")
-        private String code;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public void setCode(String code) {
-            this.code = code;
-        }
-    }
-
-    /**
-     * 忘记密码重置请求体。
-     */
-    public static class ForgotPasswordResetRequest {
-        /**
-         * 手机号。
-         */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /**
-         * 重置令牌。
-         */
-        @NotBlank(message = "重置令牌不能为空")
-        private String resetToken;
-        /**
-         * 密码密文（Base64 AES/GCM）。
-         */
-        private String encryptedPassword;
-        /**
-         * 明文密码（仅在未开启加密校验时生效）。
-         */
-        @Size(max = 128, message = "密码长度过长")
-        private String newPassword;
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getResetToken() {
-            return resetToken;
-        }
-
-        public void setResetToken(String resetToken) {
-            this.resetToken = resetToken;
-        }
-
-        public String getEncryptedPassword() {
-            return encryptedPassword;
-        }
-
-        public void setEncryptedPassword(String encryptedPassword) {
-            this.encryptedPassword = encryptedPassword;
-        }
-
-        public String getNewPassword() {
-            return newPassword;
-        }
-
-        public void setNewPassword(String newPassword) {
-            this.newPassword = newPassword;
-        }
-    }
-
-    /**
-     * 登录响应体，包含用户 ID、用户名与跳转链接。
-     */
-    public static class LoginResponse {
-        /**
-         * 用户主键 ID。
-         */
-        private final String userId;
-        /**
-         * 用户名。
-         */
-        private final String username;
-        /**
-         * 手机号。
-         */
-        private final String mobile;
-        /**
-         * 真实姓名。
-         */
-        private final String realName;
-        /**
-         * Sa-Token token 值。
-         */
-        private final String satoken;
-        /**
-         * 登录时间戳（毫秒）。
-         */
-        private final Long loginTime;
-        /**
-         * 跳转链接。
-         */
-        private final String jumpUrl;
-
-        public LoginResponse(String userId, String username, String mobile, String realName, String satoken, Long loginTime, String jumpUrl) {
-            this.userId = userId;
-            this.username = username;
-            this.mobile = mobile;
-            this.realName = realName;
-            this.satoken = satoken;
-            this.loginTime = loginTime;
-            this.jumpUrl = jumpUrl;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public String getSatoken() {
-            return satoken;
-        }
-
-        public Long getLoginTime() {
-            return loginTime;
-        }
-
-        public String getJumpUrl() {
-            return jumpUrl;
-        }
-    }
-
-    /**
-     * 修改密码请求体。
-     */
-    public static class PasswordChangeRequest {
-        /**
-         * 原密码。
-         */
-        @NotBlank(message = "旧密码不能为空")
-        private String oldPassword;
-        /**
-         * 新密码。
-         */
-        @NotBlank(message = "新密码不能为空")
-        @Size(min = 8, message = "新密码长度至少8位")
-        private String newPassword;
-
-        public String getOldPassword() {
-            return oldPassword;
-        }
-
-        public void setOldPassword(String oldPassword) {
-            this.oldPassword = oldPassword;
-        }
-
-        public String getNewPassword() {
-            return newPassword;
-        }
-
-        public void setNewPassword(String newPassword) {
-            this.newPassword = newPassword;
-        }
-    }
-
-    /**
-     * 修改密码响应体，标识是否成功以及是否需要重新登录。
-     */
-    public static class PasswordChangeResponse {
-        /**
-         * 是否修改成功。
-         */
-        private final boolean success;
-        /**
-         * 是否需要重新登录。
-         */
-        private final boolean needRelogin;
-
-        public PasswordChangeResponse(boolean success, boolean needRelogin) {
-            this.success = success;
-            this.needRelogin = needRelogin;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public boolean isNeedRelogin() {
-            return needRelogin;
-        }
-    }
-
-    /**
-     * 个人资料响应体。
-     */
-    public static class ProfileResponse {
-        /**
-         * 用户 ID。
-         */
-        private final String userId;
-        /**
-         * 用户名。
-         */
-        private final String username;
-        /**
-         * 真实姓名。
-         */
-        private final String realName;
-        /**
-         * 手机号。
-         */
-        private final String mobile;
-        /**
-         * 邮箱。
-         */
-        private final String email;
-        /**
-         * 用户状态。
-         */
-        private final Integer status;
-
-        public ProfileResponse(String userId, String username, String realName, String mobile, String email, Integer status) {
-            this.userId = userId;
-            this.username = username;
-            this.realName = realName;
-            this.mobile = mobile;
-            this.email = email;
-            this.status = status;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public Integer getStatus() {
-            return status;
-        }
-    }
-
-    /**
-     * 个人资料更新请求体。
-     */
-    public static class ProfileUpdateRequest {
-        /**
-         * 真实姓名。
-         */
-        private String realName;
-        /**
-         * 手机号。
-         */
-        @NotBlank(message = "手机号不能为空")
-        private String mobile;
-        /**
-         * 邮箱。
-         */
-        private String email;
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public void setRealName(String realName) {
-            this.realName = realName;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-    }
-
-    /**
-     * 个人资料更新结果。
-     */
-    public static class ProfileUpdateResponse {
-        /**
-         * 是否更新成功。
-         */
-        private final boolean success;
-
-        public ProfileUpdateResponse(boolean success) {
-            this.success = success;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-    }
-
-    /**
-     * 用户信息响应，仅包含用户 ID。
-     */
-    public static class MeResponse {
-        /**
-         * 用户 ID。
-         */
-        private final String userId;
-        /**
-         * 用户名。
-         */
-        private final String username;
-        /**
-         * 手机号。
-         */
-        private final String mobile;
-        /**
-         * 邮箱。
-         */
-        private final String email;
-        /**
-         * 用户状态。
-         */
-        private final Integer status;
-
-        public MeResponse(String userId, String username, String mobile, String email, Integer status) {
-            this.userId = userId;
-            this.username = username;
-            this.mobile = mobile;
-            this.email = email;
-            this.status = status;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public Integer getStatus() {
-            return status;
-        }
-    }
-
-    /**
-     * 菜单项信息。
-     */
-    public static class MenuItem {
-        /**
-         * 菜单编码。
-         */
-        private final String code;
-        /**
-         * 菜单名称。
-         */
-        private final String name;
-        /**
-         * 菜单路径。
-         */
-        private final String path;
-
-        public MenuItem(String code, String name, String path) {
-            this.code = code;
-            this.name = name;
-            this.path = path;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getPath() {
-            return path;
-        }
-    }
-
-    /**
-     * 生成 SSO 跳转链接的请求。
-     */
-    public static class SsoJumpRequest {
-        /**
-         * 系统编码。
-         */
-        @NotBlank(message = "systemCode 不能为空")
-        private String systemCode;
-        /**
-         * 目标地址。
-         */
-        @NotBlank(message = "targetUrl 不能为空")
-        private String targetUrl;
-
-        public String getSystemCode() {
-            return systemCode;
-        }
-
-        public void setSystemCode(String systemCode) {
-            this.systemCode = systemCode;
-        }
-
-        public String getTargetUrl() {
-            return targetUrl;
-        }
-
-        public void setTargetUrl(String targetUrl) {
-            this.targetUrl = targetUrl;
-        }
-    }
-
-    /**
-     * SSO 跳转响应，包含完整的跳转 URL。
-     */
-    public static class SsoJumpResponse {
-        /**
-         * 跳转 URL。
-         */
-        private final String jumpUrl;
-
-        public SsoJumpResponse(String jumpUrl) {
-            this.jumpUrl = jumpUrl;
-        }
-
-        public String getJumpUrl() {
-            return jumpUrl;
-        }
-    }
-
-    /**
-     * 动作票据请求，包含 ticket。
-     */
-    public static class ActionTicketRequest {
-        /**
-         * 动作 ticket。
-         */
-        @NotBlank(message = "ticket 不能为空")
-        private String ticket;
-
-        public String getTicket() {
-            return ticket;
-        }
-
-        public void setTicket(String ticket) {
-            this.ticket = ticket;
-        }
-    }
-
-    /**
-     * 动作进入响应，描述动作处理结果与跳转信息。
-     */
-    public static class ActionEnterResponse {
-        /**
-         * 是否处理成功。
-         */
-        private final boolean ok;
-        /**
-         * 返回地址。
-         */
-        private final String returnUrl;
-        /**
-         * 系统编码。
-         */
-        private final String systemCode;
-
-        public ActionEnterResponse(boolean ok, String returnUrl, String systemCode) {
-            this.ok = ok;
-            this.returnUrl = returnUrl;
-            this.systemCode = systemCode;
-        }
-
-        public boolean isOk() {
-            return ok;
-        }
-
-        public String getReturnUrl() {
-            return returnUrl;
-        }
-
-        public String getSystemCode() {
-            return systemCode;
-        }
     }
 }

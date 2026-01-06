@@ -1,12 +1,12 @@
-package com.example.mngsys.common.feign.dto;
+package com.example.mngsys.common.portal.dto;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
 /**
- * AuthPasswordResetRequest。
+ * 忘记密码重置请求。
  */
-public class AuthPasswordResetRequest {
+public class PortalForgotPasswordResetRequest {
     @NotBlank(message = "手机号不能为空")
     private String mobile;
     @NotBlank(message = "重置令牌不能为空")
@@ -14,16 +14,6 @@ public class AuthPasswordResetRequest {
     private String encryptedPassword;
     @Size(max = 128, message = "密码长度过长")
     private String newPassword;
-
-    public AuthPasswordResetRequest() {
-    }
-
-    public AuthPasswordResetRequest(String mobile, String resetToken, String encryptedPassword, String newPassword) {
-        this.mobile = mobile;
-        this.resetToken = resetToken;
-        this.encryptedPassword = encryptedPassword;
-        this.newPassword = newPassword;
-    }
 
     public String getMobile() {
         return mobile;

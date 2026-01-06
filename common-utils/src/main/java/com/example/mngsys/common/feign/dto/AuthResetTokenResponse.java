@@ -5,6 +5,7 @@ package com.example.mngsys.common.feign.dto;
  */
 public class AuthResetTokenResponse {
     private String resetToken;
+    private String mobile;
 
     public String getResetToken() {
         return resetToken;
@@ -12,5 +13,13 @@ public class AuthResetTokenResponse {
 
     public void setResetToken(String resetToken) {
         this.resetToken = resetToken;
+    }
+
+    public String getMobile() {
+        return mobile;
+    }
+
+    public void setMobile(String mobile) {
+        this.mobile = mobile;
     }
 }

@@ -1,23 +1,15 @@
-package com.example.mngsys.common.feign.dto;
+package com.example.mngsys.common.portal.dto;
 
 import javax.validation.constraints.NotBlank;
 
 /**
- * AuthSmsVerifyRequest。
+ * 门户短信校验请求。
  */
-public class AuthSmsVerifyRequest {
+public class PortalSmsVerifyRequest {
     @NotBlank(message = "手机号不能为空")
     private String mobile;
     @NotBlank(message = "验证码不能为空")
     private String code;
-
-    public AuthSmsVerifyRequest() {
-    }
-
-    public AuthSmsVerifyRequest(String mobile, String code) {
-        this.mobile = mobile;
-        this.code = code;
-    }
 
     public String getMobile() {
         return mobile;
