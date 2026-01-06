@@ -38,7 +38,7 @@ public class PasswordCryptoService {
      * 解密密码密文，若未开启加密校验则回退为明文。
      *
      * @param encryptedPassword 密文（Base64）
-     * @param plainPassword     明文（兼容旧调用）
+     * @param plainPassword     明文
      * @return 解密后的明文密码
      */
     public String decrypt(String encryptedPassword, String plainPassword) {

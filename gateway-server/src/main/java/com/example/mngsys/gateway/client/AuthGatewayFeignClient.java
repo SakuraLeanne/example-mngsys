@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
  * 调用认证服务的 Feign 客户端，负责校验会话。
  * </p>
  */
-@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server/auth/api}")
+@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server}")
 public interface AuthGatewayFeignClient {
 
     /**
@@ -20,6 +20,6 @@ public interface AuthGatewayFeignClient {
      * @param cookie 传递的 Cookie 头
      * @return 认证服务的原始响应
      */
-    @GetMapping("/session/me")
+    @GetMapping("/login/session-info")
     Response sessionMe(@RequestHeader(value = "Cookie", required = false) String cookie);
 }

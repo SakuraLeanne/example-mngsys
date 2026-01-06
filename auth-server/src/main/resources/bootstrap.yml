@@ -44,14 +44,3 @@ sa-token:
   cookie:
     http-only: true
 
-auth:
-  # 是否在手机号不存在时自动创建用户
-  auto-create-user: true
-  sms:
-    # 从环境变量或 Nacos 配置读取阿里云短信密钥，避免在代码或本地配置中暴露
-    access-key-id: ${ALIYUN_SMS_AK:}
-    access-key-secret: ${ALIYUN_SMS_SK:}
-    sign-name: ${ALIYUN_SMS_SIGN_NAME:}
-    template-code:
-      verification-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
-      login-verification-code: ${ALIYUN_SMS_LOGIN_TEMPLATE_CODE:${ALIYUN_SMS_TEMPLATE_CODE:}}

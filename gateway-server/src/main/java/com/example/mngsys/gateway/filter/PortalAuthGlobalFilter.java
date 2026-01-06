@@ -32,11 +32,6 @@ import java.util.Map;
 @Component
 public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
 
-    /** Portal API 前缀，只有匹配路径才会做鉴权。 */
-    private static final String PORTAL_API_PREFIX = "/portalserver/portal/api/";
-    /** 会话校验接口路径，用于透传调用认证服务。 */
-    private static final String AUTH_SESSION_PATH = "/authserver/auth/api/session/me";
-
     /** 安全配置，包含白名单配置。 */
     private final GatewaySecurityProperties securityProperties;
     /** 调用认证服务的 Feign 客户端。 */
@@ -71,9 +66,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
-        if (!path.startsWith(PORTAL_API_PREFIX)) {
-            return chain.filter(exchange);
-        }
+
         if (isWhitelisted(path)) {
             return chain.filter(exchange);
         }

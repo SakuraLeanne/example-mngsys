@@ -24,7 +24,6 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
 @RestController
-@RequestMapping("/auth/api")
 @Validated
 /**
  * AuthController。
@@ -75,7 +74,7 @@ public class AuthController {
      * @param request 请求体
      * @return 发送结果
      */
-    @PostMapping("/sms/send")
+    @PostMapping("/login/sms/send")
     public ApiResponse<Void> sendSms(@Valid @RequestBody SmsSendRequest request) {
         smsCodeService.sendCode(request.getMobile(), request.getSceneOrDefault());
         return ApiResponse.success(null);
@@ -87,7 +86,7 @@ public class AuthController {
      * @param request 请求体
      * @return 校验结果
      */
-    @PostMapping("/sms/verify")
+    @PostMapping("/login/sms/verify")
     public ApiResponse<Void> verifySms(@Valid @RequestBody SmsVerifyRequest request) {
         smsCodeService.verifyCode(request.getMobile(), request.getCode());
         return ApiResponse.success(null);
@@ -199,7 +198,7 @@ public class AuthController {
      *
      * @return 包含用户 ID 的会话信息
      */
-    @GetMapping("/session/me")
+    @GetMapping("/login/session-info")
     public ApiResponse<SessionResponse> sessionMe() {
         StpUtil.checkLogin();
         String userId = String.valueOf(StpUtil.getLoginId());
