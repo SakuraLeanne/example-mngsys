@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server/auth/api}")
+@FeignClient(name = "auth-server", path = "${auth.feign.path:/auth-server}")
 /**
  * AuthFeignClient。
  */
@@ -34,7 +34,7 @@ public interface AuthFeignClient {
     @PostMapping("/logout")
     ApiResponse<Void> logout(@RequestHeader(value = "Cookie", required = false) String cookie);
 
-    @GetMapping("/session/me")
+    @GetMapping("/login/session-info")
     ApiResponse<AuthClient.SessionResponse> sessionMe(@RequestHeader(value = "Cookie", required = false) String cookie);
 
     @PostMapping("/session/kick")
