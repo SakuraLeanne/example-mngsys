@@ -41,22 +41,12 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
 
 portal:
-  security:
-    allowedHosts:
-      - biz-a.com
-      - biz-b.com
-  sso:
-    ticketTtlSeconds: 60
   ptk:
     ttlSeconds: 600
   userAuth:
     cacheTtlSeconds: 600
   events:
     streamKey: portal:events
-
-gateway:
-  security:
-    whitelist: []
 
 auth:
   internalToken: change-me
