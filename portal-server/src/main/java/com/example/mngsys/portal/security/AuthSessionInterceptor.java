@@ -29,13 +29,7 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
 
     private static final String APP_MENU_PATH = "/portal/api/app/menus";
     private static final String DEV_USER_HEADER = "X-User-Id";
-    private static final List<String> DEFAULT_WHITELIST = java.util.Arrays.asList(
-            "POST /portal/api/login",
-            "POST /portal/api/sms/send",
-            "POST /portal/api/password/forgot/send",
-            "POST /portal/api/password/forgot/verify",
-            "POST /portal/api/password/forgot/reset"
-    );
+
 
     private final AuthClient authClient;
     private final ObjectMapper objectMapper;
@@ -94,21 +88,8 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         String method = request.getMethod();
         String path = request.getRequestURI();
         List<String> whitelist = gatewaySecurityProperties.getWhitelist();
-        if (whitelist == null || whitelist.isEmpty()) {
-            whitelist = DEFAULT_WHITELIST;
-        } else {
-            whitelist = mergeWhitelist(whitelist);
-        }
-        return whitelist.stream().anyMatch(entry -> matches(entry, method, path));
-    }
 
-    private List<String> mergeWhitelist(List<String> configured) {
-        if (configured == null || configured.isEmpty()) {
-            return DEFAULT_WHITELIST;
-        }
-        java.util.Set<String> merged = new java.util.LinkedHashSet<>(DEFAULT_WHITELIST);
-        merged.addAll(configured);
-        return new java.util.ArrayList<>(merged);
+        return whitelist.stream().anyMatch(entry -> matches(entry, method, path));
     }
 
     private boolean matches(String pattern, String method, String path) {

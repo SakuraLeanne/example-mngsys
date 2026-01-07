@@ -28,7 +28,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authSessionInterceptor)
-                .addPathPatterns("/portal/api/**");
+                .addPathPatterns("/login/**")
+                .addPathPatterns("/password/forgot/**")
+                .addPathPatterns("/loginuser/session-info");
         registry.addInterceptor(ptkInterceptor)
                 .addPathPatterns("/portal/api/**");
         registry.addInterceptor(adminRequiredInterceptor)
