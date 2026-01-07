@@ -3,4 +3,6 @@ gateway:
     whitelist:
       - /auth/api/login
       - /portal/api/login
+      - /portal/api/password/change
+      - /portal/api/profile
       - /portal/api/action/**
