@@ -52,14 +52,14 @@ public class EventNotifyAutoConfiguration {
 
     @Bean(destroyMethod = "stop")
     @ConditionalOnMissingBean
-    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> streamMessageListenerContainer(
+    public StreamMessageListenerContainer<String, MapRecord<String, String, Object>> streamMessageListenerContainer(
             StringRedisTemplate stringRedisTemplate) {
-        StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
-                StreamMessageListenerContainer.StreamMessageListenerContainerOptions.<String, MapRecord<String, String, String>>builder()
+        StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, Object>> options =
+                StreamMessageListenerContainer.StreamMessageListenerContainerOptions.<String, MapRecord<String, String, Object>>builder()
                         .batchSize(10)
                         .pollTimeout(Duration.ofSeconds(2))
                         .build();
-        StreamMessageListenerContainer<String, MapRecord<String, String, String>> container =
+        StreamMessageListenerContainer<String, MapRecord<String, String, Object>> container =
                 StreamMessageListenerContainer.create(stringRedisTemplate.getRequiredConnectionFactory(), options);
         container.start();
         return container;
