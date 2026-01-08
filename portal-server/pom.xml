@@ -86,7 +86,7 @@
         </dependency>
         <dependency>
             <groupId>com.example.mngsys</groupId>
-            <artifactId>redis-event-notify-api</artifactId>
+            <artifactId>event-notify-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

@@ -1,11 +1,10 @@
 package com.example.mngsys.portal.service;
 
+import com.example.mngsys.api.notify.core.EventNotifyPublisher;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.entity.PortalUserAuthState;
-import com.example.mngsys.redisevent.EventMessage;
-import com.example.mngsys.redisevent.EventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,10 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 @Service
 /**
@@ -27,27 +27,27 @@ import java.util.UUID;
 public class PortalProfileService {
 
     private static final String PTK_PREFIX = "portal:ptk:";
-    private static final String EVENT_TYPE_PROFILE_UPDATED = "USER_PROFILE_UPDATED";
+    private static final String EVENT_TYPE_PROFILE_UPDATED = "portal:events:USER_PROFILE_UPDATED";
 
     private final PortalUserService portalUserService;
     private final PortalUserAuthStateService portalUserAuthStateService;
     private final UserAuthCacheService userAuthCacheService;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
-    private final EventPublisher eventPublisher;
+    private final EventNotifyPublisher eventNotifyPublisher;
 
     public PortalProfileService(PortalUserService portalUserService,
                                 PortalUserAuthStateService portalUserAuthStateService,
                                 UserAuthCacheService userAuthCacheService,
                                 StringRedisTemplate stringRedisTemplate,
                                 ObjectMapper objectMapper,
-                                EventPublisher eventPublisher) {
+                                EventNotifyPublisher eventNotifyPublisher) {
         this.portalUserService = portalUserService;
         this.portalUserAuthStateService = portalUserAuthStateService;
         this.userAuthCacheService = userAuthCacheService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
-        this.eventPublisher = eventPublisher;
+        this.eventNotifyPublisher = eventNotifyPublisher;
     }
 
     public ProfileResult getProfile(String ptk) {
@@ -147,20 +147,12 @@ public class PortalProfileService {
     }
 
     private void publishProfileUpdated(String userId, Long profileVersion, Map<String, Object> changedFields) {
-        EventMessage message = new EventMessage();
-        message.setEventId(UUID.randomUUID().toString());
-        message.setEventType(EVENT_TYPE_PROFILE_UPDATED);
-        message.setUserId(userId);
-        message.setProfileVersion(profileVersion);
-        message.setTs(System.currentTimeMillis());
-        if (changedFields != null && !changedFields.isEmpty()) {
-            try {
-                message.setPayload(objectMapper.writeValueAsString(changedFields));
-            } catch (JsonProcessingException ex) {
-                message.setPayload(null);
-            }
-        }
-        eventPublisher.publish(message);
+        Map<String, Object> message = new HashMap<>();
+        message.put("userId", userId);
+        message.put("profileVersion", profileVersion);
+        message.put("changedFields", changedFields);
+        message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        eventNotifyPublisher.publish(EVENT_TYPE_PROFILE_UPDATED, message);
     }
 
     private Map<String, Object> resolveChangedFields(PortalUser user, String realName, String mobile, String email) {

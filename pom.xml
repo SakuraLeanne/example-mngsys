@@ -24,9 +24,9 @@
 
     <modules>
         <module>common-utils</module>
-        <module>redis-event-notify-api</module>
         <module>auth-server</module>
         <module>portal-server</module>
         <module>gateway-server</module>
+        <module>event-notify-api</module>
     </modules>
 </project>

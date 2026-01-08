@@ -2,13 +2,12 @@ package com.example.mngsys.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.mngsys.api.notify.core.EventNotifyPublisher;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.entity.PortalAuditLog;
 import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.entity.PortalUserAuthState;
-import com.example.mngsys.redisevent.EventMessage;
-import com.example.mngsys.redisevent.EventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -16,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -34,9 +35,9 @@ public class PortalAdminUserService {
     /** 用户禁用状态码。 */
     private static final int STATUS_DISABLED = 0;
     /** 用户禁用事件类型。 */
-    private static final String EVENT_USER_DISABLED = "USER_DISABLED";
+    private static final String EVENT_USER_DISABLED = "portal:events:USER_DISABLED";
     /** 用户启用事件类型。 */
-    private static final String EVENT_USER_ENABLED = "USER_ENABLED";
+    private static final String EVENT_USER_ENABLED = "portal:events:USER_ENABLED";
 
     /** 门户用户服务。 */
     private final PortalUserService portalUserService;
@@ -49,7 +50,7 @@ public class PortalAdminUserService {
     /** 认证中心客户端。 */
     private final AuthClient authClient;
     /** 事件发布器。 */
-    private final EventPublisher eventPublisher;
+    private final EventNotifyPublisher eventNotifyPublisher;
     /** JSON 序列化器。 */
     private final ObjectMapper objectMapper;
 
@@ -61,14 +62,14 @@ public class PortalAdminUserService {
                                   UserAuthCacheService userAuthCacheService,
                                   PortalAuditLogService portalAuditLogService,
                                   AuthClient authClient,
-                                  EventPublisher eventPublisher,
+                                  EventNotifyPublisher eventNotifyPublisher,
                                   ObjectMapper objectMapper) {
         this.portalUserService = portalUserService;
         this.portalUserAuthStateService = portalUserAuthStateService;
         this.userAuthCacheService = userAuthCacheService;
         this.portalAuditLogService = portalAuditLogService;
         this.authClient = authClient;
-        this.eventPublisher = eventPublisher;
+        this.eventNotifyPublisher = eventNotifyPublisher;
         this.objectMapper = objectMapper;
     }
 
@@ -222,37 +223,34 @@ public class PortalAdminUserService {
 
     /**
      * 发布用户禁用事件。
+     * operatorId 操作人ID
      */
     private void publishDisabled(String userId, Long authVersion, String reason, String operatorId) {
-        EventMessage message = new EventMessage();
-        message.setEventId(UUID.randomUUID().toString());
-        message.setEventType(EVENT_USER_DISABLED);
-        message.setUserId(userId);
-        message.setAuthVersion(authVersion);
-        message.setOperatorId(operatorId);
-        message.setTs(System.currentTimeMillis());
+        Map<String, Object> message = new HashMap<>();
+        message.put("userId", userId);
+        message.put("authVersion", authVersion.toString());
+        message.put("operatorId", operatorId);
         if (StringUtils.hasText(reason)) {
             try {
-                message.setPayload(objectMapper.writeValueAsString(new DisablePayload(reason)));
+                message.put("reason", objectMapper.writeValueAsString(new DisablePayload(reason)));
             } catch (JsonProcessingException ex) {
-                message.setPayload(null);
+                message.put("reason", null);
             }
         }
-        eventPublisher.publish(message);
+        message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        eventNotifyPublisher.publish(EVENT_USER_DISABLED, message);
     }
 
     /**
      * 发布用户启用事件。
      */
     private void publishEnabled(String userId, Long authVersion, String operatorId) {
-        EventMessage message = new EventMessage();
-        message.setEventId(UUID.randomUUID().toString());
-        message.setEventType(EVENT_USER_ENABLED);
-        message.setUserId(userId);
-        message.setAuthVersion(authVersion);
-        message.setOperatorId(operatorId);
-        message.setTs(System.currentTimeMillis());
-        eventPublisher.publish(message);
+        Map<String, Object> message = new HashMap<>();
+        message.put("userId", userId);
+        message.put("authVersion", authVersion.toString());
+        message.put("operatorId", operatorId);
+        message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        eventNotifyPublisher.publish(EVENT_USER_ENABLED, message);
     }
 
     /**

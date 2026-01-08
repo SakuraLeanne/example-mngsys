@@ -1,13 +1,12 @@
 package com.example.mngsys.portal.service;
 
+import com.example.mngsys.api.notify.core.EventNotifyPublisher;
 import com.example.mngsys.common.security.PasswordCryptoService;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.entity.PortalUserAuthState;
-import com.example.mngsys.redisevent.EventMessage;
-import com.example.mngsys.redisevent.EventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,8 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * PortalPasswordService。
@@ -34,7 +34,7 @@ public class PortalPasswordService {
     /** Portal Token 的缓存前缀。 */
     private static final String PTK_PREFIX = "portal:ptk:";
     /** 密码变更事件类型。 */
-    private static final String EVENT_TYPE_PASSWORD_CHANGED = "USER_PASSWORD_CHANGED";
+    private static final String EVENT_TYPE_PASSWORD_CHANGED = "portal:events:USER_PASSWORD_CHANGED";
 
     /** 用户服务。 */
     private final PortalUserService portalUserService;
@@ -49,7 +49,7 @@ public class PortalPasswordService {
     /** 认证中心客户端。 */
     private final AuthClient authClient;
     /** 事件发布器。 */
-    private final EventPublisher eventPublisher;
+    private final EventNotifyPublisher eventNotifyPublisher;
     /** 密码编码器。 */
     private final PasswordEncoder passwordEncoder;
     /** 密码解密服务。 */
@@ -64,7 +64,7 @@ public class PortalPasswordService {
                                  StringRedisTemplate stringRedisTemplate,
                                  ObjectMapper objectMapper,
                                  AuthClient authClient,
-                                 EventPublisher eventPublisher,
+                                 EventNotifyPublisher eventNotifyPublisher,
                                  PasswordEncoder passwordEncoder,
                                  PasswordCryptoService passwordCryptoService) {
         this.portalUserService = portalUserService;
@@ -73,7 +73,7 @@ public class PortalPasswordService {
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
         this.authClient = authClient;
-        this.eventPublisher = eventPublisher;
+        this.eventNotifyPublisher = eventNotifyPublisher;
         this.passwordEncoder = passwordEncoder;
         this.passwordCryptoService = passwordCryptoService;
     }
@@ -237,13 +237,11 @@ public class PortalPasswordService {
      * 发布密码变更事件。
      */
     private void publishPasswordChanged(String userId, Long authVersion) {
-        EventMessage message = new EventMessage();
-        message.setEventId(UUID.randomUUID().toString());
-        message.setEventType(EVENT_TYPE_PASSWORD_CHANGED);
-        message.setUserId(userId);
-        message.setAuthVersion(authVersion);
-        message.setTs(System.currentTimeMillis());
-        eventPublisher.publish(message);
+        Map<String, Object> message = new HashMap<>();
+        message.put("userId", userId);
+        message.put("authVersion", authVersion.toString());
+        message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        eventNotifyPublisher.publish(EVENT_TYPE_PASSWORD_CHANGED, message);
     }
 
     /**
