@@ -118,9 +118,6 @@ public class PortalPasswordService {
         if (!matchesPassword(resolvedOldPassword, user.getPassword())) {
             return ChangeResult.failure(ErrorCode.OLD_PASSWORD_INCORRECT);
         }
-        if (matchesPassword(resolvedNewPassword, user.getPassword())) {
-            return ChangeResult.failure(ErrorCode.NEW_PASSWORD_POLICY_VIOLATION);
-        }
         String encodedPassword = passwordEncoder.encode(resolvedNewPassword);
         user.setPassword(encodedPassword);
         portalUserService.updateById(user);
