@@ -19,7 +19,9 @@ public enum ErrorCode {
     PTK_EXPIRED(200121, 410, "ptk过期"),
     PTK_SCOPE_MISMATCH(200122, 403, "ptk scope不匹配"),
 
-    USER_DISABLED(300100, 403, "用户禁用");
+    USER_DISABLED(300100, 403, "用户禁用"),
+    OLD_PASSWORD_INCORRECT(300110, 400, "旧密码错误"),
+    NEW_PASSWORD_POLICY_VIOLATION(300111, 400, "新密码不符合策略");
 
     private final int code;
     private final int httpStatus;

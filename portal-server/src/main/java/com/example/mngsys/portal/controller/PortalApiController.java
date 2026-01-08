@@ -265,7 +265,9 @@ public class PortalApiController {
                                                                     HttpServletRequest httpRequest) {
         String ptk = resolvePtk(httpRequest);
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
+                request.getEncryptedOldPassword(),
                 request.getOldPassword(),
+                request.getEncryptedNewPassword(),
                 request.getNewPassword(),
                 ptk);
         if (!result.isSuccess()) {
