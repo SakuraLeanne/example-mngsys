@@ -293,7 +293,7 @@ public class PortalActionService {
             if (expireAt == null) {
                 return false;
             }
-            return Instant.now().toEpochMilli() > expireAt;
+            return Instant.now().getEpochSecond() > expireAt;
         }
 
         /** 获取用户 ID。 */

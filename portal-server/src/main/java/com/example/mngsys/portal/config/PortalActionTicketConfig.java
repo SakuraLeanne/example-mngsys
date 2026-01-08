@@ -24,7 +24,7 @@ public class PortalActionTicketConfig {
                                                          ObjectMapper objectMapper,
                                                          PortalProperties portalProperties,
                                                          @Value("${portal.action.portal-base-url:https://portal.example.com}") String portalBaseUrl,
-                                                         @Value("${portal.action.source-system-code:portal-server}") String sourceSystemCode,
+                                                         @Value("${portal.action.source-system-code:biz-a}") String sourceSystemCode,
                                                          @Value("${portal.action.ticket-ttl-seconds:300}") long ttlSeconds) {
         Set<String> allowedHosts = new HashSet<>(portalProperties.getSecurity().getAllowedHosts());
         return new PortalActionTicketUtil(redisTemplate, objectMapper, portalBaseUrl, sourceSystemCode, allowedHosts, ttlSeconds);
