@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.service;
 
+import com.example.mngsys.common.security.PasswordCryptoService;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
@@ -51,6 +52,8 @@ public class PortalPasswordService {
     private final EventPublisher eventPublisher;
     /** 密码编码器。 */
     private final PasswordEncoder passwordEncoder;
+    /** 密码解密服务。 */
+    private final PasswordCryptoService passwordCryptoService;
 
     /**
      * 构造函数，注入依赖。
@@ -62,7 +65,8 @@ public class PortalPasswordService {
                                  ObjectMapper objectMapper,
                                  AuthClient authClient,
                                  EventPublisher eventPublisher,
-                                 PasswordEncoder passwordEncoder) {
+                                 PasswordEncoder passwordEncoder,
+                                 PasswordCryptoService passwordCryptoService) {
         this.portalUserService = portalUserService;
         this.portalUserAuthStateService = portalUserAuthStateService;
         this.userAuthCacheService = userAuthCacheService;
@@ -71,6 +75,7 @@ public class PortalPasswordService {
         this.authClient = authClient;
         this.eventPublisher = eventPublisher;
         this.passwordEncoder = passwordEncoder;
+        this.passwordCryptoService = passwordCryptoService;
     }
 
     /**
@@ -82,12 +87,21 @@ public class PortalPasswordService {
      * @return 操作结果
      */
     @Transactional
-    public ChangeResult changePassword(String oldPassword, String newPassword, String ptk) {
-        if (!StringUtils.hasText(oldPassword)) {
+    public ChangeResult changePassword(String encryptedOldPassword,
+                                       String oldPassword,
+                                       String encryptedNewPassword,
+                                       String newPassword,
+                                       String ptk) {
+        String resolvedOldPassword = passwordCryptoService.decrypt(encryptedOldPassword, oldPassword);
+        if (!StringUtils.hasText(resolvedOldPassword)) {
             return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
-        if (!StringUtils.hasText(newPassword) || newPassword.length() < 8 || !isComplexEnough(newPassword)) {
+        String resolvedNewPassword = passwordCryptoService.decrypt(encryptedNewPassword, newPassword);
+        if (!StringUtils.hasText(resolvedNewPassword)) {
             return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
+        }
+        if (resolvedNewPassword.length() < 8 || !isComplexEnough(resolvedNewPassword)) {
+            return ChangeResult.failure(ErrorCode.NEW_PASSWORD_POLICY_VIOLATION);
         }
         String userId = resolveUserId(ptk);
         if (userId == null) {
@@ -101,13 +115,13 @@ public class PortalPasswordService {
         if (status == null || status != 1) {
             return ChangeResult.failure(ErrorCode.USER_DISABLED);
         }
-        if (!matchesPassword(oldPassword, user.getPassword())) {
-            return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
+        if (!matchesPassword(resolvedOldPassword, user.getPassword())) {
+            return ChangeResult.failure(ErrorCode.OLD_PASSWORD_INCORRECT);
         }
-        if (matchesPassword(newPassword, user.getPassword())) {
-            return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
+        if (matchesPassword(resolvedNewPassword, user.getPassword())) {
+            return ChangeResult.failure(ErrorCode.NEW_PASSWORD_POLICY_VIOLATION);
         }
-        String encodedPassword = passwordEncoder.encode(newPassword);
+        String encodedPassword = passwordEncoder.encode(resolvedNewPassword);
         user.setPassword(encodedPassword);
         portalUserService.updateById(user);
         LocalDateTime now = LocalDateTime.now();

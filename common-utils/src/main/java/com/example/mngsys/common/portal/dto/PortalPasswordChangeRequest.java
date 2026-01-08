@@ -1,17 +1,24 @@
 package com.example.mngsys.common.portal.dto;
 
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
 /**
  * 修改密码请求。
  */
 public class PortalPasswordChangeRequest {
-    @NotBlank(message = "旧密码不能为空")
+    private String encryptedOldPassword;
     private String oldPassword;
-    @NotBlank(message = "新密码不能为空")
-    @Size(min = 8, message = "新密码长度至少8位")
+    private String encryptedNewPassword;
+    @Size(max = 128, message = "密码长度过长")
     private String newPassword;
+
+    public String getEncryptedOldPassword() {
+        return encryptedOldPassword;
+    }
+
+    public void setEncryptedOldPassword(String encryptedOldPassword) {
+        this.encryptedOldPassword = encryptedOldPassword;
+    }
 
     public String getOldPassword() {
         return oldPassword;
@@ -19,6 +26,14 @@ public class PortalPasswordChangeRequest {
 
     public void setOldPassword(String oldPassword) {
         this.oldPassword = oldPassword;
+    }
+
+    public String getEncryptedNewPassword() {
+        return encryptedNewPassword;
+    }
+
+    public void setEncryptedNewPassword(String encryptedNewPassword) {
+        this.encryptedNewPassword = encryptedNewPassword;
     }
 
     public String getNewPassword() {

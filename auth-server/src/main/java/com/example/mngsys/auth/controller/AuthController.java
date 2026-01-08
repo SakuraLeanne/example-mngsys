@@ -5,9 +5,10 @@ import com.example.mngsys.auth.common.api.ApiResponse;
 import com.example.mngsys.auth.common.api.ErrorCode;
 import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.service.AuthService;
-import com.example.mngsys.auth.service.PasswordCryptoService;
 import com.example.mngsys.auth.service.PasswordResetService;
 import com.example.mngsys.auth.service.SmsCodeService;
+import com.example.mngsys.common.security.PasswordCryptoService;
+import com.example.mngsys.common.security.PasswordEncryptProperties;
 import com.example.mngsys.common.feign.dto.AuthKickRequest;
 import com.example.mngsys.common.feign.dto.AuthLoginRequest;
 import com.example.mngsys.common.feign.dto.AuthLoginResponse;
@@ -186,7 +187,7 @@ public class AuthController {
         if (!StringUtils.hasText(request.getUsername())) {
             throw new IllegalArgumentException("用户名不能为空");
         }
-        AuthProperties.PasswordEncryptProperties encryptProps = authProperties.getPasswordEncrypt();
+        PasswordEncryptProperties encryptProps = authProperties.getPasswordEncrypt();
         boolean encryptEnabled = encryptProps != null && encryptProps.isEnabled();
         if (encryptEnabled) {
             if (!StringUtils.hasText(request.getEncryptedPassword())) {
