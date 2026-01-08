@@ -1,7 +1,5 @@
-package com.example.mngsys.auth.service;
+package com.example.mngsys.common.security;
 
-import com.example.mngsys.auth.config.AuthProperties;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.crypto.Cipher;
@@ -21,17 +19,16 @@ import java.util.Base64;
  * 密文格式：Base64(12字节IV + 密文)。
  * </p>
  */
-@Service
 public class PasswordCryptoService {
 
     private static final String AES_GCM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
     private static final int IV_LENGTH = 12;
 
-    private final AuthProperties authProperties;
+    private final PasswordEncryptProperties passwordEncryptProperties;
 
-    public PasswordCryptoService(AuthProperties authProperties) {
-        this.authProperties = authProperties;
+    public PasswordCryptoService(PasswordEncryptProperties passwordEncryptProperties) {
+        this.passwordEncryptProperties = passwordEncryptProperties;
     }
 
     /**
@@ -42,8 +39,7 @@ public class PasswordCryptoService {
      * @return 解密后的明文密码
      */
     public String decrypt(String encryptedPassword, String plainPassword) {
-        AuthProperties.PasswordEncryptProperties props = authProperties.getPasswordEncrypt();
-        boolean enabled = props != null && props.isEnabled();
+        boolean enabled = passwordEncryptProperties != null && passwordEncryptProperties.isEnabled();
         if (!enabled) {
             return plainPassword;
         }
@@ -59,7 +55,7 @@ public class PasswordCryptoService {
         ByteBuffer buffer = ByteBuffer.wrap(decoded);
         buffer.get(iv);
         buffer.get(cipherText);
-        SecretKey key = buildSecretKey(props.getAesKey());
+        SecretKey key = buildSecretKey(passwordEncryptProperties.getAesKey());
         try {
             Cipher cipher = Cipher.getInstance(AES_GCM);
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH, iv));

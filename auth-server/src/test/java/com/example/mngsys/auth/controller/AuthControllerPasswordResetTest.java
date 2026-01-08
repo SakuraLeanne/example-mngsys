@@ -5,9 +5,10 @@ import com.example.mngsys.auth.common.exception.GlobalExceptionHandler;
 import com.example.mngsys.auth.common.exception.LocalizedBusinessException;
 import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.service.AuthService;
-import com.example.mngsys.auth.service.PasswordCryptoService;
 import com.example.mngsys.auth.service.PasswordResetService;
 import com.example.mngsys.auth.service.SmsCodeService;
+import com.example.mngsys.common.security.PasswordCryptoService;
+import com.example.mngsys.common.security.PasswordEncryptProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,7 +104,7 @@ class AuthControllerPasswordResetTest {
         @Bean
         AuthProperties authProperties() {
             AuthProperties properties = new AuthProperties();
-            AuthProperties.PasswordEncryptProperties encryptProperties = new AuthProperties.PasswordEncryptProperties();
+            PasswordEncryptProperties encryptProperties = new PasswordEncryptProperties();
             encryptProperties.setEnabled(false);
             properties.setPasswordEncrypt(encryptProperties);
 
