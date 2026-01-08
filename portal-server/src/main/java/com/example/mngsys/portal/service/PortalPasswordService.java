@@ -237,7 +237,7 @@ public class PortalPasswordService {
      * 发布密码变更事件。
      */
     private void publishPasswordChanged(String userId, Long authVersion) {
-        Map<String, Object> message = new HashMap<>();
+        Map<String, String> message = new HashMap<>();
         message.put("userId", userId);
         message.put("authVersion", authVersion.toString());
         message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));

@@ -147,10 +147,16 @@ public class PortalProfileService {
     }
 
     private void publishProfileUpdated(String userId, Long profileVersion, Map<String, Object> changedFields) {
-        Map<String, Object> message = new HashMap<>();
+        Map<String, String> message = new HashMap<>();
         message.put("userId", userId);
-        message.put("profileVersion", profileVersion);
-        message.put("changedFields", changedFields);
+        message.put("profileVersion", profileVersion.toString());
+        if (changedFields != null && !changedFields.isEmpty()) {
+            try {
+                message.put("changedFields", objectMapper.writeValueAsString(changedFields));
+            } catch (JsonProcessingException ex) {
+                message.put("changedFields", null);
+            }
+        }
         message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         eventNotifyPublisher.publish(EVENT_TYPE_PROFILE_UPDATED, message);
     }

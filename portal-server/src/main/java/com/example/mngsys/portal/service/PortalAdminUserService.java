@@ -226,7 +226,7 @@ public class PortalAdminUserService {
      * operatorId 操作人ID
      */
     private void publishDisabled(String userId, Long authVersion, String reason, String operatorId) {
-        Map<String, Object> message = new HashMap<>();
+        Map<String, String> message = new HashMap<>();
         message.put("userId", userId);
         message.put("authVersion", authVersion.toString());
         message.put("operatorId", operatorId);
@@ -245,7 +245,7 @@ public class PortalAdminUserService {
      * 发布用户启用事件。
      */
     private void publishEnabled(String userId, Long authVersion, String operatorId) {
-        Map<String, Object> message = new HashMap<>();
+        Map<String, String> message = new HashMap<>();
         message.put("userId", userId);
         message.put("authVersion", authVersion.toString());
         message.put("operatorId", operatorId);

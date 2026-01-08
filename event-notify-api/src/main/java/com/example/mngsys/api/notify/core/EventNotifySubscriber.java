@@ -20,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EventNotifySubscriber {
     private final StringRedisTemplate stringRedisTemplate;
-    private final StreamMessageListenerContainer<String, MapRecord<String, String, Object>> container;
+    private final StreamMessageListenerContainer<String, MapRecord<String, String, String>> container;
     private final EventNotifyProperties properties;
 
     /**
@@ -50,9 +50,12 @@ public class EventNotifySubscriber {
         StreamOffset<String> streamOffset = StreamOffset.create(streamKey, ReadOffset.lastConsumed());
         Consumer consumer = Consumer.from(consumerGroup, consumerName);
 
-        return container.receive(consumer, streamOffset, message -> {
-            Map<String, Object> body = message.getValue();
-            handler.onMessage(message.getId().getValue(), body);
+        return container.receive(consumer, streamOffset, new StreamListener<String, MapRecord<String, String, String>>() {
+            @Override
+            public void onMessage(MapRecord<String, String, String> message) {
+                Map<String, String> body = message.getValue();
+                handler.onMessage(message.getId().getValue(), body);
+            }
         });
     }
 

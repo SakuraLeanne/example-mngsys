@@ -34,7 +34,7 @@ public class EventNotifyPublisher {
      * @param message 消息字段集合
      * @return Redis 生成的 RecordId
      */
-    public RecordId publish(Map<String, Object> message) {
+    public RecordId publish(Map<String, String> message) {
         return publish(properties.getStreamKey(), message);
     }
 
@@ -57,12 +57,12 @@ public class EventNotifyPublisher {
      * @param message   消息字段集合
      * @return Redis 生成的 RecordId
      */
-    public RecordId publish(String streamKey, Map<String, Object> message) {
+    public RecordId publish(String streamKey, Map<String, String> message) {
         if (CollectionUtils.isEmpty(message)) {
             throw new IllegalArgumentException("message payload must not be empty");
         }
         Assert.hasText(streamKey, "streamKey must not be blank");
-        MapRecord<String, String, Object> record = StreamRecords.mapBacked(message)
+        MapRecord<String, String, String> record = StreamRecords.mapBacked(message)
                 .withStreamKey(streamKey);
         return stringRedisTemplate.opsForStream().add(record);
     }
