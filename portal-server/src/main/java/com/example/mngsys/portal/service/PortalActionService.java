@@ -165,9 +165,9 @@ public class PortalActionService {
      */
     public enum ActionType {
         /** 密码相关票据。 */
-        PASSWORD("pwd", ACTION_TICKET_PASSWORD_PREFIX),
+        PASSWORD("PWD_CHANGE", ACTION_TICKET_PASSWORD_PREFIX),
         /** 资料相关票据。 */
-        PROFILE("profile", ACTION_TICKET_PROFILE_PREFIX);
+        PROFILE("PROFILE_EDIT", ACTION_TICKET_PROFILE_PREFIX);
 
         /** 对应的 scope。 */
         private final String scope;
