@@ -29,6 +29,7 @@ import com.example.mngsys.portal.service.PortalUserService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,6 +53,8 @@ import java.util.Optional;
 //@RequestMapping("/portal/api")
 @Validated
 public class PortalApiController {
+    private static final String PTK_COOKIE_NAME = "ptk";
+    private static final String SATOKEN_COOKIE_NAME = "satoken";
 
     /**
      * 认证相关业务服务，用于登录、登出和 SSO 跳转处理。
@@ -265,6 +268,7 @@ public class PortalApiController {
                                                                     HttpServletRequest httpRequest,
                                                                     HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
+        String satoken = resolveSaToken(httpRequest);
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
                 request.getEncryptedOldPassword(),
                 request.getOldPassword(),
@@ -274,7 +278,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        clearPtkCookie(httpResponse);
+        clearActionCookie(httpResponse, ptk, satoken);
         return ApiResponse.success(new PortalPasswordChangeResponse(true, true));
     }
 
@@ -313,6 +317,7 @@ public class PortalApiController {
                                                                   HttpServletRequest httpRequest,
                                                                   HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
+        String satoken = resolveSaToken(httpRequest);
         PortalProfileService.UpdateResult result = portalProfileService.updateProfile(
                 ptk,
                 request.getRealName(),
@@ -321,7 +326,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        clearPtkCookie(httpResponse);
+        clearActionCookie(httpResponse, ptk, satoken);
         return ApiResponse.success(new PortalProfileUpdateResponse(true));
     }
 
@@ -417,6 +422,14 @@ public class PortalApiController {
      * @return ptk 值
      */
     private String resolvePtk(HttpServletRequest request) {
+        return resolveCookie(request, PTK_COOKIE_NAME);
+    }
+
+    private String resolveSaToken(HttpServletRequest request) {
+        return resolveCookie(request, SATOKEN_COOKIE_NAME);
+    }
+
+    private String resolveCookie(HttpServletRequest request, String name) {
         if (request == null) {
             return null;
         }
@@ -425,7 +438,7 @@ public class PortalApiController {
             return null;
         }
         Optional<Cookie> cookie = Arrays.stream(cookies)
-                .filter(item -> "ptk".equals(item.getName()))
+                .filter(item -> name.equals(item.getName()))
                 .findFirst();
         return cookie.map(Cookie::getValue).orElse(null);
     }
@@ -441,5 +454,28 @@ public class PortalApiController {
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearSaTokenCookie(HttpServletResponse response) {
+        if (response == null) {
+            return;
+        }
+        ResponseCookie cookie = ResponseCookie.from(SATOKEN_COOKIE_NAME, "")
+                .httpOnly(true)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearActionCookie(HttpServletResponse response, String ptk, String satoken) {
+        if (StringUtils.hasText(ptk)) {
+            clearPtkCookie(response);
+            return;
+        }
+        if (StringUtils.hasText(satoken)) {
+            clearSaTokenCookie(response);
+        }
     }
 }

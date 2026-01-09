@@ -29,6 +29,12 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
 
     private static final String APP_MENU_PATH = "/portal/api/app/menus";
     private static final String DEV_USER_HEADER = "X-User-Id";
+    private static final String PTK_COOKIE_NAME = "ptk";
+    private static final String SATOKEN_COOKIE_NAME = "satoken";
+    private static final List<String> PTK_SCOPE_PATHS = List.of(
+            "/portal/api/password/change",
+            "/portal/api/profile"
+    );
 
 
     private final AuthClient authClient;
@@ -55,10 +61,15 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         if (allowDevUserHeader(request)) {
             return true;
         }
-        if (isWhitelisted(request)) {
+        boolean requireSessionCheck = shouldRequireSessionCheck(request);
+        if (!requireSessionCheck && isWhitelisted(request)) {
             return true;
         }
         String cookie = request.getHeader("Cookie");
+        if (requireSessionCheck && !hasSaTokenCookie(cookie)) {
+            writeUnauthorized(response);
+            return false;
+        }
         if (cookie == null || cookie.trim().isEmpty()) {
             writeUnauthorized(response);
             return false;
@@ -90,6 +101,50 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         List<String> whitelist = gatewaySecurityProperties.getWhitelist();
 
         return whitelist.stream().anyMatch(entry -> matches(entry, method, path));
+    }
+
+    private boolean shouldRequireSessionCheck(HttpServletRequest request) {
+        if (!isPtkScopePath(request)) {
+            return false;
+        }
+        return !hasPtkCookie(request);
+    }
+
+    private boolean isPtkScopePath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return PTK_SCOPE_PATHS.stream().anyMatch(path::equalsIgnoreCase);
+    }
+
+    private boolean hasPtkCookie(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        javax.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return false;
+        }
+        for (javax.servlet.http.Cookie cookie : cookies) {
+            if (PTK_COOKIE_NAME.equals(cookie.getName())) {
+                String value = cookie.getValue();
+                return value != null && !value.trim().isEmpty();
+            }
+        }
+        return false;
+    }
+
+    private boolean hasSaTokenCookie(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.trim().isEmpty()) {
+            return false;
+        }
+        String[] parts = cookieHeader.split(";");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.startsWith(SATOKEN_COOKIE_NAME + "=")) {
+                String value = trimmed.substring(SATOKEN_COOKIE_NAME.length() + 1).trim();
+                return !value.isEmpty();
+            }
+        }
+        return false;
     }
 
     private boolean matches(String pattern, String method, String path) {
