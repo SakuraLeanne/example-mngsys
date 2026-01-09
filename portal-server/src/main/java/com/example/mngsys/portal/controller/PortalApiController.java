@@ -262,7 +262,8 @@ public class PortalApiController {
      */
     @PostMapping("/password/change")
     public ApiResponse<PortalPasswordChangeResponse> changePassword(@Valid @RequestBody PortalPasswordChangeRequest request,
-                                                                    HttpServletRequest httpRequest) {
+                                                                    HttpServletRequest httpRequest,
+                                                                    HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
                 request.getEncryptedOldPassword(),
@@ -273,6 +274,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
+        clearPtkCookie(httpResponse);
         return ApiResponse.success(new PortalPasswordChangeResponse(true, true));
     }
 
@@ -308,7 +310,8 @@ public class PortalApiController {
      */
     @PostMapping("/profile")
     public ApiResponse<PortalProfileUpdateResponse> updateProfile(@Valid @RequestBody PortalProfileUpdateRequest request,
-                                                                  HttpServletRequest httpRequest) {
+                                                                  HttpServletRequest httpRequest,
+                                                                  HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
         PortalProfileService.UpdateResult result = portalProfileService.updateProfile(
                 ptk,
@@ -318,6 +321,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
+        clearPtkCookie(httpResponse);
         return ApiResponse.success(new PortalProfileUpdateResponse(true));
     }
 
@@ -424,5 +428,18 @@ public class PortalApiController {
                 .filter(item -> "ptk".equals(item.getName()))
                 .findFirst();
         return cookie.map(Cookie::getValue).orElse(null);
+    }
+
+    private void clearPtkCookie(HttpServletResponse response) {
+        if (response == null) {
+            return;
+        }
+        ResponseCookie cookie = ResponseCookie.from("ptk", "")
+                .httpOnly(true)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

@@ -100,6 +100,7 @@ public class PortalProfileService {
         state.setLastProfileUpdateTime(now);
         portalUserAuthStateService.saveOrUpdate(state);
         userAuthCacheService.updateUserAuthCache(userId, status, null, nextProfileVersion);
+        deletePtk(ptk);
         publishProfileUpdated(userId, nextProfileVersion, changedFields);
         return UpdateResult.success(userId, nextProfileVersion);
     }
@@ -144,6 +145,13 @@ public class PortalProfileService {
     private Long nextVersion(Long current) {
         long base = current == null ? 1L : current;
         return base + 1;
+    }
+
+    private void deletePtk(String ptk) {
+        if (!StringUtils.hasText(ptk)) {
+            return;
+        }
+        stringRedisTemplate.delete(PTK_PREFIX + ptk);
     }
 
     private void publishProfileUpdated(String userId, Long profileVersion, Map<String, Object> changedFields) {
