@@ -18,6 +18,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -31,11 +32,7 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
     private static final String DEV_USER_HEADER = "X-User-Id";
     private static final String PTK_COOKIE_NAME = "ptk";
     private static final String SATOKEN_COOKIE_NAME = "satoken";
-    private static final List<String> PTK_SCOPE_PATHS = List.of(
-            "/portal/api/password/change",
-            "/portal/api/profile"
-    );
-
+    private static final List<String> PTK_SCOPE_PATHS = Arrays.asList("/portal-server/password/change", "/portal-server/profile");
 
     private final AuthClient authClient;
     private final ObjectMapper objectMapper;
