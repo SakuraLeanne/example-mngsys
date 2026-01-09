@@ -30,9 +30,9 @@ public class PtkInterceptor implements HandlerInterceptor {
     private static final String PTK_COOKIE_NAME = "ptk";
     private static final String PTK_PREFIX = "portal:ptk:";
     private static final List<ScopeEntry> SCOPE_ENTRIES = Arrays.asList(
-            new ScopeEntry("POST", "/portal/api/password/change", "PWD_CHANGE"),
-            new ScopeEntry("GET", "/portal/api/profile", "PROFILE_EDIT"),
-            new ScopeEntry("POST", "/portal/api/profile", "PROFILE_EDIT")
+            new ScopeEntry("POST", "/portal-server/password/change", "PWD_CHANGE"),
+            new ScopeEntry("GET", "/portal-server/profile", "PROFILE_EDIT"),
+            new ScopeEntry("POST", "/portal-server/profile", "PROFILE_EDIT")
     );
 
     private final StringRedisTemplate stringRedisTemplate;
