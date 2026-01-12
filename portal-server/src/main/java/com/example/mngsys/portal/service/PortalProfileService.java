@@ -63,16 +63,16 @@ public class PortalProfileService {
         if (status == null || status != 1) {
             return ProfileResult.failure(ErrorCode.USER_DISABLED);
         }
-        return ProfileResult.success(user.getId(), user.getUsername(), user.getRealName(), user.getMobile(), user.getEmail(), status);
+        return ProfileResult.success(user);
     }
 
     @Transactional
-    public UpdateResult updateProfile(String ptk, String realName, String mobile, String email) {
+    public UpdateResult updateProfile(String ptk, PortalUser request) {
         String userId = resolveUserId(ptk);
         if (userId == null) {
             return UpdateResult.failure(ErrorCode.UNAUTHENTICATED);
         }
-        if (!StringUtils.hasText(mobile)) {
+        if (request == null || !StringUtils.hasText(request.getMobile())) {
             return UpdateResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
         PortalUser user = portalUserService.getById(userId);
@@ -83,12 +83,10 @@ public class PortalProfileService {
         if (status == null || status != 1) {
             return UpdateResult.failure(ErrorCode.USER_DISABLED);
         }
-        Map<String, Object> changedFields = resolveChangedFields(user, realName, mobile, email);
-        user.setRealName(realName);
-        user.setMobile(mobile);
-        user.setEmail(email);
+        Map<String, Object> changedFields = resolveChangedFields(user, request);
+        request.setId(userId);
         try {
-            portalUserService.updateById(user);
+            portalUserService.updateById(request);
         } catch (IllegalArgumentException ex) {
             return UpdateResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
@@ -169,16 +167,67 @@ public class PortalProfileService {
         eventNotifyPublisher.publish(EVENT_TYPE_PROFILE_UPDATED, message);
     }
 
-    private Map<String, Object> resolveChangedFields(PortalUser user, String realName, String mobile, String email) {
+    private Map<String, Object> resolveChangedFields(PortalUser user, PortalUser request) {
         Map<String, Object> changed = new LinkedHashMap<>();
-        if (!Objects.equals(user.getRealName(), realName)) {
-            changed.put("realName", realName);
+        if (!Objects.equals(user.getUsername(), request.getUsername())) {
+            changed.put("username", request.getUsername());
         }
-        if (!Objects.equals(user.getMobile(), mobile)) {
-            changed.put("mobile", mobile);
+        if (!Objects.equals(user.getMobile(), request.getMobile())) {
+            changed.put("mobile", request.getMobile());
         }
-        if (!Objects.equals(user.getEmail(), email)) {
-            changed.put("email", email);
+        if (!Objects.equals(user.getMobileVerified(), request.getMobileVerified())) {
+            changed.put("mobileVerified", request.getMobileVerified());
+        }
+        if (!Objects.equals(user.getEmail(), request.getEmail())) {
+            changed.put("email", request.getEmail());
+        }
+        if (!Objects.equals(user.getEmailVerified(), request.getEmailVerified())) {
+            changed.put("emailVerified", request.getEmailVerified());
+        }
+        if (!Objects.equals(user.getPassword(), request.getPassword())) {
+            changed.put("password", request.getPassword());
+        }
+        if (!Objects.equals(user.getStatus(), request.getStatus())) {
+            changed.put("status", request.getStatus());
+        }
+        if (!Objects.equals(user.getRealName(), request.getRealName())) {
+            changed.put("realName", request.getRealName());
+        }
+        if (!Objects.equals(user.getNickName(), request.getNickName())) {
+            changed.put("nickName", request.getNickName());
+        }
+        if (!Objects.equals(user.getGender(), request.getGender())) {
+            changed.put("gender", request.getGender());
+        }
+        if (!Objects.equals(user.getBirthday(), request.getBirthday())) {
+            changed.put("birthday", request.getBirthday());
+        }
+        if (!Objects.equals(user.getCompanyName(), request.getCompanyName())) {
+            changed.put("companyName", request.getCompanyName());
+        }
+        if (!Objects.equals(user.getDepartment(), request.getDepartment())) {
+            changed.put("department", request.getDepartment());
+        }
+        if (!Objects.equals(user.getPosition(), request.getPosition())) {
+            changed.put("position", request.getPosition());
+        }
+        if (!Objects.equals(user.getTenantId(), request.getTenantId())) {
+            changed.put("tenantId", request.getTenantId());
+        }
+        if (!Objects.equals(user.getRemark(), request.getRemark())) {
+            changed.put("remark", request.getRemark());
+        }
+        if (!Objects.equals(user.getCreateTime(), request.getCreateTime())) {
+            changed.put("createTime", request.getCreateTime());
+        }
+        if (!Objects.equals(user.getUpdateTime(), request.getUpdateTime())) {
+            changed.put("updateTime", request.getUpdateTime());
+        }
+        if (!Objects.equals(user.getCreateBy(), request.getCreateBy())) {
+            changed.put("createBy", request.getCreateBy());
+        }
+        if (!Objects.equals(user.getUpdateBy(), request.getUpdateBy())) {
+            changed.put("updateBy", request.getUpdateBy());
         }
         return changed;
     }
@@ -194,31 +243,20 @@ public class PortalProfileService {
     public static class ProfileResult {
         private final boolean success;
         private final ErrorCode errorCode;
-        private final String userId;
-        private final String username;
-        private final String realName;
-        private final String mobile;
-        private final String email;
-        private final Integer status;
+        private final PortalUser user;
 
-        private ProfileResult(boolean success, ErrorCode errorCode, String userId, String username,
-                              String realName, String mobile, String email, Integer status) {
+        private ProfileResult(boolean success, ErrorCode errorCode, PortalUser user) {
             this.success = success;
             this.errorCode = errorCode;
-            this.userId = userId;
-            this.username = username;
-            this.realName = realName;
-            this.mobile = mobile;
-            this.email = email;
-            this.status = status;
+            this.user = user;
         }
 
-        public static ProfileResult success(String userId, String username, String realName, String mobile, String email, Integer status) {
-            return new ProfileResult(true, null, userId, username, realName, mobile, email, status);
+        public static ProfileResult success(PortalUser user) {
+            return new ProfileResult(true, null, user);
         }
 
         public static ProfileResult failure(ErrorCode errorCode) {
-            return new ProfileResult(false, errorCode, null, null, null, null, null, null);
+            return new ProfileResult(false, errorCode, null);
         }
 
         public boolean isSuccess() {
@@ -229,28 +267,8 @@ public class PortalProfileService {
             return errorCode;
         }
 
-        public String getUserId() {
-            return userId;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public Integer getStatus() {
-            return status;
+        public PortalUser getUser() {
+            return user;
         }
     }
 

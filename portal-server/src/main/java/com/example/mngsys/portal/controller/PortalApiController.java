@@ -10,8 +10,6 @@ import com.example.mngsys.common.portal.dto.PortalMeResponse;
 import com.example.mngsys.common.portal.dto.PortalMenuItem;
 import com.example.mngsys.common.portal.dto.PortalPasswordChangeRequest;
 import com.example.mngsys.common.portal.dto.PortalPasswordChangeResponse;
-import com.example.mngsys.common.portal.dto.PortalProfileResponse;
-import com.example.mngsys.common.portal.dto.PortalProfileUpdateRequest;
 import com.example.mngsys.common.portal.dto.PortalProfileUpdateResponse;
 import com.example.mngsys.common.portal.dto.PortalSmsSendRequest;
 import com.example.mngsys.common.portal.dto.PortalSmsVerifyRequest;
@@ -21,6 +19,7 @@ import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
+import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.service.PortalActionService;
 import com.example.mngsys.portal.service.PortalAuthService;
 import com.example.mngsys.portal.service.PortalPasswordService;
@@ -289,20 +288,13 @@ public class PortalApiController {
      * @return 个人资料信息
      */
     @GetMapping("/profile")
-    public ApiResponse<PortalProfileResponse> profile(HttpServletRequest httpRequest) {
+    public ApiResponse<PortalUser> profile(HttpServletRequest httpRequest) {
         String ptk = resolvePtk(httpRequest);
         PortalProfileService.ProfileResult result = portalProfileService.getProfile(ptk);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        PortalProfileResponse response = new PortalProfileResponse(
-                result.getUserId(),
-                result.getUsername(),
-                result.getRealName(),
-                result.getMobile(),
-                result.getEmail(),
-                result.getStatus());
-        return ApiResponse.success(response);
+        return ApiResponse.success(result.getUser());
     }
 
     /**
@@ -313,16 +305,14 @@ public class PortalApiController {
      * @return 更新结果
      */
     @PostMapping("/profile")
-    public ApiResponse<PortalProfileUpdateResponse> updateProfile(@Valid @RequestBody PortalProfileUpdateRequest request,
+    public ApiResponse<PortalProfileUpdateResponse> updateProfile(@Valid @RequestBody PortalUser request,
                                                                   HttpServletRequest httpRequest,
                                                                   HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
         String satoken = resolveSaToken(httpRequest);
         PortalProfileService.UpdateResult result = portalProfileService.updateProfile(
                 ptk,
-                request.getRealName(),
-                request.getMobile(),
-                request.getEmail());
+                request);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
