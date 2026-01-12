@@ -186,10 +186,12 @@ public class PortalProfileService {
         putIfChanged(changed, "position", user.getPosition(), request.getPosition());
         putIfChanged(changed, "tenantId", user.getTenantId(), request.getTenantId());
         putIfChanged(changed, "remark", user.getRemark(), request.getRemark());
-        putIfChanged(changed, "createTime", user.getCreateTime(), request.getCreateTime());
+        changed.put("updateTime", LocalDateTime.now());
+        changed.put("updateBy", request.getId());
+        /*putIfChanged(changed, "createTime", user.getCreateTime(), request.getCreateTime());
         putIfChanged(changed, "updateTime", user.getUpdateTime(), request.getUpdateTime());
         putIfChanged(changed, "createBy", user.getCreateBy(), request.getCreateBy());
-        putIfChanged(changed, "updateBy", user.getUpdateBy(), request.getUpdateBy());
+        putIfChanged(changed, "updateBy", user.getUpdateBy(), request.getUpdateBy());*/
         return changed;
     }
 
