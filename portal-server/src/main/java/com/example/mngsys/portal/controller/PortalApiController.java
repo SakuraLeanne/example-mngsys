@@ -277,7 +277,7 @@ public class PortalApiController {
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        clearActionCookie(httpResponse, ptk, satoken);
+        clearActionCookieForPassword(httpResponse, ptk, satoken);
         return ApiResponse.success(new PortalPasswordChangeResponse(true, true));
     }
 
@@ -309,14 +309,13 @@ public class PortalApiController {
                                                                   HttpServletRequest httpRequest,
                                                                   HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
-        String satoken = resolveSaToken(httpRequest);
         PortalProfileService.UpdateResult result = portalProfileService.updateProfile(
                 ptk,
                 request);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
-        clearActionCookie(httpResponse, ptk, satoken);
+        clearActionCookie(httpResponse, ptk);
         return ApiResponse.success(new PortalProfileUpdateResponse(true));
     }
 
@@ -459,10 +458,15 @@ public class PortalApiController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private void clearActionCookie(HttpServletResponse response, String ptk, String satoken) {
+    private void clearActionCookie(HttpServletResponse response, String ptk) {
         if (StringUtils.hasText(ptk)) {
             clearPtkCookie(response);
-            return;
+        }
+    }
+
+    private void clearActionCookieForPassword(HttpServletResponse response, String ptk, String satoken) {
+        if (StringUtils.hasText(ptk)) {
+            clearPtkCookie(response);
         }
         if (StringUtils.hasText(satoken)) {
             clearSaTokenCookie(response);
