@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -139,7 +140,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
     private byte[] buildUnauthorizedPayload(String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("code", ErrorCode.UNAUTHENTICATED.getCode());
-        String resolvedMessage = message == null || message.isBlank()
+        String resolvedMessage = message == null || StringUtils.isBlank(message)
                 ? ErrorCode.UNAUTHENTICATED.getMessage()
                 : message;
         body.put("message", resolvedMessage);
@@ -168,7 +169,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean hasSaTokenCookie(String cookieHeader) {
-        if (cookieHeader == null || cookieHeader.isBlank()) {
+        if (cookieHeader == null || StringUtils.isBlank(cookieHeader)) {
             return false;
         }
         String[] parts = cookieHeader.split(";");
