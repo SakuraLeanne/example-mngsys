@@ -110,7 +110,7 @@ public class PortalActionService {
      */
     private void validateReturnUrl(String returnUrl) {
         if (!isAllowedHost(returnUrl)) {
-            throw new InvalidReturnUrlException("非法回调地址");
+            throw new InvalidReturnUrlException("回调地址不合法或不在白名单");
         }
     }
 
