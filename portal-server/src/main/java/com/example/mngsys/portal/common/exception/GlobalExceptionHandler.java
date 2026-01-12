@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,7 +39,9 @@ public class GlobalExceptionHandler {
         } else if (ex instanceof BindException) {
             fieldError = ((BindException) ex).getBindingResult().getFieldError();
         }
-        String message = fieldError == null ? ErrorCode.INVALID_ARGUMENT.getMessage() : fieldError.getDefaultMessage();
+        String message = fieldError == null
+                ? ErrorCode.INVALID_ARGUMENT.getMessage()
+                : buildFieldMessage(fieldError.getField(), fieldError.getDefaultMessage());
         return ResponseEntity.status(ErrorCode.INVALID_ARGUMENT.getHttpStatus())
                 .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, message));
     }
@@ -46,8 +49,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex) {
         String message = ex.getConstraintViolations().stream()
-                .map(ConstraintViolation::getMessage)
                 .findFirst()
+                .map(violation -> buildFieldMessage(normalizeFieldName(violation.getPropertyPath().toString()),
+                        violation.getMessage()))
                 .orElse(resolveMessage("error.request.invalid", ErrorCode.INVALID_ARGUMENT.getMessage()));
         return ResponseEntity.status(ErrorCode.INVALID_ARGUMENT.getHttpStatus())
                 .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, message));
@@ -55,9 +59,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        String message = StringUtils.hasText(ex.getMessage())
+                ? ex.getMessage()
+                : resolveMessage("error.request.invalid", ErrorCode.INVALID_ARGUMENT.getMessage());
         return ResponseEntity.status(ErrorCode.INVALID_ARGUMENT.getHttpStatus())
-                .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT,
-                        resolveMessage("error.request.invalid", ErrorCode.INVALID_ARGUMENT.getMessage())));
+                .body(ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, message));
     }
 
     @ExceptionHandler(LocalizedBusinessException.class)
@@ -87,5 +93,25 @@ public class GlobalExceptionHandler {
             return defaultMessage;
         }
         return messageSource.getMessage(messageKey, args, defaultMessage, LocaleContextHolder.getLocale());
+    }
+
+    private String buildFieldMessage(String field, String detail) {
+        String fallback = resolveMessage("error.request.invalid", ErrorCode.INVALID_ARGUMENT.getMessage());
+        String resolvedDetail = StringUtils.hasText(detail) ? detail : fallback;
+        if (!StringUtils.hasText(field)) {
+            return resolvedDetail;
+        }
+        if (resolvedDetail.contains(field)) {
+            return resolvedDetail;
+        }
+        return "参数" + field + resolvedDetail;
+    }
+
+    private String normalizeFieldName(String fieldPath) {
+        if (!StringUtils.hasText(fieldPath)) {
+            return fieldPath;
+        }
+        int lastDot = fieldPath.lastIndexOf('.');
+        return lastDot >= 0 ? fieldPath.substring(lastDot + 1) : fieldPath;
     }
 }

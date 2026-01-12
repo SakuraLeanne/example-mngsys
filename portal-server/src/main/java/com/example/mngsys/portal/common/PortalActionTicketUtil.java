@@ -153,7 +153,7 @@ public class PortalActionTicketUtil {
      */
     private String createTicket(String prefix, long userId, String returnUrl) {
         if (userId <= 0) {
-            throw new IllegalArgumentException("userId不能为空");
+            throw new IllegalArgumentException("用户信息缺失，请重新登录后重试");
         }
         validateReturnUrl(returnUrl);
         String ticket = UUID.randomUUID().toString().replace("-", "");
@@ -173,21 +173,21 @@ public class PortalActionTicketUtil {
      */
     private void validateReturnUrl(String returnUrl) {
         if (!StringUtils.hasText(returnUrl)) {
-            throw new InvalidReturnUrlException("returnUrl不能为空");
+            throw new InvalidReturnUrlException("回调地址不能为空，请补充后重试");
         }
         URI uri;
         try {
             uri = URI.create(returnUrl);
         } catch (IllegalArgumentException ex) {
-            throw new InvalidReturnUrlException("returnUrl格式不合法");
+            throw new InvalidReturnUrlException("回调地址格式不正确，请检查链接");
         }
         String scheme = uri.getScheme();
         if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
-            throw new InvalidReturnUrlException("returnUrl仅支持http/https");
+            throw new InvalidReturnUrlException("回调地址仅支持 http/https 协议");
         }
         String host = uri.getHost();
         if (!StringUtils.hasText(host)) {
-            throw new InvalidReturnUrlException("returnUrl缺少host");
+            throw new InvalidReturnUrlException("回调地址缺少域名，请检查链接");
         }
         String normalized = host.toLowerCase(Locale.ROOT);
         boolean allowed = allowedHosts.stream()
@@ -195,7 +195,7 @@ public class PortalActionTicketUtil {
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .anyMatch(normalized::equals);
         if (!allowed) {
-            throw new InvalidReturnUrlException("returnUrl host不在白名单");
+            throw new InvalidReturnUrlException("回调地址域名未在白名单，请联系管理员");
         }
     }
 

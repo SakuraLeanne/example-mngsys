@@ -97,7 +97,7 @@ public class PortalAuthService {
     public String createSsoJumpUrl(String userId, String systemCode, String targetUrl) {
         validateReturnUrl(targetUrl);
         if (userId == null) {
-            throw new IllegalArgumentException("用户未登录");
+            throw new IllegalArgumentException("登录状态已失效，请重新登录");
         }
         String ticket = UUID.randomUUID().toString().replace("-", "");
         Instant issuedAt = Instant.now();
@@ -121,7 +121,7 @@ public class PortalAuthService {
      */
     private void validateReturnUrl(String returnUrl) {
         if (!isAllowedHost(returnUrl)) {
-            throw new InvalidReturnUrlException("非法回调地址");
+            throw new InvalidReturnUrlException("回调地址不合法或不在白名单");
         }
     }
 

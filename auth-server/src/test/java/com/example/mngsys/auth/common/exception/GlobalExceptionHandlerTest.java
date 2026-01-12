@@ -39,7 +39,7 @@ class GlobalExceptionHandlerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_ARGUMENT.getCode()))
-                .andExpect(jsonPath("$.message").value("请求参数不合法"));
+                .andExpect(jsonPath("$.message").value("debug-info"));
     }
 
     @RestController

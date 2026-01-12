@@ -12,6 +12,7 @@ import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -64,22 +65,22 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         }
         String cookie = request.getHeader("Cookie");
         if (requireSessionCheck && !hasSaTokenCookie(cookie)) {
-            writeUnauthorized(response);
+            writeUnauthorized(response, "登录凭证缺失，请先登录");
             return false;
         }
         if (cookie == null || cookie.trim().isEmpty()) {
-            writeUnauthorized(response);
+            writeUnauthorized(response, "登录凭证缺失，请先登录");
             return false;
         }
         ResponseEntity<ApiResponse<AuthSessionResponse>> authResponse = authClient.sessionMe(cookie);
         ApiResponse<AuthSessionResponse> body = authResponse == null ? null : authResponse.getBody();
         if (body == null || body.getCode() != 0 || body.getData() == null) {
-            writeUnauthorized(response);
+            writeUnauthorized(response, body == null ? null : body.getMessage());
             return false;
         }
         String userId = extractUserId(body.getData());
         if (userId == null) {
-            writeUnauthorized(response);
+            writeUnauthorized(response, "登录凭证无效，请重新登录");
             return false;
         }
         RequestContext.setUserId(userId);
@@ -177,10 +178,11 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         return path.replaceFirst("^/portal-server", "/portalserver");
     }
 
-    private void writeUnauthorized(HttpServletResponse response) throws IOException {
+    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
         response.setStatus(ErrorCode.UNAUTHENTICATED.getHttpStatus());
         response.setContentType("application/json;charset=UTF-8");
-        objectMapper.writeValue(response.getWriter(), ApiResponse.failure(ErrorCode.UNAUTHENTICATED));
+        String resolvedMessage = StringUtils.hasText(message) ? message : ErrorCode.UNAUTHENTICATED.getMessage();
+        objectMapper.writeValue(response.getWriter(), ApiResponse.failure(ErrorCode.UNAUTHENTICATED, resolvedMessage));
     }
 
     private boolean allowDevUserHeader(HttpServletRequest request) {

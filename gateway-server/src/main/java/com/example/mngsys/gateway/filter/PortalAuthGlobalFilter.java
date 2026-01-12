@@ -1,8 +1,10 @@
 package com.example.mngsys.gateway.filter;
 
+import com.example.mngsys.common.api.ErrorCode;
 import com.example.mngsys.common.feign.AuthFeignClient;
 import com.example.mngsys.common.gateway.GatewaySecurityProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -17,6 +19,8 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -72,10 +76,13 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         }
         String cookie = exchange.getRequest().getHeaders().getFirst(HttpHeaders.COOKIE);
         String cookieHeader = cookie == null ? "" : cookie;
+        if (!hasSaTokenCookie(cookieHeader)) {
+            return writeUnauthorized(exchange, "登录凭证缺失，请先登录");
+        }
         return Mono.fromCallable(() -> authFeignClient.sessionMe(cookieHeader))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(response -> handleResponse(chain, exchange, response))
-                .onErrorResume(ex -> writeUnauthorized(exchange));
+                .onErrorResume(ex -> writeUnauthorized(exchange, null));
     }
 
     /**
@@ -92,7 +99,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         if (response.status() >= 200 && response.status() < 300) {
             return chain.filter(exchange);
         }
-        return writeUnauthorized(exchange);
+        return writeUnauthorized(exchange, resolveErrorMessage(response));
     }
 
     /**
@@ -115,10 +122,10 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
      * @param exchange 请求上下文
      * @return 写入响应的 Mono
      */
-    private Mono<Void> writeUnauthorized(ServerWebExchange exchange) {
+    private Mono<Void> writeUnauthorized(ServerWebExchange exchange, String message) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        byte[] payload = buildUnauthorizedPayload();
+        byte[] payload = buildUnauthorizedPayload(message);
         return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()
                 .bufferFactory()
                 .wrap(payload)));
@@ -129,16 +136,50 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
      *
      * @return JSON 内容字节
      */
-    private byte[] buildUnauthorizedPayload() {
+    private byte[] buildUnauthorizedPayload(String message) {
         Map<String, Object> body = new HashMap<>();
-        body.put("code", 100100);
-        body.put("message", "未登录");
+        body.put("code", ErrorCode.UNAUTHENTICATED.getCode());
+        String resolvedMessage = message == null || message.isBlank()
+                ? ErrorCode.UNAUTHENTICATED.getMessage()
+                : message;
+        body.put("message", resolvedMessage);
         body.put("data", null);
         try {
             return objectMapper.writeValueAsBytes(body);
         } catch (JsonProcessingException ex) {
-            return "{\"code\":100100,\"message\":\"未登录\",\"data\":null}".getBytes(StandardCharsets.UTF_8);
+            return ("{\"code\":" + ErrorCode.UNAUTHENTICATED.getCode()
+                    + ",\"message\":\"" + resolvedMessage
+                    + "\",\"data\":null}").getBytes(StandardCharsets.UTF_8);
         }
+    }
+
+    private String resolveErrorMessage(Response response) {
+        if (response == null || response.body() == null) {
+            return null;
+        }
+        try (InputStream inputStream = response.body().asInputStream()) {
+            Map<String, Object> payload = objectMapper.readValue(inputStream, new TypeReference<Map<String, Object>>() {
+            });
+            Object value = payload.get("message");
+            return value == null ? null : value.toString();
+        } catch (IOException ex) {
+            return null;
+        }
+    }
+
+    private boolean hasSaTokenCookie(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isBlank()) {
+            return false;
+        }
+        String[] parts = cookieHeader.split(";");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.startsWith("satoken=")) {
+                String value = trimmed.substring("satoken=".length()).trim();
+                return !value.isEmpty();
+            }
+        }
+        return false;
     }
 
     /**
