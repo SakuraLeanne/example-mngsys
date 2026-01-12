@@ -72,7 +72,7 @@ public class PortalProfileService {
         if (userId == null) {
             return UpdateResult.failure(ErrorCode.UNAUTHENTICATED);
         }
-        if (request == null || !StringUtils.hasText(request.getMobile())) {
+        if (request == null) {
             return UpdateResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
         PortalUser user = portalUserService.getById(userId);
@@ -84,9 +84,10 @@ public class PortalProfileService {
             return UpdateResult.failure(ErrorCode.USER_DISABLED);
         }
         Map<String, Object> changedFields = resolveChangedFields(user, request);
-        request.setId(userId);
+        PortalUser merged = mergeForUpdate(user, request);
+        merged.setId(userId);
         try {
-            portalUserService.updateById(request);
+            portalUserService.updateById(merged);
         } catch (IllegalArgumentException ex) {
             return UpdateResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
@@ -169,67 +170,120 @@ public class PortalProfileService {
 
     private Map<String, Object> resolveChangedFields(PortalUser user, PortalUser request) {
         Map<String, Object> changed = new LinkedHashMap<>();
-        if (!Objects.equals(user.getUsername(), request.getUsername())) {
-            changed.put("username", request.getUsername());
-        }
-        if (!Objects.equals(user.getMobile(), request.getMobile())) {
-            changed.put("mobile", request.getMobile());
-        }
-        if (!Objects.equals(user.getMobileVerified(), request.getMobileVerified())) {
-            changed.put("mobileVerified", request.getMobileVerified());
-        }
-        if (!Objects.equals(user.getEmail(), request.getEmail())) {
-            changed.put("email", request.getEmail());
-        }
-        if (!Objects.equals(user.getEmailVerified(), request.getEmailVerified())) {
-            changed.put("emailVerified", request.getEmailVerified());
-        }
-        if (!Objects.equals(user.getPassword(), request.getPassword())) {
-            changed.put("password", request.getPassword());
-        }
-        if (!Objects.equals(user.getStatus(), request.getStatus())) {
-            changed.put("status", request.getStatus());
-        }
-        if (!Objects.equals(user.getRealName(), request.getRealName())) {
-            changed.put("realName", request.getRealName());
-        }
-        if (!Objects.equals(user.getNickName(), request.getNickName())) {
-            changed.put("nickName", request.getNickName());
-        }
-        if (!Objects.equals(user.getGender(), request.getGender())) {
-            changed.put("gender", request.getGender());
-        }
-        if (!Objects.equals(user.getBirthday(), request.getBirthday())) {
-            changed.put("birthday", request.getBirthday());
-        }
-        if (!Objects.equals(user.getCompanyName(), request.getCompanyName())) {
-            changed.put("companyName", request.getCompanyName());
-        }
-        if (!Objects.equals(user.getDepartment(), request.getDepartment())) {
-            changed.put("department", request.getDepartment());
-        }
-        if (!Objects.equals(user.getPosition(), request.getPosition())) {
-            changed.put("position", request.getPosition());
-        }
-        if (!Objects.equals(user.getTenantId(), request.getTenantId())) {
-            changed.put("tenantId", request.getTenantId());
-        }
-        if (!Objects.equals(user.getRemark(), request.getRemark())) {
-            changed.put("remark", request.getRemark());
-        }
-        if (!Objects.equals(user.getCreateTime(), request.getCreateTime())) {
-            changed.put("createTime", request.getCreateTime());
-        }
-        if (!Objects.equals(user.getUpdateTime(), request.getUpdateTime())) {
-            changed.put("updateTime", request.getUpdateTime());
-        }
-        if (!Objects.equals(user.getCreateBy(), request.getCreateBy())) {
-            changed.put("createBy", request.getCreateBy());
-        }
-        if (!Objects.equals(user.getUpdateBy(), request.getUpdateBy())) {
-            changed.put("updateBy", request.getUpdateBy());
-        }
+        putIfChanged(changed, "username", user.getUsername(), request.getUsername());
+        putIfChanged(changed, "mobile", user.getMobile(), request.getMobile());
+        putIfChanged(changed, "mobileVerified", user.getMobileVerified(), request.getMobileVerified());
+        putIfChanged(changed, "email", user.getEmail(), request.getEmail());
+        putIfChanged(changed, "emailVerified", user.getEmailVerified(), request.getEmailVerified());
+        putIfChanged(changed, "password", user.getPassword(), request.getPassword());
+        putIfChanged(changed, "status", user.getStatus(), request.getStatus());
+        putIfChanged(changed, "realName", user.getRealName(), request.getRealName());
+        putIfChanged(changed, "nickName", user.getNickName(), request.getNickName());
+        putIfChanged(changed, "gender", user.getGender(), request.getGender());
+        putIfChanged(changed, "birthday", user.getBirthday(), request.getBirthday());
+        putIfChanged(changed, "companyName", user.getCompanyName(), request.getCompanyName());
+        putIfChanged(changed, "department", user.getDepartment(), request.getDepartment());
+        putIfChanged(changed, "position", user.getPosition(), request.getPosition());
+        putIfChanged(changed, "tenantId", user.getTenantId(), request.getTenantId());
+        putIfChanged(changed, "remark", user.getRemark(), request.getRemark());
+        putIfChanged(changed, "createTime", user.getCreateTime(), request.getCreateTime());
+        putIfChanged(changed, "updateTime", user.getUpdateTime(), request.getUpdateTime());
+        putIfChanged(changed, "createBy", user.getCreateBy(), request.getCreateBy());
+        putIfChanged(changed, "updateBy", user.getUpdateBy(), request.getUpdateBy());
         return changed;
+    }
+
+    private void putIfChanged(Map<String, Object> changed, String field, Object existing, Object requestValue) {
+        if (requestValue != null && !Objects.equals(existing, requestValue)) {
+            changed.put(field, requestValue);
+        }
+    }
+
+    private PortalUser mergeForUpdate(PortalUser existing, PortalUser request) {
+        PortalUser merged = new PortalUser();
+        merged.setId(existing.getId());
+        merged.setUsername(existing.getUsername());
+        merged.setMobile(existing.getMobile());
+        merged.setMobileVerified(existing.getMobileVerified());
+        merged.setEmail(existing.getEmail());
+        merged.setEmailVerified(existing.getEmailVerified());
+        merged.setPassword(existing.getPassword());
+        merged.setStatus(existing.getStatus());
+        merged.setRealName(existing.getRealName());
+        merged.setNickName(existing.getNickName());
+        merged.setGender(existing.getGender());
+        merged.setBirthday(existing.getBirthday());
+        merged.setCompanyName(existing.getCompanyName());
+        merged.setDepartment(existing.getDepartment());
+        merged.setPosition(existing.getPosition());
+        merged.setTenantId(existing.getTenantId());
+        merged.setRemark(existing.getRemark());
+        merged.setCreateTime(existing.getCreateTime());
+        merged.setUpdateTime(existing.getUpdateTime());
+        merged.setCreateBy(existing.getCreateBy());
+        merged.setUpdateBy(existing.getUpdateBy());
+
+        if (request.getUsername() != null) {
+            merged.setUsername(request.getUsername());
+        }
+        if (request.getMobile() != null) {
+            merged.setMobile(request.getMobile());
+        }
+        if (request.getMobileVerified() != null) {
+            merged.setMobileVerified(request.getMobileVerified());
+        }
+        if (request.getEmail() != null) {
+            merged.setEmail(request.getEmail());
+        }
+        if (request.getEmailVerified() != null) {
+            merged.setEmailVerified(request.getEmailVerified());
+        }
+        if (request.getPassword() != null) {
+            merged.setPassword(request.getPassword());
+        }
+        if (request.getStatus() != null) {
+            merged.setStatus(request.getStatus());
+        }
+        if (request.getRealName() != null) {
+            merged.setRealName(request.getRealName());
+        }
+        if (request.getNickName() != null) {
+            merged.setNickName(request.getNickName());
+        }
+        if (request.getGender() != null) {
+            merged.setGender(request.getGender());
+        }
+        if (request.getBirthday() != null) {
+            merged.setBirthday(request.getBirthday());
+        }
+        if (request.getCompanyName() != null) {
+            merged.setCompanyName(request.getCompanyName());
+        }
+        if (request.getDepartment() != null) {
+            merged.setDepartment(request.getDepartment());
+        }
+        if (request.getPosition() != null) {
+            merged.setPosition(request.getPosition());
+        }
+        if (request.getTenantId() != null) {
+            merged.setTenantId(request.getTenantId());
+        }
+        if (request.getRemark() != null) {
+            merged.setRemark(request.getRemark());
+        }
+        if (request.getCreateTime() != null) {
+            merged.setCreateTime(request.getCreateTime());
+        }
+        if (request.getUpdateTime() != null) {
+            merged.setUpdateTime(request.getUpdateTime());
+        }
+        if (request.getCreateBy() != null) {
+            merged.setCreateBy(request.getCreateBy());
+        }
+        if (request.getUpdateBy() != null) {
+            merged.setUpdateBy(request.getUpdateBy());
+        }
+        return merged;
     }
 
     private String parseString(Object value) {
