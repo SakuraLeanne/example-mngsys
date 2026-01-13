@@ -54,8 +54,8 @@ portal:
       length: 4
       failThreshold: 3
       failWindowSeconds: 900
-      hashSecret: change-me
+      hashSecret: a10e76f41c41b9be634a9e0e741383389437e4a8277ee850aff293e794d59426
       caseInsensitive: true
 
 auth:
-  internalToken: change-me
+  internalToken: f5b5a43301af2e236e82563c31d56996e969cb5e0e01b1ea98b97437bd2428e6
