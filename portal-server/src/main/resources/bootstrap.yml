@@ -47,6 +47,15 @@ portal:
     cacheTtlSeconds: 600
   events:
     streamKey: portal:events
+  security:
+    captcha:
+      enabled: true
+      ttlSeconds: 180
+      length: 4
+      failThreshold: 3
+      failWindowSeconds: 900
+      hashSecret: change-me
+      caseInsensitive: true
 
 auth:
   internalToken: change-me

@@ -21,6 +21,10 @@ public class PortalLoginRequest {
     private String password;
     /** 密码密文，启用前端加密时使用。 */
     private String encryptedPassword;
+    /** 图形验证码标识，用户名密码登录可能需要。 */
+    private String captchaId;
+    /** 图形验证码内容，用户名密码登录可能需要。 */
+    private String captchaCode;
     /** 系统编码。 */
     private String systemCode;
     /** 登录成功后的返回地址。 */
@@ -76,6 +80,22 @@ public class PortalLoginRequest {
 
     public void setEncryptedPassword(String encryptedPassword) {
         this.encryptedPassword = encryptedPassword;
+    }
+
+    public String getCaptchaId() {
+        return captchaId;
+    }
+
+    public void setCaptchaId(String captchaId) {
+        this.captchaId = captchaId;
+    }
+
+    public String getCaptchaCode() {
+        return captchaCode;
+    }
+
+    public void setCaptchaCode(String captchaCode) {
+        this.captchaCode = captchaCode;
     }
 
     public String getSystemCode() {

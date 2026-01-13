@@ -59,6 +59,7 @@ public class PortalProperties {
 
     public static class Security {
         private List<String> allowedHosts = new ArrayList<>();
+        private Captcha captcha = new Captcha();
 
         public List<String> getAllowedHosts() {
             return allowedHosts;
@@ -66,6 +67,80 @@ public class PortalProperties {
 
         public void setAllowedHosts(List<String> allowedHosts) {
             this.allowedHosts = allowedHosts;
+        }
+
+        public Captcha getCaptcha() {
+            return captcha;
+        }
+
+        public void setCaptcha(Captcha captcha) {
+            this.captcha = captcha;
+        }
+
+        public static class Captcha {
+            private boolean enabled = true;
+            private long ttlSeconds = 180;
+            private int length = 4;
+            private long failThreshold = 3;
+            private long failWindowSeconds = 900;
+            private String hashSecret;
+            private boolean caseInsensitive = true;
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+            }
+
+            public long getTtlSeconds() {
+                return ttlSeconds;
+            }
+
+            public void setTtlSeconds(long ttlSeconds) {
+                this.ttlSeconds = ttlSeconds;
+            }
+
+            public int getLength() {
+                return length;
+            }
+
+            public void setLength(int length) {
+                this.length = length;
+            }
+
+            public long getFailThreshold() {
+                return failThreshold;
+            }
+
+            public void setFailThreshold(long failThreshold) {
+                this.failThreshold = failThreshold;
+            }
+
+            public long getFailWindowSeconds() {
+                return failWindowSeconds;
+            }
+
+            public void setFailWindowSeconds(long failWindowSeconds) {
+                this.failWindowSeconds = failWindowSeconds;
+            }
+
+            public String getHashSecret() {
+                return hashSecret;
+            }
+
+            public void setHashSecret(String hashSecret) {
+                this.hashSecret = hashSecret;
+            }
+
+            public boolean isCaseInsensitive() {
+                return caseInsensitive;
+            }
+
+            public void setCaseInsensitive(boolean caseInsensitive) {
+                this.caseInsensitive = caseInsensitive;
+            }
         }
     }
 
