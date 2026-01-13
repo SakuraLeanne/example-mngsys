@@ -7,12 +7,18 @@ public class AuthSessionResponse {
     private String userId;
     private String username;
     private String mobile;
+    private Long tokenVersion;
 
     public AuthSessionResponse() {
     }
 
     public AuthSessionResponse(String userId) {
         this.userId = userId;
+    }
+
+    public AuthSessionResponse(String userId, Long tokenVersion) {
+        this.userId = userId;
+        this.tokenVersion = tokenVersion;
     }
 
     public String getUserId() {
@@ -37,5 +43,13 @@ public class AuthSessionResponse {
 
     public void setMobile(String mobile) {
         this.mobile = mobile;
+    }
+
+    public Long getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void setTokenVersion(Long tokenVersion) {
+        this.tokenVersion = tokenVersion;
     }
 }

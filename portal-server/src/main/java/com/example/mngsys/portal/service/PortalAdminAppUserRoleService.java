@@ -1,6 +1,8 @@
 package com.example.mngsys.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.mngsys.api.notify.core.EventNotifyPublisher;
+import com.example.mngsys.common.redis.RedisKeys;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.entity.AppRole;
 import com.example.mngsys.portal.entity.AppUserRole;
@@ -12,8 +14,11 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,20 +28,25 @@ import java.util.stream.Collectors;
 public class PortalAdminAppUserRoleService {
 
     private static final String MENU_CACHE_PREFIX = "app:menu:user:";
+    private static final String EVENT_TOKEN_VERSION_UPDATED = "portal:events:USER_TOKEN_VERSION_UPDATED";
+    private static final DateTimeFormatter EVENT_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final AppUserRoleService appUserRoleService;
     private final AppRoleService appRoleService;
     private final PortalAuditLogService portalAuditLogService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final EventNotifyPublisher eventNotifyPublisher;
 
     public PortalAdminAppUserRoleService(AppUserRoleService appUserRoleService,
                                          AppRoleService appRoleService,
                                          PortalAuditLogService portalAuditLogService,
-                                         StringRedisTemplate stringRedisTemplate) {
+                                         StringRedisTemplate stringRedisTemplate,
+                                         EventNotifyPublisher eventNotifyPublisher) {
         this.appUserRoleService = appUserRoleService;
         this.appRoleService = appRoleService;
         this.portalAuditLogService = portalAuditLogService;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.eventNotifyPublisher = eventNotifyPublisher;
     }
 
     public Result<List<AppRole>> listUserRoles(String userId) {
@@ -86,12 +96,30 @@ public class PortalAdminAppUserRoleService {
             appUserRoleService.saveBatch(relations);
         }
         stringRedisTemplate.delete(buildMenuCacheKey(userId));
+        Long tokenVersion = bumpTokenVersion(userId);
+        publishTokenVersionUpdated(userId, tokenVersion, operatorId);
         writeAuditLog(operatorId, "GRANT_USER_ROLES", String.valueOf(userId), normalized.toString(), ip);
         return Result.success(null);
     }
 
     private String buildMenuCacheKey(String userId) {
         return MENU_CACHE_PREFIX + userId;
+    }
+
+    private Long bumpTokenVersion(String userId) {
+        return stringRedisTemplate.opsForValue().increment(RedisKeys.tokenVersion(userId));
+    }
+
+    private void publishTokenVersionUpdated(String userId, Long tokenVersion, String operatorId) {
+        if (tokenVersion == null) {
+            return;
+        }
+        Map<String, String> message = new HashMap<>();
+        message.put("userId", userId);
+        message.put("tokenVersion", tokenVersion.toString());
+        message.put("operatorId", operatorId);
+        message.put("time", LocalDateTime.now().format(EVENT_TIME_FORMATTER));
+        eventNotifyPublisher.publish(EVENT_TOKEN_VERSION_UPDATED, message);
     }
 
     private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
