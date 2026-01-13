@@ -110,8 +110,10 @@ public class PortalApiController {
      * @return 登录结果响应
      */
     @PostMapping("/login")
-    public ApiResponse<PortalLoginResponse> login(@Valid @RequestBody PortalLoginRequest request, HttpServletResponse response) {
-        PortalAuthService.LoginResult loginResult = portalAuthService.login(request);
+    public ApiResponse<PortalLoginResponse> login(@Valid @RequestBody PortalLoginRequest request,
+                                                  HttpServletResponse response,
+                                                  HttpServletRequest httpServletRequest) {
+        PortalAuthService.LoginResult loginResult = portalAuthService.login(request, resolveIp(httpServletRequest));
         ResponseEntity<? extends ApiResponse<?>> authResponse = loginResult.getResponseEntity();
         if (authResponse != null) {
             List<String> setCookies = authResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
@@ -126,6 +128,9 @@ public class PortalApiController {
         if (authBody.getCode() != 0) {
             if (authBody.getCode() == ErrorCode.INVALID_ARGUMENT.getCode()) {
                 return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, authBody.getMessage());
+            }
+            if (request.getLoginTypeOrDefault() == com.example.mngsys.common.feign.dto.AuthLoginType.USERNAME_PASSWORD) {
+                return ApiResponse.failure(ErrorCode.AUTH_FAILED, ErrorCode.AUTH_FAILED.getMessage());
             }
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, authBody.getMessage());
         }
@@ -144,6 +149,23 @@ public class PortalApiController {
     public ApiResponse<String> sendSms(@Valid @RequestBody PortalSmsSendRequest request) {
         ApiResponse<String> resp = authClient.sendLoginSms(request.getMobile());
         return resp == null ? ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应") : resp;
+    }
+
+    /**
+     * 从请求中解析客户端 IP。
+     *
+     * @param request HTTP 请求
+     * @return IP 地址
+     */
+    private String resolveIp(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(forwarded)) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     /**
