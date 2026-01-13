@@ -2,9 +2,12 @@ package com.example.mngsys.portal.service;
 
 import com.example.mngsys.common.feign.dto.AuthLoginRequest;
 import com.example.mngsys.common.feign.dto.AuthLoginResponse;
+import com.example.mngsys.common.feign.dto.AuthLoginType;
 import com.example.mngsys.common.portal.dto.PortalLoginRequest;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ApiResponse;
+import com.example.mngsys.portal.common.api.ErrorCode;
+import com.example.mngsys.portal.common.exception.LocalizedBusinessException;
 import com.example.mngsys.portal.common.exception.InvalidReturnUrlException;
 import com.example.mngsys.portal.config.PortalProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PortalAuthService {
 
+    private static final String LOGIN_FAIL_PREFIX = "PORTAL:LOGIN_FAIL:";
+
     /** 认证中心客户端。 */
     private final AuthClient authClient;
     /** 门户配置。 */
@@ -41,6 +46,8 @@ public class PortalAuthService {
     private final StringRedisTemplate stringRedisTemplate;
     /** JSON 序列化器。 */
     private final ObjectMapper objectMapper;
+    /** 验证码服务。 */
+    private final CaptchaService captchaService;
 
     /**
      * 构造函数，注入依赖。
@@ -48,22 +55,35 @@ public class PortalAuthService {
     public PortalAuthService(AuthClient authClient,
                              PortalProperties portalProperties,
                              StringRedisTemplate stringRedisTemplate,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             CaptchaService captchaService) {
         this.authClient = authClient;
         this.portalProperties = portalProperties;
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
+        this.captchaService = captchaService;
     }
 
     /**
      * 登录操作，必要时生成单点登录跳转地址。
      */
     public LoginResult login(PortalLoginRequest loginRequest) {
+        return login(loginRequest, null);
+    }
+
+    /**
+     * 登录操作，必要时生成单点登录跳转地址。
+     */
+    public LoginResult login(PortalLoginRequest loginRequest, String clientIp) {
         if (loginRequest == null) {
             throw new IllegalArgumentException("登录请求不能为空");
         }
+        AuthLoginType loginType = loginRequest.getLoginTypeOrDefault();
+        if (isUsernamePassword(loginType)) {
+            enforceCaptchaIfNeeded(loginRequest, clientIp);
+        }
         AuthLoginRequest authLoginRequest = new AuthLoginRequest();
-        authLoginRequest.setLoginType(loginRequest.getLoginType());
+        authLoginRequest.setLoginType(loginType);
         authLoginRequest.setMobile(loginRequest.getMobile());
         authLoginRequest.setCode(loginRequest.getCode());
         authLoginRequest.setUsername(loginRequest.getUsername());
@@ -72,6 +92,9 @@ public class PortalAuthService {
 
         ResponseEntity<ApiResponse<AuthLoginResponse>> response = authClient.loginWithResponse(authLoginRequest);
         ApiResponse<AuthLoginResponse> body = response == null ? null : response.getBody();
+        if (isUsernamePassword(loginType)) {
+            handleLoginAttempt(loginRequest.getUsername(), clientIp, body);
+        }
         LoginResult result = new LoginResult(body, response);
         String systemCode = loginRequest.getSystemCode();
         String returnUrl = loginRequest.getReturnUrl();
@@ -169,6 +192,86 @@ public class PortalAuthService {
      */
     private String buildTicketKey(String ticket) {
         return "sso:ticket:" + ticket;
+    }
+
+    private void enforceCaptchaIfNeeded(PortalLoginRequest loginRequest, String clientIp) {
+        PortalProperties.Security.Captcha captcha = portalProperties.getSecurity().getCaptcha();
+        if (!captcha.isEnabled()) {
+            return;
+        }
+        String loginKey = buildLoginKey(loginRequest.getUsername(), clientIp);
+        boolean required = isCaptchaRequired(loginKey, captcha);
+        boolean hasCaptcha = StringUtils.hasText(loginRequest.getCaptchaId())
+                || StringUtils.hasText(loginRequest.getCaptchaCode());
+        if (required && (!StringUtils.hasText(loginRequest.getCaptchaId())
+                || !StringUtils.hasText(loginRequest.getCaptchaCode()))) {
+            throw new LocalizedBusinessException(ErrorCode.CAPTCHA_REQUIRED,
+                    "error.captcha.required",
+                    ErrorCode.CAPTCHA_REQUIRED.getMessage());
+        }
+        if (hasCaptcha) {
+            captchaService.verifyCaptcha(loginRequest.getCaptchaId(), loginRequest.getCaptchaCode());
+        }
+    }
+
+    private boolean isCaptchaRequired(String loginKey, PortalProperties.Security.Captcha captcha) {
+        if (!StringUtils.hasText(loginKey)) {
+            return false;
+        }
+        long threshold = captcha.getFailThreshold();
+        if (threshold <= 0) {
+            return false;
+        }
+        String value = stringRedisTemplate.opsForValue().get(buildLoginFailKey(loginKey));
+        if (!StringUtils.hasText(value)) {
+            return false;
+        }
+        try {
+            return Long.parseLong(value) >= threshold;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private void handleLoginAttempt(String username, String clientIp, ApiResponse<?> body) {
+        String loginKey = buildLoginKey(username, clientIp);
+        if (!StringUtils.hasText(loginKey)) {
+            return;
+        }
+        if (body != null && body.getCode() == 0) {
+            stringRedisTemplate.delete(buildLoginFailKey(loginKey));
+            return;
+        }
+        PortalProperties.Security.Captcha captcha = portalProperties.getSecurity().getCaptcha();
+        String key = buildLoginFailKey(loginKey);
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            stringRedisTemplate.expire(key, captcha.getFailWindowSeconds(), TimeUnit.SECONDS);
+        }
+    }
+
+    private String buildLoginKey(String username, String clientIp) {
+        String normalizedUser = normalizeUsername(username);
+        String normalizedIp = clientIp == null ? "" : clientIp.trim();
+        if (!StringUtils.hasText(normalizedUser) && !StringUtils.hasText(normalizedIp)) {
+            return null;
+        }
+        return normalizedUser + ":" + normalizedIp;
+    }
+
+    private String normalizeUsername(String username) {
+        if (!StringUtils.hasText(username)) {
+            return "";
+        }
+        return username.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String buildLoginFailKey(String loginKey) {
+        return LOGIN_FAIL_PREFIX + loginKey;
+    }
+
+    private boolean isUsernamePassword(AuthLoginType loginType) {
+        return AuthLoginType.USERNAME_PASSWORD == loginType;
     }
 
     /**

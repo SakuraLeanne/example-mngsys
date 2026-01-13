@@ -8,6 +8,9 @@ public enum ErrorCode {
     FORBIDDEN(100200, 403, "暂无访问权限，请联系管理员"),
     INVALID_ARGUMENT(100300, 400, "请求参数有误，请检查后重试"),
     INVALID_RETURN_URL(100301, 400, "回调地址不合法或不在白名单"),
+    CAPTCHA_REQUIRED(100310, 400, "请先完成验证码校验"),
+    CAPTCHA_INVALID(100311, 400, "验证码无效，请重新获取"),
+    AUTH_FAILED(100320, 401, "账号或密码错误"),
     NOT_FOUND(100404, 404, "资源不存在或已被删除"),
     INTERNAL_ERROR(100500, 500, "系统开小差了，请稍后再试"),
 
