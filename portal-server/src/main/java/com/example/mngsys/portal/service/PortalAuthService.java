@@ -199,38 +199,13 @@ public class PortalAuthService {
         if (!captcha.isEnabled()) {
             return;
         }
-        String loginKey = buildLoginKey(loginRequest.getUsername(), clientIp);
-        boolean required = isCaptchaRequired(loginKey, captcha);
-        boolean hasCaptcha = StringUtils.hasText(loginRequest.getCaptchaId())
-                || StringUtils.hasText(loginRequest.getCaptchaCode());
-        if (required && (!StringUtils.hasText(loginRequest.getCaptchaId())
-                || !StringUtils.hasText(loginRequest.getCaptchaCode()))) {
+        if (!StringUtils.hasText(loginRequest.getCaptchaId())
+                || !StringUtils.hasText(loginRequest.getCaptchaCode())) {
             throw new LocalizedBusinessException(ErrorCode.CAPTCHA_REQUIRED,
                     "error.captcha.required",
                     ErrorCode.CAPTCHA_REQUIRED.getMessage());
         }
-        if (hasCaptcha) {
-            captchaService.verifyCaptcha(loginRequest.getCaptchaId(), loginRequest.getCaptchaCode());
-        }
-    }
-
-    private boolean isCaptchaRequired(String loginKey, PortalProperties.Security.Captcha captcha) {
-        if (!StringUtils.hasText(loginKey)) {
-            return false;
-        }
-        long threshold = captcha.getFailThreshold();
-        if (threshold <= 0) {
-            return false;
-        }
-        String value = stringRedisTemplate.opsForValue().get(buildLoginFailKey(loginKey));
-        if (!StringUtils.hasText(value)) {
-            return false;
-        }
-        try {
-            return Long.parseLong(value) >= threshold;
-        } catch (NumberFormatException ex) {
-            return false;
-        }
+        captchaService.verifyCaptcha(loginRequest.getCaptchaId(), loginRequest.getCaptchaCode());
     }
 
     private void handleLoginAttempt(String username, String clientIp, ApiResponse<?> body) {
