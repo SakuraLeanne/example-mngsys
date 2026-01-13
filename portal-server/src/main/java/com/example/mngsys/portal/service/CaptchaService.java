@@ -51,6 +51,7 @@ public class CaptchaService {
         }
         int length = captcha.getLength() <= 0 ? 4 : captcha.getLength();
         String code = randomCode(length);
+        System.out.println("图形验证码 ： "+code);
         String normalized = normalizeCode(code, captcha.isCaseInsensitive());
         String captchaId = UUID.randomUUID().toString();
         String hash = sha256(secret + ":" + normalized);

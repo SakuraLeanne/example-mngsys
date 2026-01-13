@@ -52,7 +52,7 @@ portal:
       enabled: true
       ttlSeconds: 180
       length: 4
-      failThreshold: 3
+      failThreshold: 10
       failWindowSeconds: 900
       hashSecret: a10e76f41c41b9be634a9e0e741383389437e4a8277ee850aff293e794d59426
       caseInsensitive: true
