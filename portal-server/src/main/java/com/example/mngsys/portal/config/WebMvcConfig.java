@@ -33,7 +33,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/profile")
                 .addPathPatterns("/login/**")
                 .addPathPatterns("/password/forgot/**")
-                .addPathPatterns("/loginuser/session-info");
+                .addPathPatterns("/loginuser/session-info")
+                .addPathPatterns("/portal/api/**");
         // PTK 拦截：校验一次性令牌（如改密/编辑资料等场景）并写入 RequestContext
         registry.addInterceptor(ptkInterceptor)
                 .addPathPatterns("/password/change")

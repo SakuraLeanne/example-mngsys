@@ -7,6 +7,7 @@ import com.example.mngsys.auth.config.AuthProperties;
 import com.example.mngsys.auth.service.AuthService;
 import com.example.mngsys.auth.service.PasswordResetService;
 import com.example.mngsys.auth.service.SmsCodeService;
+import com.example.mngsys.auth.service.UserTokenVersionService;
 import com.example.mngsys.common.security.PasswordCryptoService;
 import com.example.mngsys.common.security.PasswordEncryptProperties;
 import com.example.mngsys.common.feign.dto.AuthKickRequest;
@@ -64,6 +65,10 @@ public class AuthController {
      * 密码解密服务。
      */
     private final PasswordCryptoService passwordCryptoService;
+    /**
+     * Token 版本号服务。
+     */
+    private final UserTokenVersionService userTokenVersionService;
 
     /**
      * 认证相关配置，包含内部调用 Token 等安全参数。
@@ -74,12 +79,14 @@ public class AuthController {
                           SmsCodeService smsCodeService,
                           PasswordResetService passwordResetService,
                           PasswordCryptoService passwordCryptoService,
-                          AuthProperties authProperties) {
+                          AuthProperties authProperties,
+                          UserTokenVersionService userTokenVersionService) {
         this.authService = authService;
         this.smsCodeService = smsCodeService;
         this.passwordResetService = passwordResetService;
         this.passwordCryptoService = passwordCryptoService;
         this.authProperties = authProperties;
+        this.userTokenVersionService = userTokenVersionService;
     }
 
     /**
@@ -172,6 +179,8 @@ public class AuthController {
                 throw new IllegalArgumentException("不支持的登录方式");
         }
         StpUtil.login(user.getUserId());
+        long tokenVersion = userTokenVersionService.getCurrentVersion(user.getUserId());
+        userTokenVersionService.writeSessionVersion(tokenVersion);
         long loginTime = StpUtil.getSession().getCreateTime();
         AuthLoginResponse response = new AuthLoginResponse();
         response.setUserId(user.getUserId());
@@ -221,7 +230,12 @@ public class AuthController {
     public ApiResponse<AuthSessionResponse> sessionMe() {
         StpUtil.checkLogin();
         String userId = String.valueOf(StpUtil.getLoginId());
-        return ApiResponse.success(new AuthSessionResponse(userId));
+        long currentVersion = userTokenVersionService.getCurrentVersion(userId);
+        if (!userTokenVersionService.isSessionVersionValid(userTokenVersionService.getSessionVersion(), currentVersion)) {
+            StpUtil.logout();
+            return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录凭证无效，请重新登录");
+        }
+        return ApiResponse.success(new AuthSessionResponse(userId, currentVersion));
     }
 
     /**
