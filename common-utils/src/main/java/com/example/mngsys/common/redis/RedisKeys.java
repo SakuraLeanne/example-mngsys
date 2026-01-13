@@ -35,6 +35,9 @@ public final class RedisKeys {
     /** 用户权限缓存过期时间。 */
     public static final Duration USER_AUTH_TTL = Duration.ofMinutes(10);
 
+    /** 用户 Token 版本号前缀。 */
+    public static final String TOKEN_VERSION_PREFIX = "auth:token:version:";
+
     /** 门户事件流 Key。 */
     public static final String PORTAL_EVENTS_STREAM = "portal:events";
 
@@ -86,6 +89,16 @@ public final class RedisKeys {
      */
     public static String userAuth(long userId) {
         return USER_AUTH_PREFIX + userId;
+    }
+
+    /**
+     * 拼接用户 Token 版本号 Key。
+     *
+     * @param userId 用户 ID
+     * @return Redis Key
+     */
+    public static String tokenVersion(String userId) {
+        return TOKEN_VERSION_PREFIX + userId;
     }
 
     /**
