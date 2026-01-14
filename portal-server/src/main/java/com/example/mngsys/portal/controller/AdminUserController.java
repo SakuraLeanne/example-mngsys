@@ -1,7 +1,9 @@
 package com.example.mngsys.portal.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.context.RequestContext;
+import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.security.AdminRequired;
 import com.example.mngsys.portal.service.PortalAdminUserService;
 import org.springframework.util.StringUtils;
@@ -24,7 +26,7 @@ import java.util.List;
  * 管理端用户控制器，提供用户查询、启用/禁用等接口。
  */
 @RestController
-@RequestMapping("/portal/api/admin/users")
+@RequestMapping("/admin/users")
 @Validated
 @AdminRequired
 public class AdminUserController {
@@ -53,13 +55,13 @@ public class AdminUserController {
      * @return 用户分页数据
      */
     @GetMapping
-    public ApiResponse<PageResponse<UserSummary>> listUsers(@RequestParam(defaultValue = "1") int page,
+    public ApiResponse<PageResponse<PortalUser>> listUsers(@RequestParam(defaultValue = "1") int page,
                                                             @RequestParam(defaultValue = "20") int size,
                                                             @RequestParam(required = false) String keyword,
                                                             @RequestParam(required = false) Integer status) {
-        PortalAdminUserService.PageResult result = portalAdminUserService.listUsers(page, size, keyword, status);
-        PageResponse<UserSummary> response = new PageResponse<>(result.getTotal(), result.getPage(), result.getSize(),
-                result.getUsers());
+        Page<PortalUser> result = portalAdminUserService.listUsers(page, size, keyword, status);
+        PageResponse<PortalUser> response = new PageResponse<>(result.getTotal(), result.getCurrent(), result.getSize(),
+                result.getRecords());
         return ApiResponse.success(response);
     }
 
@@ -190,17 +192,17 @@ public class AdminUserController {
         /**
          * 当前页码。
          */
-        private final int page;
+        private final long page;
         /**
          * 每页大小。
          */
-        private final int size;
+        private final long size;
         /**
          * 当前页记录列表。
          */
         private final List<T> records;
 
-        public PageResponse(long total, int page, int size, List<T> records) {
+        public PageResponse(long total, long page, long size, List<T> records) {
             this.total = total;
             this.page = page;
             this.size = size;
@@ -211,11 +213,11 @@ public class AdminUserController {
             return total;
         }
 
-        public int getPage() {
+        public long getPage() {
             return page;
         }
 
-        public int getSize() {
+        public long getSize() {
             return size;
         }
 

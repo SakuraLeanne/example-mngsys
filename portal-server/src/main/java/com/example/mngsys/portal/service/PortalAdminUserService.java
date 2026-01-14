@@ -82,7 +82,7 @@ public class PortalAdminUserService {
      * @param status  用户状态
      * @return 分页结果
      */
-    public PageResult listUsers(int page, int size, String keyword, Integer status) {
+    public Page<PortalUser> listUsers(int page, int size, String keyword, Integer status) {
         int pageIndex = Math.max(page, 1);
         int pageSize = Math.max(size, 1);
         Page<PortalUser> query = new Page<>(pageIndex, pageSize);
@@ -94,15 +94,15 @@ public class PortalAdminUserService {
                     .or()
                     .like(PortalUser::getMobile, keyword)
                     .or()
-                    .like(PortalUser::getEmail, keyword));
+                    .like(PortalUser::getNickName, keyword));
         }
         if (status != null) {
             wrapper.eq(PortalUser::getStatus, status);
         }
         wrapper.orderByDesc(PortalUser::getCreateTime);
         Page<PortalUser> result = portalUserService.page(query, wrapper);
-        List<PortalUser> records = result.getRecords();
-        List<com.example.mngsys.portal.controller.AdminUserController.UserSummary> users = records.stream()
+//        List<PortalUser> records = result.getRecords();
+        /*List<com.example.mngsys.portal.controller.AdminUserController.UserSummary> users = records.stream()
                 .map(user -> new com.example.mngsys.portal.controller.AdminUserController.UserSummary(
                         user.getId(),
                         user.getUsername(),
@@ -111,8 +111,9 @@ public class PortalAdminUserService {
                         user.getEmail(),
                         user.getStatus(),
                         user.getRemark()))
-                .collect(Collectors.toList());
-        return new PageResult(result.getTotal(), pageIndex, pageSize, users);
+                .collect(Collectors.toList());*/
+//        return new PageResult(result.getTotal(), pageIndex, pageSize, users);
+        return result;
     }
 
     /**
