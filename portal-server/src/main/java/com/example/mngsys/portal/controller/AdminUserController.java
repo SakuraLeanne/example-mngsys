@@ -86,16 +86,15 @@ public class AdminUserController {
      * 更新指定用户启用状态。
      *
      * @param userId  用户 ID
-     * @param request 状态更新请求体
+     * @param enabled 禁用false，启用true
      * @return 操作结果
      */
-    @PostMapping("/{userId}/status")
-    public ApiResponse<ActionResponse> updateUserStatus(@PathVariable String userId,
-                                                        @Valid @RequestBody StatusRequest request) {
+    @GetMapping("/status")
+    public ApiResponse<ActionResponse> updateUserStatus(@RequestParam String userId, @RequestParam @NotNull(message = "参数enabled不能为空") Boolean enabled) {
         String operatorId = RequestContext.getUserId();
         PortalAdminUserService.ActionResult result = portalAdminUserService.updateUserStatus(
                 userId,
-                request.getEnabled(),
+                enabled,
                 operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
