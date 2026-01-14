@@ -101,18 +101,6 @@ public class PortalAdminUserService {
         }
         wrapper.orderByDesc(PortalUser::getCreateTime);
         Page<PortalUser> result = portalUserService.page(query, wrapper);
-//        List<PortalUser> records = result.getRecords();
-        /*List<com.example.mngsys.portal.controller.AdminUserController.UserSummary> users = records.stream()
-                .map(user -> new com.example.mngsys.portal.controller.AdminUserController.UserSummary(
-                        user.getId(),
-                        user.getUsername(),
-                        user.getRealName(),
-                        user.getMobile(),
-                        user.getEmail(),
-                        user.getStatus(),
-                        user.getRemark()))
-                .collect(Collectors.toList());*/
-//        return new PageResult(result.getTotal(), pageIndex, pageSize, users);
         return result;
     }
 
@@ -130,17 +118,7 @@ public class PortalAdminUserService {
         if (user == null) {
             return UserDetailResult.failure(ErrorCode.NOT_FOUND);
         }
-        com.example.mngsys.portal.controller.AdminUserController.UserDetail detail =
-                new com.example.mngsys.portal.controller.AdminUserController.UserDetail(
-                        user.getId(),
-                        user.getUsername(),
-                        user.getRealName(),
-                        user.getMobile(),
-                        user.getEmail(),
-                        user.getStatus(),
-                        user.getRemark(),
-                        user.getCreateTime());
-        return UserDetailResult.success(detail);
+        return UserDetailResult.success(user);
     }
 
     /**
@@ -323,18 +301,17 @@ public class PortalAdminUserService {
         /** 错误码。 */
         private final ErrorCode errorCode;
         /** 详情数据。 */
-        private final com.example.mngsys.portal.controller.AdminUserController.UserDetail detail;
+        private final PortalUser detail;
 
         private UserDetailResult(boolean success, ErrorCode errorCode,
-                                 com.example.mngsys.portal.controller.AdminUserController.UserDetail detail) {
+                                 PortalUser detail) {
             this.success = success;
             this.errorCode = errorCode;
             this.detail = detail;
         }
 
         /** 构建成功结果。 */
-        public static UserDetailResult success(
-                com.example.mngsys.portal.controller.AdminUserController.UserDetail detail) {
+        public static UserDetailResult success(PortalUser detail) {
             return new UserDetailResult(true, null, detail);
         }
 
@@ -354,7 +331,7 @@ public class PortalAdminUserService {
         }
 
         /** 获取详情。 */
-        public com.example.mngsys.portal.controller.AdminUserController.UserDetail getDetail() {
+        public PortalUser getDetail() {
             return detail;
         }
     }

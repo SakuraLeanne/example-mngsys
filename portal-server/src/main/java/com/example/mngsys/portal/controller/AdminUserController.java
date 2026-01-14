@@ -72,7 +72,7 @@ public class AdminUserController {
      * @return 用户详细信息
      */
     @GetMapping("/{userId}")
-    public ApiResponse<UserDetail> getUser(@PathVariable String userId) {
+    public ApiResponse<PortalUser> getUser(@PathVariable String userId) {
         PortalAdminUserService.UserDetailResult result = portalAdminUserService.getUserDetail(userId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());

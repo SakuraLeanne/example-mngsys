@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +35,7 @@ public class PortalUser {
     @TableField("email_verified")
     private Integer emailVerified;
     /** 密码哈希串（仅保存编码后的值）。 */
+    @JsonIgnore
     private String password;
     /** 用户状态：0-禁用，1-正常，2-冻结。 */
     private Integer status;
