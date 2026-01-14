@@ -60,8 +60,12 @@ public class AdminUserController {
                                                             @RequestParam(required = false) String keyword,
                                                             @RequestParam(required = false) Integer status) {
         Page<PortalUser> result = portalAdminUserService.listUsers(page, size, keyword, status);
-        PageResponse<PortalUser> response = new PageResponse<>(result.getTotal(), result.getCurrent(), result.getSize(),
-                result.getRecords());
+        PageResponse<PortalUser> response = new PageResponse<>(
+                result.getTotal(),
+                result.getCurrent(),
+                result.getRecords().size(),
+                result.getRecords()
+        );
         return ApiResponse.success(response);
     }
 
