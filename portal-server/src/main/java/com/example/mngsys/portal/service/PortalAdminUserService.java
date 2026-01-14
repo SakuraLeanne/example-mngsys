@@ -5,11 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.mngsys.api.notify.core.EventNotifyPublisher;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ErrorCode;
-import com.example.mngsys.portal.entity.PortalAuditLog;
 import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.entity.PortalUserAuthState;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -19,12 +16,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * PortalAdminUserService。
  * <p>
- * 提供管理端用户的查询、禁用/启用等业务能力，并负责同步鉴权缓存与审计日志。
+ * 提供管理端用户的查询、禁用/启用等业务能力，并负责同步鉴权缓存。
  * </p>
  */
 @Service
@@ -45,14 +41,10 @@ public class PortalAdminUserService {
     private final PortalUserAuthStateService portalUserAuthStateService;
     /** 用户鉴权缓存服务。 */
     private final UserAuthCacheService userAuthCacheService;
-    /** 审计日志服务。 */
-    private final PortalAuditLogService portalAuditLogService;
     /** 认证中心客户端。 */
     private final AuthClient authClient;
     /** 事件发布器。 */
     private final EventNotifyPublisher eventNotifyPublisher;
-    /** JSON 序列化器。 */
-    private final ObjectMapper objectMapper;
 
     /**
      * 构造函数，注入依赖。
@@ -60,17 +52,13 @@ public class PortalAdminUserService {
     public PortalAdminUserService(PortalUserService portalUserService,
                                   PortalUserAuthStateService portalUserAuthStateService,
                                   UserAuthCacheService userAuthCacheService,
-                                  PortalAuditLogService portalAuditLogService,
                                   AuthClient authClient,
-                                  EventNotifyPublisher eventNotifyPublisher,
-                                  ObjectMapper objectMapper) {
+                                  EventNotifyPublisher eventNotifyPublisher) {
         this.portalUserService = portalUserService;
         this.portalUserAuthStateService = portalUserAuthStateService;
         this.userAuthCacheService = userAuthCacheService;
-        this.portalAuditLogService = portalAuditLogService;
         this.authClient = authClient;
         this.eventNotifyPublisher = eventNotifyPublisher;
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -122,39 +110,10 @@ public class PortalAdminUserService {
     }
 
     /**
-     * 禁用用户并同步缓存与事件。
+     * 更新用户启用状态并同步缓存与事件。
      */
     @Transactional
-    public ActionResult disableUser(String userId, String reason, String operatorId, String ip) {
-        if (!StringUtils.hasText(userId) || !StringUtils.hasText(reason)) {
-            return ActionResult.failure(ErrorCode.INVALID_ARGUMENT);
-        }
-        PortalUser user = portalUserService.getById(userId);
-        if (user == null) {
-            return ActionResult.failure(ErrorCode.NOT_FOUND);
-        }
-        user.setStatus(STATUS_DISABLED);
-        user.setRemark(reason);
-        portalUserService.updateById(user);
-
-        PortalUserAuthState state = loadOrInitAuthState(userId);
-        Long nextAuthVersion = nextVersion(state.getAuthVersion());
-        state.setAuthVersion(nextAuthVersion);
-        state.setLastDisableTime(LocalDateTime.now());
-        portalUserAuthStateService.saveOrUpdate(state);
-        userAuthCacheService.updateUserAuthCache(userId, STATUS_DISABLED, nextAuthVersion, state.getProfileVersion());
-
-        authClient.kick(userId);
-        publishDisabled(userId, nextAuthVersion, reason, operatorId);
-        writeAuditLog(operatorId, "DISABLE_USER", String.valueOf(userId), reason, ip);
-        return ActionResult.success();
-    }
-
-    /**
-     * 启用用户并同步缓存与事件。
-     */
-    @Transactional
-    public ActionResult enableUser(String userId, String operatorId, String ip) {
+    public ActionResult updateUserStatus(String userId, boolean enabled, String operatorId) {
         if (!StringUtils.hasText(userId)) {
             return ActionResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
@@ -162,19 +121,26 @@ public class PortalAdminUserService {
         if (user == null) {
             return ActionResult.failure(ErrorCode.NOT_FOUND);
         }
-        user.setStatus(STATUS_ENABLED);
+        int status = enabled ? STATUS_ENABLED : STATUS_DISABLED;
+        user.setStatus(status);
         user.setRemark(null);
         portalUserService.updateById(user);
 
         PortalUserAuthState state = loadOrInitAuthState(userId);
         Long nextAuthVersion = nextVersion(state.getAuthVersion());
         state.setAuthVersion(nextAuthVersion);
+        if (!enabled) {
+            state.setLastDisableTime(LocalDateTime.now());
+        }
         portalUserAuthStateService.saveOrUpdate(state);
-        userAuthCacheService.updateUserAuthCache(userId, STATUS_ENABLED, nextAuthVersion, state.getProfileVersion());
+        userAuthCacheService.updateUserAuthCache(userId, status, nextAuthVersion, state.getProfileVersion());
 
         authClient.kick(userId);
-        publishEnabled(userId, nextAuthVersion, operatorId);
-        writeAuditLog(operatorId, "ENABLE_USER", String.valueOf(userId), null, ip);
+        if (enabled) {
+            publishEnabled(userId, nextAuthVersion, operatorId);
+        } else {
+            publishDisabled(userId, nextAuthVersion, operatorId);
+        }
         return ActionResult.success();
     }
 
@@ -204,18 +170,11 @@ public class PortalAdminUserService {
      * 发布用户禁用事件。
      * operatorId 操作人ID
      */
-    private void publishDisabled(String userId, Long authVersion, String reason, String operatorId) {
+    private void publishDisabled(String userId, Long authVersion, String operatorId) {
         Map<String, String> message = new HashMap<>();
         message.put("userId", userId);
         message.put("authVersion", authVersion.toString());
         message.put("operatorId", operatorId);
-        if (StringUtils.hasText(reason)) {
-            try {
-                message.put("reason", objectMapper.writeValueAsString(new DisablePayload(reason)));
-            } catch (JsonProcessingException ex) {
-                message.put("reason", null);
-            }
-        }
         message.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         eventNotifyPublisher.publish(EVENT_USER_DISABLED, message);
     }
@@ -232,20 +191,6 @@ public class PortalAdminUserService {
         eventNotifyPublisher.publish(EVENT_USER_ENABLED, message);
     }
 
-    /**
-     * 记录审计日志。
-     */
-    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
-        PortalAuditLog log = new PortalAuditLog();
-        log.setUserId(operatorId);
-        log.setAction(action);
-        log.setResource(resource);
-        log.setDetail(detail);
-        log.setIp(ip);
-        log.setStatus(1);
-        log.setCreateTime(LocalDateTime.now());
-        portalAuditLogService.save(log);
-    }
 
     /**
      * 用户列表分页结果。
@@ -371,20 +316,4 @@ public class PortalAdminUserService {
         }
     }
 
-    /**
-     * 禁用事件负载。
-     */
-    private static class DisablePayload {
-        /** 禁用原因。 */
-        private final String reason;
-
-        private DisablePayload(String reason) {
-            this.reason = reason;
-        }
-
-        /** 获取禁用原因。 */
-        public String getReason() {
-            return reason;
-        }
-    }
 }
