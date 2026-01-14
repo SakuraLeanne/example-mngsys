@@ -1,6 +1,7 @@
 package com.example.mngsys.portal.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.mngsys.common.api.PageResponse;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.entity.PortalUser;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 管理端用户控制器，提供用户查询、启用/禁用等接口。
@@ -137,53 +137,6 @@ public class AdminUserController {
 
         public boolean isSuccess() {
             return success;
-        }
-    }
-
-    /**
-     * 分页响应包装，包含记录总数和数据列表。
-     *
-     * @param <T> 数据类型
-     */
-    public static class PageResponse<T> {
-        /**
-         * 总记录数。
-         */
-        private final long total;
-        /**
-         * 当前页码。
-         */
-        private final long page;
-        /**
-         * 每页大小。
-         */
-        private final long size;
-        /**
-         * 当前页记录列表。
-         */
-        private final List<T> records;
-
-        public PageResponse(long total, long page, long size, List<T> records) {
-            this.total = total;
-            this.page = page;
-            this.size = size;
-            this.records = records;
-        }
-
-        public long getTotal() {
-            return total;
-        }
-
-        public long getPage() {
-            return page;
-        }
-
-        public long getSize() {
-            return size;
-        }
-
-        public List<T> getRecords() {
-            return records;
         }
     }
 
