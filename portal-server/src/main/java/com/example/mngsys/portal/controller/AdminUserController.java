@@ -6,7 +6,6 @@ import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.entity.PortalUser;
 import com.example.mngsys.portal.security.AdminRequired;
 import com.example.mngsys.portal.service.PortalAdminUserService;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,9 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -85,23 +83,20 @@ public class AdminUserController {
     }
 
     /**
-     * 禁用指定用户。
+     * 更新指定用户启用状态。
      *
-     * @param userId             用户 ID
-     * @param request            禁用原因请求体
-     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @param userId  用户 ID
+     * @param request 状态更新请求体
      * @return 操作结果
      */
-    @PostMapping("/{userId}/disable")
-    public ApiResponse<ActionResponse> disableUser(@PathVariable String userId,
-                                                   @Valid @RequestBody DisableRequest request,
-                                                   HttpServletRequest httpServletRequest) {
+    @PostMapping("/{userId}/status")
+    public ApiResponse<ActionResponse> updateUserStatus(@PathVariable String userId,
+                                                        @Valid @RequestBody StatusRequest request) {
         String operatorId = RequestContext.getUserId();
-        PortalAdminUserService.ActionResult result = portalAdminUserService.disableUser(
+        PortalAdminUserService.ActionResult result = portalAdminUserService.updateUserStatus(
                 userId,
-                request.getReason(),
-                operatorId,
-                resolveIp(httpServletRequest));
+                request.getEnabled(),
+                operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
@@ -109,59 +104,21 @@ public class AdminUserController {
     }
 
     /**
-     * 启用指定用户。
-     *
-     * @param userId             用户 ID
-     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
-     * @return 操作结果
+     * 用户状态更新请求体。
      */
-    @PostMapping("/{userId}/enable")
-    public ApiResponse<ActionResponse> enableUser(@PathVariable String userId,
-                                                  HttpServletRequest httpServletRequest) {
-        String operatorId = RequestContext.getUserId();
-        PortalAdminUserService.ActionResult result = portalAdminUserService.enableUser(
-                userId,
-                operatorId,
-                resolveIp(httpServletRequest));
-        if (!result.isSuccess()) {
-            return ApiResponse.failure(result.getErrorCode());
-        }
-        return ApiResponse.success(new ActionResponse(true));
-    }
-
-    /**
-     * 从请求中解析操作者 IP。
-     *
-     * @param request HTTP 请求
-     * @return IP 地址
-     */
-    private String resolveIp(HttpServletRequest request) {
-        if (request == null) {
-            return null;
-        }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwarded)) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
-    /**
-     * 禁用请求体，包含禁用原因。
-     */
-    public static class DisableRequest {
+    public static class StatusRequest {
         /**
-         * 禁用原因。
+         * 是否启用。
          */
-        @NotBlank(message = "reason 不能为空")
-        private String reason;
+        @NotNull(message = "enabled 不能为空")
+        private Boolean enabled;
 
-        public String getReason() {
-            return reason;
+        public Boolean getEnabled() {
+            return enabled;
         }
 
-        public void setReason(String reason) {
-            this.reason = reason;
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
         }
     }
 
