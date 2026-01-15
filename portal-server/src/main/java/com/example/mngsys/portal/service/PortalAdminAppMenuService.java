@@ -4,12 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.controller.dto.AppMenuTreeNode;
 import com.example.mngsys.portal.entity.AppMenuResource;
-import com.example.mngsys.portal.entity.PortalAuditLog;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -23,12 +21,9 @@ import java.util.Map;
 public class PortalAdminAppMenuService {
 
     private final AppMenuResourceService appMenuResourceService;
-    private final PortalAuditLogService portalAuditLogService;
 
-    public PortalAdminAppMenuService(AppMenuResourceService appMenuResourceService,
-                                     PortalAuditLogService portalAuditLogService) {
+    public PortalAdminAppMenuService(AppMenuResourceService appMenuResourceService) {
         this.appMenuResourceService = appMenuResourceService;
-        this.portalAuditLogService = portalAuditLogService;
     }
 
     public Result<List<AppMenuTreeNode>> loadMenuTree(String appCode) {
@@ -42,7 +37,7 @@ public class PortalAdminAppMenuService {
     }
 
     @Transactional
-    public Result<Void> createMenu(AppMenuResource menu, String operatorId, String ip) {
+    public Result<Void> createMenu(AppMenuResource menu) {
         if (menu == null || !StringUtils.hasText(menu.getAppCode())
                 || !StringUtils.hasText(menu.getMenuCode())
                 || !StringUtils.hasText(menu.getMenuName())) {
@@ -55,12 +50,11 @@ public class PortalAdminAppMenuService {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单编码已存在");
         }
         appMenuResourceService.save(menu);
-        writeAuditLog(operatorId, "CREATE_APP_MENU", String.valueOf(menu.getId()), menu.getMenuName(), ip);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> updateMenu(Long id, AppMenuResource update, String operatorId, String ip) {
+    public Result<Void> updateMenu(Long id, AppMenuResource update) {
         if (id == null || update == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单信息不完整");
         }
@@ -103,12 +97,11 @@ public class PortalAdminAppMenuService {
             menu.setStatus(update.getStatus());
         }
         appMenuResourceService.updateById(menu);
-        writeAuditLog(operatorId, "UPDATE_APP_MENU", String.valueOf(menu.getId()), menu.getMenuName(), ip);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> updateStatus(Long id, Integer status, String operatorId, String ip) {
+    public Result<Void> updateStatus(Long id, Integer status) {
         if (id == null || status == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "状态不能为空");
         }
@@ -118,13 +111,11 @@ public class PortalAdminAppMenuService {
         }
         menu.setStatus(status);
         appMenuResourceService.updateById(menu);
-        writeAuditLog(operatorId, "UPDATE_APP_MENU_STATUS", String.valueOf(menu.getId()),
-                String.valueOf(status), ip);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> deleteMenu(Long id, String operatorId, String ip) {
+    public Result<Void> deleteMenu(Long id) {
         if (id == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单ID不能为空");
         }
@@ -138,7 +129,6 @@ public class PortalAdminAppMenuService {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "存在子菜单，无法删除");
         }
         appMenuResourceService.removeById(id);
-        writeAuditLog(operatorId, "DELETE_APP_MENU", String.valueOf(id), menu.getMenuName(), ip);
         return Result.success(null);
     }
 
@@ -210,18 +200,6 @@ public class PortalAdminAppMenuService {
                 sortTree(node.getChildren());
             }
         }
-    }
-
-    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
-        PortalAuditLog log = new PortalAuditLog();
-        log.setUserId(operatorId);
-        log.setAction(action);
-        log.setResource(resource);
-        log.setDetail(detail);
-        log.setIp(ip);
-        log.setStatus(1);
-        log.setCreateTime(LocalDateTime.now());
-        portalAuditLogService.save(log);
     }
 
     public static class Result<T> {
