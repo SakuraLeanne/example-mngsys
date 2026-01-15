@@ -28,7 +28,7 @@ import java.util.List;
  * 管理端应用菜单控制器，提供菜单树查询与增删改接口。
  */
 @RestController
-@RequestMapping("/portal/api/admin/app-menus")
+@RequestMapping("/admin/app-menus")
 @Validated
 @AdminRequired
 public class AdminAppMenuController {

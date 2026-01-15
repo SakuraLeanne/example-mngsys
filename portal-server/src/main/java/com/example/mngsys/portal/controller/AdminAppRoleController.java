@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * 管理端应用角色控制器，提供角色查询、创建、修改、授权菜单等接口。
  */
 @RestController
-@RequestMapping("/portal/api/admin/app-roles")
+@RequestMapping("/admin/app-roles")
 @Validated
 @AdminRequired
 public class AdminAppRoleController {

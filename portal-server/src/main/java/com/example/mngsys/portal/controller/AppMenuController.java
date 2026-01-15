@@ -15,7 +15,7 @@ import java.util.List;
  * 前台应用菜单控制器，按用户返回可访问的菜单树。
  */
 @RestController
-@RequestMapping("/portal/api/app/menus")
+@RequestMapping("/app/menus")
 @Validated
 public class AppMenuController {
 
