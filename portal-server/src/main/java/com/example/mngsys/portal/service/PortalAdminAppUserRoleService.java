@@ -6,7 +6,6 @@ import com.example.mngsys.common.redis.RedisKeys;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.entity.AppRole;
 import com.example.mngsys.portal.entity.AppUserRole;
-import com.example.mngsys.portal.entity.PortalAuditLog;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,18 +32,15 @@ public class PortalAdminAppUserRoleService {
 
     private final AppUserRoleService appUserRoleService;
     private final AppRoleService appRoleService;
-    private final PortalAuditLogService portalAuditLogService;
     private final StringRedisTemplate stringRedisTemplate;
     private final EventNotifyPublisher eventNotifyPublisher;
 
     public PortalAdminAppUserRoleService(AppUserRoleService appUserRoleService,
                                          AppRoleService appRoleService,
-                                         PortalAuditLogService portalAuditLogService,
                                          StringRedisTemplate stringRedisTemplate,
                                          EventNotifyPublisher eventNotifyPublisher) {
         this.appUserRoleService = appUserRoleService;
         this.appRoleService = appRoleService;
-        this.portalAuditLogService = portalAuditLogService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.eventNotifyPublisher = eventNotifyPublisher;
     }
@@ -68,7 +64,7 @@ public class PortalAdminAppUserRoleService {
     }
 
     @Transactional
-    public Result<Void> grantRoles(String userId, List<Long> roleIds, String operatorId, String ip) {
+    public Result<Void> grantRoles(String userId, List<Long> roleIds, String operatorId) {
         if (!StringUtils.hasText(userId)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "用户ID不能为空");
         }
@@ -98,7 +94,6 @@ public class PortalAdminAppUserRoleService {
         stringRedisTemplate.delete(buildMenuCacheKey(userId));
         Long tokenVersion = bumpTokenVersion(userId);
         publishTokenVersionUpdated(userId, tokenVersion, operatorId);
-        writeAuditLog(operatorId, "GRANT_USER_ROLES", String.valueOf(userId), normalized.toString(), ip);
         return Result.success(null);
     }
 
@@ -120,18 +115,6 @@ public class PortalAdminAppUserRoleService {
         message.put("operatorId", operatorId);
         message.put("time", LocalDateTime.now().format(EVENT_TIME_FORMATTER));
         eventNotifyPublisher.publish(EVENT_TOKEN_VERSION_UPDATED, message);
-    }
-
-    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
-        PortalAuditLog log = new PortalAuditLog();
-        log.setUserId(operatorId);
-        log.setAction(action);
-        log.setResource(resource);
-        log.setDetail(detail);
-        log.setIp(ip);
-        log.setStatus(1);
-        log.setCreateTime(LocalDateTime.now());
-        portalAuditLogService.save(log);
     }
 
     public static class Result<T> {

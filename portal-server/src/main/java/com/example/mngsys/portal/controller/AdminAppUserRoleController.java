@@ -5,7 +5,6 @@ import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.entity.AppRole;
 import com.example.mngsys.portal.security.AdminRequired;
 import com.example.mngsys.portal.service.PortalAdminAppUserRoleService;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -66,42 +64,22 @@ public class AdminAppUserRoleController {
     /**
      * 批量授权用户角色。
      *
-     * @param userId              用户 ID
-     * @param request             授权请求，包含角色 ID 列表
-     * @param httpServletRequest  HTTP 请求，用于获取操作者 IP
+     * @param userId  用户 ID
+     * @param request 授权请求，包含角色 ID 列表
      * @return 授权结果
      */
     @PostMapping
     public ApiResponse<ActionResponse> grant(@PathVariable String userId,
-                                             @Valid @RequestBody GrantRolesRequest request,
-                                             HttpServletRequest httpServletRequest) {
+                                             @Valid @RequestBody GrantRolesRequest request) {
         String operatorId = RequestContext.getUserId();
         PortalAdminAppUserRoleService.Result<Void> result = portalAdminAppUserRoleService.grantRoles(
                 userId,
                 request.getRoleIds(),
-                operatorId,
-                resolveIp(httpServletRequest));
+                operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
         return ApiResponse.success(new ActionResponse(true));
-    }
-
-    /**
-     * 从请求头与远端地址解析操作者 IP。
-     *
-     * @param request HTTP 请求
-     * @return IP 地址
-     */
-    private String resolveIp(HttpServletRequest request) {
-        if (request == null) {
-            return null;
-        }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwarded)) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     /**

@@ -5,7 +5,6 @@ import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.entity.AppMenuResource;
 import com.example.mngsys.portal.entity.AppRole;
 import com.example.mngsys.portal.entity.AppRoleMenu;
-import com.example.mngsys.portal.entity.PortalAuditLog;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -26,16 +25,13 @@ public class PortalAdminAppRoleService {
     private final AppRoleService appRoleService;
     private final AppRoleMenuService appRoleMenuService;
     private final AppMenuResourceService appMenuResourceService;
-    private final PortalAuditLogService portalAuditLogService;
 
     public PortalAdminAppRoleService(AppRoleService appRoleService,
                                      AppRoleMenuService appRoleMenuService,
-                                     AppMenuResourceService appMenuResourceService,
-                                     PortalAuditLogService portalAuditLogService) {
+                                     AppMenuResourceService appMenuResourceService) {
         this.appRoleService = appRoleService;
         this.appRoleMenuService = appRoleMenuService;
         this.appMenuResourceService = appMenuResourceService;
-        this.portalAuditLogService = portalAuditLogService;
     }
 
     public Result<List<AppRole>> listRoles(String appCode, Integer status) {
@@ -51,7 +47,7 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<AppRole> createRole(AppRole role, String operatorId, String ip) {
+    public Result<AppRole> createRole(AppRole role) {
         if (role == null || !StringUtils.hasText(role.getAppCode())
                 || !StringUtils.hasText(role.getRoleCode())
                 || !StringUtils.hasText(role.getRoleName())) {
@@ -64,12 +60,11 @@ public class PortalAdminAppRoleService {
             role.setStatus(1);
         }
         appRoleService.save(role);
-        writeAuditLog(operatorId, "CREATE_APP_ROLE", String.valueOf(role.getId()), role.getRoleName(), ip);
         return Result.success(role);
     }
 
     @Transactional
-    public Result<AppRole> updateRole(Long id, AppRole update, String operatorId, String ip) {
+    public Result<AppRole> updateRole(Long id, AppRole update) {
         if (id == null || update == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色信息不完整");
         }
@@ -96,12 +91,11 @@ public class PortalAdminAppRoleService {
             role.setStatus(update.getStatus());
         }
         appRoleService.updateById(role);
-        writeAuditLog(operatorId, "UPDATE_APP_ROLE", String.valueOf(role.getId()), role.getRoleName(), ip);
         return Result.success(role);
     }
 
     @Transactional
-    public Result<Void> updateStatus(Long id, Integer status, String operatorId, String ip) {
+    public Result<Void> updateStatus(Long id, Integer status) {
         if (id == null || status == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "状态不能为空");
         }
@@ -111,13 +105,11 @@ public class PortalAdminAppRoleService {
         }
         role.setStatus(status);
         appRoleService.updateById(role);
-        writeAuditLog(operatorId, "UPDATE_APP_ROLE_STATUS", String.valueOf(role.getId()),
-                String.valueOf(status), ip);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> grantMenus(Long roleId, List<Long> menuIds, String operatorId, String ip) {
+    public Result<Void> grantMenus(Long roleId, List<Long> menuIds) {
         if (roleId == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
         }
@@ -152,8 +144,6 @@ public class PortalAdminAppRoleService {
             }).collect(Collectors.toList());
             appRoleMenuService.saveBatch(relations);
         }
-        writeAuditLog(operatorId, "GRANT_ROLE_MENUS", String.valueOf(roleId),
-                normalized.toString(), ip);
         return Result.success(null);
     }
 
@@ -168,18 +158,6 @@ public class PortalAdminAppRoleService {
             wrapper.ne(AppRole::getId, excludeId);
         }
         return appRoleService.count(wrapper) > 0;
-    }
-
-    private void writeAuditLog(String operatorId, String action, String resource, String detail, String ip) {
-        PortalAuditLog log = new PortalAuditLog();
-        log.setUserId(operatorId);
-        log.setAction(action);
-        log.setResource(resource);
-        log.setDetail(detail);
-        log.setIp(ip);
-        log.setStatus(1);
-        log.setCreateTime(LocalDateTime.now());
-        portalAuditLogService.save(log);
     }
 
     public static class Result<T> {

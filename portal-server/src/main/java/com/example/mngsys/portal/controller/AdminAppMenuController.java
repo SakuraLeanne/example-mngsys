@@ -1,12 +1,10 @@
 package com.example.mngsys.portal.controller;
 
 import com.example.mngsys.portal.common.api.ApiResponse;
-import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.controller.dto.AppMenuTreeNode;
 import com.example.mngsys.portal.entity.AppMenuResource;
 import com.example.mngsys.portal.security.AdminRequired;
 import com.example.mngsys.portal.service.PortalAdminAppMenuService;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -66,19 +63,14 @@ public class AdminAppMenuController {
     /**
      * 创建菜单。
      *
-     * @param request            创建请求
-     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @param request 创建请求
      * @return 操作结果
      */
     @PostMapping
-    public ApiResponse<ActionResponse> create(@Valid @RequestBody MenuCreateRequest request,
-                                              HttpServletRequest httpServletRequest) {
-        String operatorId = RequestContext.getUserId();
+    public ApiResponse<ActionResponse> create(@Valid @RequestBody MenuCreateRequest request) {
         AppMenuResource menu = request.toEntity();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.createMenu(
-                menu,
-                operatorId,
-                resolveIp(httpServletRequest));
+                menu);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -88,21 +80,16 @@ public class AdminAppMenuController {
     /**
      * 更新菜单。
      *
-     * @param id                 菜单 ID
-     * @param request            更新请求
-     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @param id      菜单 ID
+     * @param request 更新请求
      * @return 操作结果
      */
     @PutMapping("/{id}")
     public ApiResponse<ActionResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody MenuUpdateRequest request,
-                                              HttpServletRequest httpServletRequest) {
-        String operatorId = RequestContext.getUserId();
+                                              @Valid @RequestBody MenuUpdateRequest request) {
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateMenu(
                 id,
-                request.toEntity(),
-                operatorId,
-                resolveIp(httpServletRequest));
+                request.toEntity());
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -112,17 +99,13 @@ public class AdminAppMenuController {
     /**
      * 删除菜单。
      *
-     * @param id                 菜单 ID
-     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @param id 菜单 ID
      * @return 操作结果
      */
     @DeleteMapping("/{id}")
-    public ApiResponse<ActionResponse> delete(@PathVariable Long id, HttpServletRequest httpServletRequest) {
-        String operatorId = RequestContext.getUserId();
+    public ApiResponse<ActionResponse> delete(@PathVariable Long id) {
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.deleteMenu(
-                id,
-                operatorId,
-                resolveIp(httpServletRequest));
+                id);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -132,42 +115,20 @@ public class AdminAppMenuController {
     /**
      * 更新菜单状态。
      *
-     * @param id                 菜单 ID
-     * @param request            状态请求
-     * @param httpServletRequest HTTP 请求，用于解析操作者 IP
+     * @param id      菜单 ID
+     * @param request 状态请求
      * @return 操作结果
      */
     @PostMapping("/{id}/status")
     public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
-                                                    @Valid @RequestBody StatusRequest request,
-                                                    HttpServletRequest httpServletRequest) {
-        String operatorId = RequestContext.getUserId();
+                                                    @Valid @RequestBody StatusRequest request) {
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateStatus(
                 id,
-                request.getStatus(),
-                operatorId,
-                resolveIp(httpServletRequest));
+                request.getStatus());
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
         return ApiResponse.success(new ActionResponse(true));
-    }
-
-    /**
-     * 从请求中解析操作者 IP。
-     *
-     * @param request HTTP 请求
-     * @return IP 地址
-     */
-    private String resolveIp(HttpServletRequest request) {
-        if (request == null) {
-            return null;
-        }
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwarded)) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     /**
