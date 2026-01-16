@@ -3,6 +3,7 @@ package com.example.mngsys.auth.service;
 import com.example.mngsys.auth.common.api.ErrorCode;
 import com.example.mngsys.auth.common.exception.LocalizedBusinessException;
 import com.example.mngsys.auth.config.AuthProperties;
+import com.example.mngsys.common.security.PasswordPolicyValidator;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -93,6 +94,13 @@ public class PasswordResetService {
                     ErrorCode.INVALID_ARGUMENT,
                     "error.reset.token.mismatch",
                     "重置验证失败，请重新获取验证码"
+            );
+        }
+        if (!PasswordPolicyValidator.isValid(password)) {
+            throw new LocalizedBusinessException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "error.reset.password.policy",
+                    "新密码不符合安全策略，请修改后重试"
             );
         }
         authService.resetPasswordByMobile(mobile, password);
