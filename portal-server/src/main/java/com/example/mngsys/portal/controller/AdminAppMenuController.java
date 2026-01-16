@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,40 +60,25 @@ public class AdminAppMenuController {
     }
 
     /**
-     * 创建菜单。
+     * 创建或更新菜单。
      *
-     * @param request 创建请求
+     * @param request 菜单请求
      * @return 操作结果
      */
     @PostMapping
-    public ApiResponse<ActionResponse> create(@Valid @RequestBody AppMenuResource request) {
-        if (request.getSort() == null) {
-            request.setSort(0);
+    public ApiResponse<ActionResponse> save(@Valid @RequestBody AppMenuResource request) {
+        PortalAdminAppMenuService.Result<Void> result;
+        if (request.getId() == null) {
+            if (request.getSort() == null) {
+                request.setSort(0);
+            }
+            if (request.getStatus() == null) {
+                request.setStatus(1);
+            }
+            result = portalAdminAppMenuService.createMenu(request);
+        } else {
+            result = portalAdminAppMenuService.updateMenu(request.getId(), request);
         }
-        if (request.getStatus() == null) {
-            request.setStatus(1);
-        }
-        PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.createMenu(
-                request);
-        if (!result.isSuccess()) {
-            return ApiResponse.failure(result.getErrorCode(), result.getMessage());
-        }
-        return ApiResponse.success(new ActionResponse(true));
-    }
-
-    /**
-     * 更新菜单。
-     *
-     * @param id      菜单 ID
-     * @param request 更新请求
-     * @return 操作结果
-     */
-    @PutMapping("/{id}")
-    public ApiResponse<ActionResponse> update(@PathVariable Long id,
-                                              @Valid @RequestBody AppMenuResource request) {
-        PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateMenu(
-                id,
-                request);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
