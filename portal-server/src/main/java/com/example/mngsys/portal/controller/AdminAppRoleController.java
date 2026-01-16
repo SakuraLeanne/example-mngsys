@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.controller;
 
+import com.example.mngsys.common.api.ActionResponse;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.entity.AppRole;
 import com.example.mngsys.portal.security.AdminRequired;
@@ -420,21 +421,4 @@ public class AdminAppRoleController {
         }
     }
 
-    /**
-     * 通用操作结果。
-     */
-    public static class ActionResponse {
-        /**
-         * 是否成功。
-         */
-        private final boolean success;
-
-        public ActionResponse(boolean success) {
-            this.success = success;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-    }
 }
