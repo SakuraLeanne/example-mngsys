@@ -2,6 +2,7 @@ package com.example.mngsys.portal.service;
 
 import com.example.mngsys.api.notify.core.EventNotifyPublisher;
 import com.example.mngsys.common.security.PasswordCryptoService;
+import com.example.mngsys.common.security.PasswordPolicyValidator;
 import com.example.mngsys.portal.client.AuthClient;
 import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
@@ -100,7 +101,7 @@ public class PortalPasswordService {
         if (!StringUtils.hasText(resolvedNewPassword)) {
             return ChangeResult.failure(ErrorCode.INVALID_ARGUMENT);
         }
-        if (resolvedNewPassword.length() < 8 || !isComplexEnough(resolvedNewPassword)) {
+        if (!PasswordPolicyValidator.isValid(resolvedNewPassword)) {
             return ChangeResult.failure(ErrorCode.NEW_PASSWORD_POLICY_VIOLATION);
         }
         String userId = resolveUserId(ptk);
@@ -132,25 +133,6 @@ public class PortalPasswordService {
         deletePtk(ptk);
         publishPasswordChanged(userId, nextAuthVersion);
         return ChangeResult.success(userId, nextAuthVersion);
-    }
-
-    /**
-     * 校验密码复杂度，需同时包含字母和数字。
-     */
-    private boolean isComplexEnough(String password) {
-        boolean hasLetter = false;
-        boolean hasDigit = false;
-        for (char c : password.toCharArray()) {
-            if (Character.isLetter(c)) {
-                hasLetter = true;
-            } else if (Character.isDigit(c)) {
-                hasDigit = true;
-            }
-            if (hasLetter && hasDigit) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
