@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 /**
@@ -115,20 +116,26 @@ public class PortalAdminAppMenuService {
     }
 
     @Transactional
-    public Result<Void> deleteMenu(Long id) {
-        if (id == null) {
+    public Result<Void> deleteMenus(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单ID不能为空");
         }
-        AppMenuResource menu = appMenuResourceService.getById(id);
-        if (menu == null) {
-            return Result.failure(ErrorCode.NOT_FOUND, "菜单不存在");
+        List<Long> uniqueIds = ids.stream().distinct().collect(Collectors.toList());
+        for (Long id : uniqueIds) {
+            if (id == null) {
+                return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单ID不能为空");
+            }
+            AppMenuResource menu = appMenuResourceService.getById(id);
+            if (menu == null) {
+                return Result.failure(ErrorCode.NOT_FOUND, "菜单不存在");
+            }
+            boolean hasChild = appMenuResourceService.count(new LambdaQueryWrapper<AppMenuResource>()
+                    .eq(AppMenuResource::getParentId, id)) > 0;
+            if (hasChild) {
+                return Result.failure(ErrorCode.INVALID_ARGUMENT, "存在子菜单，无法删除");
+            }
         }
-        boolean hasChild = appMenuResourceService.count(new LambdaQueryWrapper<AppMenuResource>()
-                .eq(AppMenuResource::getParentId, id)) > 0;
-        if (hasChild) {
-            return Result.failure(ErrorCode.INVALID_ARGUMENT, "存在子菜单，无法删除");
-        }
-        appMenuResourceService.removeById(id);
+        appMenuResourceService.removeByIds(uniqueIds);
         return Result.success(null);
     }
 
