@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.controller;
 
+import com.example.mngsys.common.api.ActionResponse;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.controller.dto.AppMenuTreeNode;
 import com.example.mngsys.portal.entity.AppMenuResource;
@@ -136,21 +137,4 @@ public class AdminAppMenuController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
-    /**
-     * 通用操作结果。
-     */
-    public static class ActionResponse {
-        /**
-         * 是否成功。
-         */
-        private final boolean success;
-
-        public ActionResponse(boolean success) {
-            this.success = success;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-    }
 }
