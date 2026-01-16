@@ -1,5 +1,6 @@
 package com.example.mngsys.portal.controller;
 
+import com.example.mngsys.common.api.ActionResponse;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.controller.dto.AppMenuTreeNode;
 import com.example.mngsys.portal.entity.AppMenuResource;
@@ -107,8 +108,8 @@ public class AdminAppMenuController {
      * @param status  状态值
      * @return 操作结果
      */
-    @PostMapping("/{id}/status")
-    public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
+    @GetMapping("/status")
+    public ApiResponse<ActionResponse> updateStatus(@RequestParam@NotNull(message = "id 不能为空") Long id,
                                                     @RequestParam
                                                     @NotNull(message = "status 不能为空") Integer status) {
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateStatus(
@@ -120,21 +121,4 @@ public class AdminAppMenuController {
         return ApiResponse.success(new ActionResponse(true));
     }
 
-    /**
-     * 通用操作结果。
-     */
-    public static class ActionResponse {
-        /**
-         * 是否成功。
-         */
-        private final boolean success;
-
-        public ActionResponse(boolean success) {
-            this.success = success;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-    }
 }

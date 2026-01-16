@@ -1,6 +1,7 @@
 package com.example.mngsys.portal.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.mngsys.common.api.ActionResponse;
 import com.example.mngsys.common.api.PageResponse;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.context.RequestContext;
@@ -118,24 +119,6 @@ public class AdminUserController {
 
         public void setEnabled(Boolean enabled) {
             this.enabled = enabled;
-        }
-    }
-
-    /**
-     * 通用操作响应。
-     */
-    public static class ActionResponse {
-        /**
-         * 是否成功。
-         */
-        private final boolean success;
-
-        public ActionResponse(boolean success) {
-            this.success = success;
-        }
-
-        public boolean isSuccess() {
-            return success;
         }
     }
 

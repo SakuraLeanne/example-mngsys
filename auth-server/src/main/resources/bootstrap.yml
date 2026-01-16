@@ -37,10 +37,5 @@ spring:
           group: DEFAULT_GROUP
           refresh: true
 
-sa-token:
-  token-name: satoken
-  is-read-cookie: true
-  is-write-cookie: true
-  cookie:
-    http-only: true
+
 
