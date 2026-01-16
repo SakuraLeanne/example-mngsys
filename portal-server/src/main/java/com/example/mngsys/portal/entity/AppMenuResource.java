@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDateTime;
+import javax.validation.constraints.NotBlank;
 
 @TableName("app_menu_resource")
 /**
@@ -19,10 +20,13 @@ public class AppMenuResource {
     @TableId(type = IdType.AUTO)
     private Long id;
     /** 归属应用编码。 */
+    @NotBlank(message = "appCode 不能为空")
     private String appCode;
     /** 菜单唯一编码。 */
+    @NotBlank(message = "menuCode 不能为空")
     private String menuCode;
     /** 菜单名称（展示文案）。 */
+    @NotBlank(message = "menuName 不能为空")
     private String menuName;
     /** 前端路由路径或资源路径。 */
     private String menuPath;
