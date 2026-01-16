@@ -124,8 +124,8 @@ public class AdminAppMenuController {
      * @param status  状态值
      * @return 操作结果
      */
-    @PostMapping("/{id}/status")
-    public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
+    @GetMapping("/status")
+    public ApiResponse<ActionResponse> updateStatus(@RequestParam@NotNull(message = "id 不能为空") Long id,
                                                     @RequestParam
                                                     @NotNull(message = "status 不能为空") Integer status) {
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateStatus(
