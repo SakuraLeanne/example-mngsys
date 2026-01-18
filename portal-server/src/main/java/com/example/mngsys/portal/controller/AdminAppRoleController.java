@@ -9,7 +9,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -66,34 +65,19 @@ public class AdminAppRoleController {
     }
 
     /**
-     * 创建角色。
+     * 创建或更新角色。
      *
-     * @param request 创建请求
-     * @return 创建后的角色概要
+     * @param request 角色信息
+     * @return 角色概要
      */
     @PostMapping
-    public ApiResponse<RoleSummary> create(@Valid @RequestBody RoleCreateRequest request) {
-        PortalAdminAppRoleService.Result<AppRole> result = portalAdminAppRoleService.createRole(
-                request.toEntity());
-        if (!result.isSuccess()) {
-            return ApiResponse.failure(result.getErrorCode(), result.getMessage());
+    public ApiResponse<RoleSummary> save(@Valid @RequestBody RoleSummary request) {
+        PortalAdminAppRoleService.Result<AppRole> result;
+        if (request.getId() == null) {
+            result = portalAdminAppRoleService.createRole(request.toEntity());
+        } else {
+            result = portalAdminAppRoleService.updateRole(request.getId(), request.toEntity());
         }
-        return ApiResponse.success(RoleSummary.from(result.getData()));
-    }
-
-    /**
-     * 更新角色。
-     *
-     * @param id      角色 ID
-     * @param request 更新请求
-     * @return 更新后的角色概要
-     */
-    @PutMapping("/{id}")
-    public ApiResponse<RoleSummary> update(@PathVariable Long id,
-                                           @Valid @RequestBody RoleUpdateRequest request) {
-        PortalAdminAppRoleService.Result<AppRole> result = portalAdminAppRoleService.updateRole(
-                id,
-                request.toEntity());
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -104,15 +88,16 @@ public class AdminAppRoleController {
      * 更新角色状态。
      *
      * @param id      角色 ID
-     * @param request 状态请求
+     * @param status  状态值
      * @return 操作结果
      */
-    @PostMapping("/{id}/status")
-    public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
-                                                    @Valid @RequestBody StatusRequest request) {
+    @GetMapping("/status")
+    public ApiResponse<ActionResponse> updateStatus(@RequestParam @NotNull(message = "id 不能为空") Long id,
+                                                    @RequestParam
+                                                    @NotNull(message = "status 不能为空") Integer status) {
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.updateStatus(
                 id,
-                request.getStatus());
+                status);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -145,35 +130,41 @@ public class AdminAppRoleController {
         /**
          * 角色 ID。
          */
-        private final Long id;
+        private Long id;
         /**
          * 应用编码。
          */
-        private final String appCode;
+        @NotBlank(message = "appCode 不能为空")
+        private String appCode;
         /**
          * 角色编码。
          */
-        private final String roleCode;
+        @NotBlank(message = "roleCode 不能为空")
+        private String roleCode;
         /**
          * 角色名称。
          */
-        private final String roleName;
+        @NotBlank(message = "roleName 不能为空")
+        private String roleName;
         /**
          * 状态。
          */
-        private final Integer status;
+        private Integer status;
         /**
          * 备注。
          */
-        private final String remark;
+        private String remark;
         /**
          * 创建时间。
          */
-        private final LocalDateTime createTime;
+        private LocalDateTime createTime;
         /**
          * 更新时间。
          */
-        private final LocalDateTime updateTime;
+        private LocalDateTime updateTime;
+
+        public RoleSummary() {
+        }
 
         public RoleSummary(Long id, String appCode, String roleCode, String roleName, Integer status,
                            String remark, LocalDateTime createTime, LocalDateTime updateTime) {
@@ -199,101 +190,64 @@ public class AdminAppRoleController {
             return id;
         }
 
+        public void setId(Long id) {
+            this.id = id;
+        }
+
         public String getAppCode() {
             return appCode;
+        }
+
+        public void setAppCode(String appCode) {
+            this.appCode = appCode;
         }
 
         public String getRoleCode() {
             return roleCode;
         }
 
+        public void setRoleCode(String roleCode) {
+            this.roleCode = roleCode;
+        }
+
         public String getRoleName() {
             return roleName;
+        }
+
+        public void setRoleName(String roleName) {
+            this.roleName = roleName;
         }
 
         public Integer getStatus() {
             return status;
         }
 
+        public void setStatus(Integer status) {
+            this.status = status;
+        }
+
         public String getRemark() {
             return remark;
+        }
+
+        public void setRemark(String remark) {
+            this.remark = remark;
         }
 
         public LocalDateTime getCreateTime() {
             return createTime;
         }
 
+        public void setCreateTime(LocalDateTime createTime) {
+            this.createTime = createTime;
+        }
+
         public LocalDateTime getUpdateTime() {
             return updateTime;
         }
-    }
 
-    /**
-     * 角色创建请求体。
-     */
-    public static class RoleCreateRequest {
-        /**
-         * 应用编码。
-         */
-        @NotBlank(message = "appCode 不能为空")
-        private String appCode;
-        /**
-         * 角色编码。
-         */
-        @NotBlank(message = "roleCode 不能为空")
-        private String roleCode;
-        /**
-         * 角色名称。
-         */
-        @NotBlank(message = "roleName 不能为空")
-        private String roleName;
-        /**
-         * 状态。
-         */
-        private Integer status;
-        /**
-         * 备注。
-         */
-        private String remark;
-
-        public String getAppCode() {
-            return appCode;
-        }
-
-        public void setAppCode(String appCode) {
-            this.appCode = appCode;
-        }
-
-        public String getRoleCode() {
-            return roleCode;
-        }
-
-        public void setRoleCode(String roleCode) {
-            this.roleCode = roleCode;
-        }
-
-        public String getRoleName() {
-            return roleName;
-        }
-
-        public void setRoleName(String roleName) {
-            this.roleName = roleName;
-        }
-
-        public Integer getStatus() {
-            return status;
-        }
-
-        public void setStatus(Integer status) {
-            this.status = status;
-        }
-
-        public String getRemark() {
-            return remark;
-        }
-
-        public void setRemark(String remark) {
-            this.remark = remark;
+        public void setUpdateTime(LocalDateTime updateTime) {
+            this.updateTime = updateTime;
         }
 
         public AppRole toEntity() {
@@ -304,101 +258,6 @@ public class AdminAppRoleController {
             role.setStatus(status);
             role.setRemark(remark);
             return role;
-        }
-    }
-
-    /**
-     * 角色更新请求体。
-     */
-    public static class RoleUpdateRequest {
-        /**
-         * 应用编码。
-         */
-        private String appCode;
-        /**
-         * 角色编码。
-         */
-        private String roleCode;
-        /**
-         * 角色名称。
-         */
-        private String roleName;
-        /**
-         * 状态。
-         */
-        private Integer status;
-        /**
-         * 备注。
-         */
-        private String remark;
-
-        public String getAppCode() {
-            return appCode;
-        }
-
-        public void setAppCode(String appCode) {
-            this.appCode = appCode;
-        }
-
-        public String getRoleCode() {
-            return roleCode;
-        }
-
-        public void setRoleCode(String roleCode) {
-            this.roleCode = roleCode;
-        }
-
-        public String getRoleName() {
-            return roleName;
-        }
-
-        public void setRoleName(String roleName) {
-            this.roleName = roleName;
-        }
-
-        public Integer getStatus() {
-            return status;
-        }
-
-        public void setStatus(Integer status) {
-            this.status = status;
-        }
-
-        public String getRemark() {
-            return remark;
-        }
-
-        public void setRemark(String remark) {
-            this.remark = remark;
-        }
-
-        public AppRole toEntity() {
-            AppRole role = new AppRole();
-            role.setAppCode(appCode);
-            role.setRoleCode(roleCode);
-            role.setRoleName(roleName);
-            role.setStatus(status);
-            role.setRemark(remark);
-            return role;
-        }
-    }
-
-    /**
-     * 角色状态更新请求体。
-     */
-    public static class StatusRequest {
-        /**
-         * 状态值。
-         */
-        @NotNull(message = "status 不能为空")
-        private Integer status;
-
-        public Integer getStatus() {
-            return status;
-        }
-
-        public void setStatus(Integer status) {
-            this.status = status;
         }
     }
 
