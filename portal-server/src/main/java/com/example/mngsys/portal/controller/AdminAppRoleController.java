@@ -88,15 +88,16 @@ public class AdminAppRoleController {
      * 更新角色状态。
      *
      * @param id      角色 ID
-     * @param request 状态请求
+     * @param status  状态值
      * @return 操作结果
      */
-    @PostMapping("/{id}/status")
-    public ApiResponse<ActionResponse> updateStatus(@PathVariable Long id,
-                                                    @Valid @RequestBody StatusRequest request) {
+    @GetMapping("/status")
+    public ApiResponse<ActionResponse> updateStatus(@RequestParam @NotNull(message = "id 不能为空") Long id,
+                                                    @RequestParam
+                                                    @NotNull(message = "status 不能为空") Integer status) {
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.updateStatus(
                 id,
-                request.getStatus());
+                status);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -257,25 +258,6 @@ public class AdminAppRoleController {
             role.setStatus(status);
             role.setRemark(remark);
             return role;
-        }
-    }
-
-    /**
-     * 角色状态更新请求体。
-     */
-    public static class StatusRequest {
-        /**
-         * 状态值。
-         */
-        @NotNull(message = "status 不能为空")
-        private Integer status;
-
-        public Integer getStatus() {
-            return status;
-        }
-
-        public void setStatus(Integer status) {
-            this.status = status;
         }
     }
 
