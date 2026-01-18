@@ -107,15 +107,13 @@ public class AdminAppRoleController {
     /**
      * 为角色授权菜单。
      *
-     * @param id      角色 ID
      * @param request 菜单授权请求
      * @return 操作结果
      */
-    @PostMapping("/{id}/grant-menus")
-    public ApiResponse<ActionResponse> grantMenus(@PathVariable Long id,
-                                                  @Valid @RequestBody GrantMenusRequest request) {
+    @PostMapping("/grant-menus")
+    public ApiResponse<ActionResponse> grantMenus(@Valid @RequestBody GrantMenusRequest request) {
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.grantMenus(
-                id,
+                request.getRoleId(),
                 request.getMenuIds());
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
@@ -266,6 +264,11 @@ public class AdminAppRoleController {
      */
     public static class GrantMenusRequest {
         /**
+         * 角色 ID。
+         */
+        @NotNull(message = "roleId 不能为空 ")
+        private Long roleId;
+        /**
          * 菜单 ID 列表。
          */
         @NotNull(message = "menuIds 不能为空")
@@ -277,6 +280,14 @@ public class AdminAppRoleController {
 
         public void setMenuIds(List<Long> menuIds) {
             this.menuIds = menuIds;
+        }
+
+        public Long getRoleId() {
+            return roleId;
+        }
+
+        public void setRoleId(Long roleId) {
+            this.roleId = roleId;
         }
     }
 
