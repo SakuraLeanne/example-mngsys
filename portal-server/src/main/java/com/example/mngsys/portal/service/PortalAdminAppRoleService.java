@@ -147,6 +147,33 @@ public class PortalAdminAppRoleService {
         return Result.success(null);
     }
 
+    public Result<RoleMenuAuthorization> listRoleMenuAuthorization(Long roleId) {
+        if (roleId == null) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
+        }
+        AppRole role = appRoleService.getById(roleId);
+        if (role == null) {
+            return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
+        }
+        List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
+                .eq(AppMenuResource::getAppCode, role.getAppCode()));
+        List<AppRoleMenu> roleMenus = appRoleMenuService.list(new LambdaQueryWrapper<AppRoleMenu>()
+                .eq(AppRoleMenu::getRoleId, roleId));
+        Set<Long> grantedMenuIds = roleMenus.stream()
+                .map(AppRoleMenu::getMenuId)
+                .collect(Collectors.toSet());
+        List<AppMenuResource> grantedMenus = new ArrayList<>();
+        List<AppMenuResource> ungrantedMenus = new ArrayList<>();
+        for (AppMenuResource menu : menus) {
+            if (grantedMenuIds.contains(menu.getId())) {
+                grantedMenus.add(menu);
+            } else {
+                ungrantedMenus.add(menu);
+            }
+        }
+        return Result.success(new RoleMenuAuthorization(grantedMenus, ungrantedMenus));
+    }
+
     private boolean existsRoleCode(String appCode, String roleCode, Long excludeId) {
         if (!StringUtils.hasText(appCode) || !StringUtils.hasText(roleCode)) {
             return false;
@@ -195,6 +222,24 @@ public class PortalAdminAppRoleService {
 
         public T getData() {
             return data;
+        }
+    }
+
+    public static class RoleMenuAuthorization {
+        private final List<AppMenuResource> grantedMenus;
+        private final List<AppMenuResource> ungrantedMenus;
+
+        public RoleMenuAuthorization(List<AppMenuResource> grantedMenus, List<AppMenuResource> ungrantedMenus) {
+            this.grantedMenus = grantedMenus;
+            this.ungrantedMenus = ungrantedMenus;
+        }
+
+        public List<AppMenuResource> getGrantedMenus() {
+            return grantedMenus;
+        }
+
+        public List<AppMenuResource> getUngrantedMenus() {
+            return ungrantedMenus;
         }
     }
 }
