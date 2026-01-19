@@ -63,6 +63,22 @@ public class PortalAdminAppUserRoleService {
         return Result.success(roles);
     }
 
+    public Result<List<AppRole>> listRolesByIds(List<Long> roleIds) {
+        List<Long> normalized = roleIds == null ? new ArrayList<>() : roleIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (CollectionUtils.isEmpty(normalized)) {
+            return Result.success(new ArrayList<>());
+        }
+        List<AppRole> roles = appRoleService.list(new LambdaQueryWrapper<AppRole>()
+                .in(AppRole::getId, normalized));
+        if (roles.size() != normalized.size()) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
+        }
+        return Result.success(roles);
+    }
+
     @Transactional
     public Result<Void> grantRoles(String userId, List<Long> roleIds, String operatorId) {
         if (!StringUtils.hasText(userId)) {
