@@ -1,6 +1,7 @@
 package com.example.mngsys.portal.controller;
 
 import com.example.mngsys.common.api.ActionResponse;
+import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.api.ApiResponse;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.portal.entity.AppRole;
@@ -72,6 +73,16 @@ public class AdminAppUserRoleController {
     @PostMapping
     public ApiResponse<ActionResponse> grant(@PathVariable String userId,
                                              @Valid @RequestBody GrantRolesRequest request) {
+        PortalAdminAppUserRoleService.Result<List<AppRole>> roleResult =
+                portalAdminAppUserRoleService.listRolesByIds(request.getRoleIds());
+        if (!roleResult.isSuccess()) {
+            return ApiResponse.failure(roleResult.getErrorCode(), roleResult.getMessage());
+        }
+        boolean hasDisabledRole = roleResult.getData().stream()
+                .anyMatch(role -> role.getStatus() == null || role.getStatus() != 1);
+        if (hasDisabledRole) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "角色已停用，无法授权");
+        }
         String operatorId = RequestContext.getUserId();
         PortalAdminAppUserRoleService.Result<Void> result = portalAdminAppUserRoleService.grantRoles(
                 userId,
