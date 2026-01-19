@@ -107,9 +107,9 @@ public class PortalAdminAppUserRoleService {
             }).collect(Collectors.toList());
             appUserRoleService.saveBatch(relations);
         }
-        stringRedisTemplate.delete(buildMenuCacheKey(userId));
+        /*stringRedisTemplate.delete(buildMenuCacheKey(userId));
         Long tokenVersion = bumpTokenVersion(userId);
-        publishTokenVersionUpdated(userId, tokenVersion, operatorId);
+        publishTokenVersionUpdated(userId, tokenVersion, operatorId);*/
         return Result.success(null);
     }
 
