@@ -11,9 +11,9 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
-@MapperScan("com.example.mngsys.portal.mapper")
+@MapperScan("com.dhgx.portal.mapper")
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = {"com.example.mngsys"})
+@EnableFeignClients(basePackages = {"com.dhgx"})
 @EnableConfigurationProperties({PortalProperties.class, AuthClientProperties.class, GatewaySecurityProperties.class})
 /**
  * PortalServerApplication。

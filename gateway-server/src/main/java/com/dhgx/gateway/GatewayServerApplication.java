@@ -14,7 +14,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  */
 @SpringBootApplication
 @EnableConfigurationProperties(GatewaySecurityProperties.class)
-@EnableFeignClients(basePackages = {"com.example.mngsys"})
+@EnableFeignClients(basePackages = {"com.dhgx"})
 public class GatewayServerApplication {
 
     /**
