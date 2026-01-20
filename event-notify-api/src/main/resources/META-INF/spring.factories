@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  com.example.mngsys.api.notify.config.EventNotifyAutoConfiguration
+  com.dhgx.api.notify.config.EventNotifyAutoConfiguration
