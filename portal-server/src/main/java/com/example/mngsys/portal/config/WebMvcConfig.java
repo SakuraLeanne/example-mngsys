@@ -29,6 +29,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 登录态拦截：通过 Cookie 向鉴权服务校验会话并写入 RequestContext 的 userId
         registry.addInterceptor(authSessionInterceptor)
+                .addPathPatterns("/app/menus")
                 .addPathPatterns("/password/change")
                 .addPathPatterns("/profile")
                 .addPathPatterns("/login/**")

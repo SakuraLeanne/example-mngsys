@@ -7,8 +7,6 @@ import com.example.mngsys.portal.common.api.ErrorCode;
 import com.example.mngsys.portal.common.context.RequestContext;
 import com.example.mngsys.common.gateway.GatewaySecurityProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
@@ -30,24 +28,20 @@ import java.util.Map;
 public class AuthSessionInterceptor implements HandlerInterceptor {
 
     private static final String APP_MENU_PATH = "/app/menus";
-    private static final String DEV_USER_HEADER = "X-User-Id";
     private static final String PTK_COOKIE_NAME = "ptk";
     private static final String SATOKEN_COOKIE_NAME = "satoken";
     private static final List<String> PTK_SCOPE_PATHS = Arrays.asList("/portal-server/password/change", "/portal-server/profile");
 
     private final AuthClient authClient;
     private final ObjectMapper objectMapper;
-    private final Environment environment;
     private final GatewaySecurityProperties gatewaySecurityProperties;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     public AuthSessionInterceptor(@org.springframework.context.annotation.Lazy AuthClient authClient,
                                   ObjectMapper objectMapper,
-                                  Environment environment,
                                   GatewaySecurityProperties gatewaySecurityProperties) {
         this.authClient = authClient;
         this.objectMapper = objectMapper;
-        this.environment = environment;
         this.gatewaySecurityProperties = gatewaySecurityProperties;
     }
 
@@ -56,9 +50,7 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }
-        if (allowDevUserHeader(request)) {
-            return true;
-        }
+        setUserIdFromRequestParam(request);
         boolean requireSessionCheck = shouldRequireSessionCheck(request);
         if (!requireSessionCheck && isWhitelisted(request)) {
             return true;
@@ -185,26 +177,16 @@ public class AuthSessionInterceptor implements HandlerInterceptor {
         objectMapper.writeValue(response.getWriter(), ApiResponse.failure(ErrorCode.UNAUTHENTICATED, resolvedMessage));
     }
 
-    private boolean allowDevUserHeader(HttpServletRequest request) {
-        if (!environment.acceptsProfiles(Profiles.of("dev"))) {
-            return false;
+    private void setUserIdFromRequestParam(HttpServletRequest request) {
+        if (!APP_MENU_PATH.equalsIgnoreCase(request.getRequestURI())) {
+            return;
         }
-        String path = request.getRequestURI();
-        String method = request.getMethod();
-        if (!"GET".equalsIgnoreCase(method)) {
-            return false;
-        }
-        if (!APP_MENU_PATH.equalsIgnoreCase(path)) {
-            return false;
-        }
-        String headerValue = request.getHeader(DEV_USER_HEADER);
-        String userId = parseString(headerValue);
+        String userId = parseString(request.getParameter("userId"));
         if (userId == null) {
-            return false;
+            return;
         }
         RequestContext.setUserId(userId);
         request.setAttribute("userId", userId);
-        return true;
     }
 
     private String extractUserId(Object data) {
