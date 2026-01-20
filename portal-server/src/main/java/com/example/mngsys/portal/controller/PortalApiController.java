@@ -49,7 +49,6 @@ import java.util.Optional;
  * Portal 接口控制器，负责门户登录、个人资料、动作票据等与用户交互的接口入口。
  */
 @RestController
-//@RequestMapping("/portal/api")
 @Validated
 public class PortalApiController {
     private static final String PTK_COOKIE_NAME = "ptk";
@@ -320,7 +319,7 @@ public class PortalApiController {
     }
 
     /**
-     * 更新个人资料。
+     * 更新个人资料（请求体直接使用 PortalUser，不再依赖独立请求 DTO）。
      *
      * @param request     更新请求
      * @param httpRequest HTTP 请求，用于读取 ptk
