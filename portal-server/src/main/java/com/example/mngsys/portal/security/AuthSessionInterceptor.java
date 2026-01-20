@@ -29,7 +29,7 @@ import java.util.Map;
  */
 public class AuthSessionInterceptor implements HandlerInterceptor {
 
-    private static final String APP_MENU_PATH = "/portal/api/app/menus";
+    private static final String APP_MENU_PATH = "/app/menus";
     private static final String DEV_USER_HEADER = "X-User-Id";
     private static final String PTK_COOKIE_NAME = "ptk";
     private static final String SATOKEN_COOKIE_NAME = "satoken";
