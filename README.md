@@ -1,4 +1,4 @@
-# example-mngsys
+# dhgx-portal
 
 ## 项目简介
 
