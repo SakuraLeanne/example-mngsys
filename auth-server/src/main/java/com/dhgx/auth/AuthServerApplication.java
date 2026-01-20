@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 @SpringBootApplication
 @EnableConfigurationProperties(AuthProperties.class)
-@MapperScan("com.example.mngsys.auth.mapper")
+@MapperScan("com.dhgx.auth.mapper")
 /**
  * AuthServerApplication。
  */
