@@ -5,13 +5,14 @@ import com.dhgx.common.feign.dto.AuthLoginResponse;
 import com.dhgx.common.feign.dto.AuthLoginType;
 import com.dhgx.common.portal.dto.PortalLoginRequest;
 import com.dhgx.portal.client.AuthClient;
+import com.dhgx.portal.common.SsoTicketUtils;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.common.exception.InvalidReturnUrlException;
 import com.dhgx.portal.common.exception.LocalizedBusinessException;
 import com.dhgx.portal.config.PortalProperties;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,11 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PortalAuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(PortalAuthService.class);
     private static final String LOGIN_FAIL_PREFIX = "PORTAL:LOGIN_FAIL:";
+    private static final long MIN_TICKET_TTL_SECONDS = 30;
+    private static final long MAX_TICKET_TTL_SECONDS = 120;
+    private static final long DEFAULT_TICKET_TTL_SECONDS = 60;
 
     /** 认证中心客户端。 */
     private final AuthClient authClient;
@@ -44,8 +49,6 @@ public class PortalAuthService {
     private final PortalProperties portalProperties;
     /** Redis 模板。 */
     private final StringRedisTemplate stringRedisTemplate;
-    /** JSON 序列化器。 */
-    private final ObjectMapper objectMapper;
     /** 验证码服务。 */
     private final CaptchaService captchaService;
 
@@ -55,12 +58,10 @@ public class PortalAuthService {
     public PortalAuthService(AuthClient authClient,
                              PortalProperties portalProperties,
                              StringRedisTemplate stringRedisTemplate,
-                             ObjectMapper objectMapper,
                              CaptchaService captchaService) {
         this.authClient = authClient;
         this.portalProperties = portalProperties;
         this.stringRedisTemplate = stringRedisTemplate;
-        this.objectMapper = objectMapper;
         this.captchaService = captchaService;
     }
 
@@ -124,15 +125,18 @@ public class PortalAuthService {
         }
         String ticket = UUID.randomUUID().toString().replace("-", "");
         Instant issuedAt = Instant.now();
-        long ttlSeconds = portalProperties.getSso().getTicketTtlSeconds();
+        long ttlSeconds = normalizeTicketTtlSeconds(portalProperties.getSso().getTicketTtlSeconds());
         Instant expireAt = issuedAt.plusSeconds(ttlSeconds);
-        Map<String, Object> payload = new HashMap<>();
+        Map<String, String> payload = new HashMap<>();
         payload.put("userId", userId);
         payload.put("systemCode", systemCode);
-        payload.put("issuedAt", issuedAt.toEpochMilli());
-        payload.put("expireAt", expireAt.toEpochMilli());
-        String value = toJson(payload);
-        stringRedisTemplate.opsForValue().set(buildTicketKey(ticket), value, ttlSeconds, TimeUnit.SECONDS);
+        payload.put("issuedAt", String.valueOf(issuedAt.toEpochMilli()));
+        payload.put("expireAt", String.valueOf(expireAt.toEpochMilli()));
+        payload.put("redirectUriHash", SsoTicketUtils.hashRedirectUri(targetUrl));
+        payload.put("stateHash", "");
+        String key = buildTicketKey(ticket);
+        stringRedisTemplate.opsForHash().putAll(key, payload);
+        stringRedisTemplate.expire(key, ttlSeconds, TimeUnit.SECONDS);
         return UriComponentsBuilder.fromUriString(targetUrl)
                 .queryParam("ticket", ticket)
                 .build()
@@ -177,21 +181,18 @@ public class PortalAuthService {
     }
 
     /**
-     * 对象转 JSON 字符串。
-     */
-    private String toJson(Object payload) {
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("生成 SSO ticket 失败", ex);
-        }
-    }
-
-    /**
      * 构建 Ticket 的缓存键。
      */
     private String buildTicketKey(String ticket) {
-        return "sso:ticket:" + ticket;
+        return SsoTicketUtils.buildTicketKey(ticket);
+    }
+
+    private long normalizeTicketTtlSeconds(long ttlSeconds) {
+        if (ttlSeconds >= MIN_TICKET_TTL_SECONDS && ttlSeconds <= MAX_TICKET_TTL_SECONDS) {
+            return ttlSeconds;
+        }
+        log.warn("SSO ticket TTL out of range ({}). Use default {} seconds.", ttlSeconds, DEFAULT_TICKET_TTL_SECONDS);
+        return DEFAULT_TICKET_TTL_SECONDS;
     }
 
     private void enforceCaptchaIfNeeded(PortalLoginRequest loginRequest, String clientIp) {
