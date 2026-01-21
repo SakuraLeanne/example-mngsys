@@ -24,7 +24,14 @@ public enum ErrorCode {
 
     USER_DISABLED(300100, 403, "账号已被停用，请联系管理员"),
     OLD_PASSWORD_INCORRECT(300110, 400, "旧密码不正确，请重试"),
-    NEW_PASSWORD_POLICY_VIOLATION(300111, 400, "新密码不符合安全策略，请修改后重试");
+    NEW_PASSWORD_POLICY_VIOLATION(300111, 400, "新密码不符合安全策略，请修改后重试"),
+
+    SSO_TICKET_INVALID(400210, 400, "票据无效或已过期，请重新发起登录"),
+    SSO_TICKET_CLIENT_MISMATCH(400211, 403, "业务系统不匹配，请确认 systemCode 是否正确"),
+    SSO_TICKET_REDIRECT_URI_MISMATCH(400212, 403, "回跳地址不匹配，请检查 redirectUri"),
+    SSO_TICKET_STATE_MISMATCH(400213, 409, "状态校验失败，请重新发起登录"),
+    SSO_TICKET_RATE_LIMITED(400214, 429, "请求过于频繁，请稍后再试"),
+    SSO_TICKET_SYSTEM_ERROR(400215, 500, "系统异常，请稍后再试");
 
     private final int code;
     private final int httpStatus;

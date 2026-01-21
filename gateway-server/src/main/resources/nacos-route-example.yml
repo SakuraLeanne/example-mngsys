@@ -6,3 +6,4 @@ gateway:
       - /portal/api/password/change
       - /portal/api/profile
       - /portal/api/action/**
+      - /portal/sso/ticket/verify
