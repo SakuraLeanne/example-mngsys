@@ -299,27 +299,11 @@ public class PortalApiController {
                                                                     HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
         String satoken = resolveSaToken(httpRequest);
-        if (StringUtils.hasText(ptk)) {
-            String key = Sm4CbcUtil.getfirst8last8(ptk);
-            String keyBase64 = Sm4CbcUtil.encodeBase64(key);
-            String newplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedNewPassword(), keyBase64);
-            String oldplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedOldPassword(), keyBase64);
-            String newencrypt = passwordCryptoService.encrypt(newplain);
-            String oldencrypt = passwordCryptoService.encrypt(oldplain);
-            request.setEncryptedNewPassword(newencrypt);
-            request.setEncryptedOldPassword(oldencrypt);
-        } else if (StringUtils.hasText(satoken)) {
-            String key = Sm4CbcUtil.getfirst8last8(satoken);
-            String keyBase64 = Sm4CbcUtil.encodeBase64(key);
-            String newplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedNewPassword(), keyBase64);
-            String oldplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedOldPassword(), keyBase64);
-            String newencrypt = passwordCryptoService.encrypt(newplain);
-            String oldencrypt = passwordCryptoService.encrypt(oldplain);
-            request.setEncryptedNewPassword(newencrypt);
-            request.setEncryptedOldPassword(oldencrypt);
-        } else if (!StringUtils.hasText(ptk) && !StringUtils.hasText(satoken)) {
+        String actionToken = StringUtils.hasText(ptk) ? ptk : satoken;
+        if (!StringUtils.hasText(actionToken)) {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录凭证缺失，请先登录");
         }
+        reEncryptPasswordPayload(request, actionToken);
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
                 request.getEncryptedOldPassword(),
                 request.getOldPassword(),
@@ -468,6 +452,17 @@ public class PortalApiController {
 
     private String resolveSaToken(HttpServletRequest request) {
         return resolveCookie(request, SATOKEN_COOKIE_NAME);
+    }
+
+    private void reEncryptPasswordPayload(PortalPasswordChangeRequest request, String actionToken) {
+        String key = Sm4CbcUtil.getfirst8last8(actionToken);
+        String keyBase64 = Sm4CbcUtil.encodeBase64(key);
+        String newplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedNewPassword(), keyBase64);
+        String oldplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedOldPassword(), keyBase64);
+        String newencrypt = passwordCryptoService.encrypt(newplain);
+        String oldencrypt = passwordCryptoService.encrypt(oldplain);
+        request.setEncryptedNewPassword(newencrypt);
+        request.setEncryptedOldPassword(oldencrypt);
     }
 
     private String resolveCookie(HttpServletRequest request, String name) {
