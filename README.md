@@ -64,6 +64,33 @@
      -d '{"loginType":"QR_CODE","mobile":"13800000001"}'
    ```
 
+## 密码加密/解密使用说明
+
+`PasswordCryptoService` 支持 AES/GCM/NoPadding 的明文加密与密文解密，密文格式为 `Base64(12字节IV + 密文)`。当配置 `password-encrypt.enabled=false` 时，会自动回退为明文传输。
+
+### 配置示例
+
+在认证服务或门户服务的配置中开启：
+
+```yaml
+auth:
+  password-encrypt:
+    enabled: true
+    aes-key: your-secret-key
+```
+
+### 代码示例
+
+```java
+PasswordCryptoService cryptoService = new PasswordCryptoService(passwordEncryptProperties);
+
+// 明文加密 -> 密文
+String encryptedPassword = cryptoService.encrypt("admin123456");
+
+// 密文解密 -> 明文
+String plainPassword = cryptoService.decrypt(encryptedPassword, "admin123456");
+```
+
 ## 构建说明
 
 - 根目录新增聚合 `pom.xml`，统一管理各模块版本，可直接执行 `mvn -DskipTests package` 进行多模块构建。
