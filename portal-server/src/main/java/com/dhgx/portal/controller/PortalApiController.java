@@ -461,6 +461,7 @@ public class PortalApiController {
         String oldplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedOldPassword(), keyBase64);
         String newencrypt = passwordCryptoService.encrypt(newplain);
         String oldencrypt = passwordCryptoService.encrypt(oldplain);
+        System.out.println("修改密码 : 旧密码 = "+oldplain+"   新密码 = "+newplain);
         request.setEncryptedNewPassword(newencrypt);
         request.setEncryptedOldPassword(oldencrypt);
     }
