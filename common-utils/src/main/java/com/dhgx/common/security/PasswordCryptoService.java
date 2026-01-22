@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
@@ -63,6 +64,36 @@ public class PasswordCryptoService {
             return new String(plainBytes, StandardCharsets.UTF_8);
         } catch (GeneralSecurityException ex) {
             throw new IllegalArgumentException("密码解密失败", ex);
+        }
+    }
+
+    /**
+     * 加密明文密码，若未开启加密校验则直接返回明文。
+     *
+     * @param plainPassword 明文密码
+     * @return 加密后的密文（Base64）
+     */
+    public String encrypt(String plainPassword) {
+        boolean enabled = passwordEncryptProperties != null && passwordEncryptProperties.isEnabled();
+        if (!enabled) {
+            return plainPassword;
+        }
+        if (!StringUtils.hasText(plainPassword)) {
+            throw new IllegalArgumentException("密码明文不能为空");
+        }
+        SecretKey key = buildSecretKey(passwordEncryptProperties.getAesKey());
+        byte[] iv = new byte[IV_LENGTH];
+        new SecureRandom().nextBytes(iv);
+        try {
+            Cipher cipher = Cipher.getInstance(AES_GCM);
+            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+            byte[] cipherText = cipher.doFinal(plainPassword.getBytes(StandardCharsets.UTF_8));
+            ByteBuffer buffer = ByteBuffer.allocate(iv.length + cipherText.length);
+            buffer.put(iv);
+            buffer.put(cipherText);
+            return Base64.getEncoder().encodeToString(buffer.array());
+        } catch (GeneralSecurityException ex) {
+            throw new IllegalArgumentException("密码加密失败", ex);
         }
     }
 
