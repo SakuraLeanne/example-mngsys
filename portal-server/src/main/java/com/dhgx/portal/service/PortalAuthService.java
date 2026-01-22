@@ -1,9 +1,11 @@
 package com.dhgx.portal.service;
 
+import com.dhgx.common.cipher.Sm4CbcUtil;
 import com.dhgx.common.feign.dto.AuthLoginRequest;
 import com.dhgx.common.feign.dto.AuthLoginResponse;
 import com.dhgx.common.feign.dto.AuthLoginType;
 import com.dhgx.common.portal.dto.PortalLoginRequest;
+import com.dhgx.common.security.PasswordCryptoService;
 import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.common.SsoTicketUtils;
 import com.dhgx.portal.common.api.ApiResponse;
@@ -52,17 +54,20 @@ public class PortalAuthService {
     /** 验证码服务。 */
     private final CaptchaService captchaService;
 
+    private final PasswordCryptoService passwordCryptoService;
     /**
      * 构造函数，注入依赖。
      */
     public PortalAuthService(AuthClient authClient,
                              PortalProperties portalProperties,
                              StringRedisTemplate stringRedisTemplate,
-                             CaptchaService captchaService) {
+                             CaptchaService captchaService,
+                             PasswordCryptoService passwordCryptoService) {
         this.authClient = authClient;
         this.portalProperties = portalProperties;
         this.stringRedisTemplate = stringRedisTemplate;
         this.captchaService = captchaService;
+        this.passwordCryptoService = passwordCryptoService;
     }
 
     /**
@@ -82,6 +87,13 @@ public class PortalAuthService {
         AuthLoginType loginType = loginRequest.getLoginTypeOrDefault();
         if (isUsernamePassword(loginType)) {
             enforceCaptchaIfNeeded(loginRequest, clientIp);
+            //从captchaId 中获取sm4的key
+            String captchaId = loginRequest.getCaptchaId();
+            String key = Sm4CbcUtil.getfirst8last8(captchaId);
+            String keyBase64 = Sm4CbcUtil.encodeBase64(key);
+            String plain = Sm4CbcUtil.decryptFromCombined(loginRequest.getEncryptedPassword(), keyBase64);
+            loginRequest.setPassword(plain);
+            loginRequest.setEncryptedPassword(passwordCryptoService.encrypt(plain));
         }
         AuthLoginRequest authLoginRequest = new AuthLoginRequest();
         authLoginRequest.setLoginType(loginType);

@@ -3,6 +3,7 @@ package com.dhgx.auth.service;
 import com.dhgx.auth.common.api.ErrorCode;
 import com.dhgx.auth.common.exception.LocalizedBusinessException;
 import com.dhgx.auth.config.AuthProperties;
+import com.dhgx.common.cipher.Sm4CbcUtil;
 import com.dhgx.common.security.PasswordPolicyValidator;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -60,7 +61,7 @@ public class PasswordResetService {
      *
      * @param mobile   手机号
      * @param token    重置令牌
-     * @param password 明文密码
+     * @param password 密文密码 sm4
      */
     public void resetPassword(String mobile, String token, String password) {
         if (!StringUtils.hasText(mobile) || !StringUtils.hasText(token)) {
@@ -96,14 +97,22 @@ public class PasswordResetService {
                     "重置验证失败，请重新获取验证码"
             );
         }
-        if (!PasswordPolicyValidator.isValid(password)) {
+
+        //从reset-token中获取sm4的key
+        String key = Sm4CbcUtil.getfirst8last8(token);
+        String keyBase64 = Sm4CbcUtil.encodeBase64(key);
+        String plainPWD = Sm4CbcUtil.decryptFromCombined(password, keyBase64);
+
+
+
+        if (!PasswordPolicyValidator.isValid(plainPWD)) {
             throw new LocalizedBusinessException(
                     ErrorCode.INVALID_ARGUMENT,
                     "error.reset.password.policy",
                     "新密码不符合安全策略，请修改后重试"
             );
         }
-        authService.resetPasswordByMobile(mobile, password);
+        authService.resetPasswordByMobile(mobile, plainPWD);
         stringRedisTemplate.delete(resetKey);
         stringRedisTemplate.delete(buildFailKey(mobile));
     }

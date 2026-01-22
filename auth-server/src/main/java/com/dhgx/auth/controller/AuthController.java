@@ -148,8 +148,8 @@ public class AuthController {
      */
     @PostMapping("/password/forgot/reset")
     public ApiResponse<Void> resetForgotPassword(@Valid @RequestBody AuthPasswordResetRequest request) {
-        String decryptedPassword = passwordCryptoService.decrypt(request.getEncryptedPassword(), request.getNewPassword());
-        passwordResetService.resetPassword(request.getMobile(), request.getResetToken(), decryptedPassword);
+//        String decryptedPassword = passwordCryptoService.decrypt(request.getEncryptedPassword(), request.getNewPassword());
+        passwordResetService.resetPassword(request.getMobile(), request.getResetToken(), request.getEncryptedPassword());
         return ApiResponse.success(null);
     }
 

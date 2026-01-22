@@ -47,6 +47,10 @@ import java.util.Optional;
 
 /**
  * Portal 接口控制器，负责门户登录、个人资料、动作票据等与用户交互的接口入口。
+ *
+ * 用户名密码登录 key = 图片验证码接口 captchaId的前8位+后8位 拼接后取base64
+ * 忘记密码 key = 校验验证码接口 resettoken的前8位+后8位 拼接后取base64
+ * 修改密码 cookie中取ptk或者satoken的前8位+后8位 拼接后取base64
  */
 @RestController
 @Validated

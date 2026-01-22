@@ -113,7 +113,7 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.example.mngsys</groupId>
+            <groupId>com.dhgx</groupId>
             <artifactId>common-utils</artifactId>
             <version>${project.version}</version>
         </dependency>
