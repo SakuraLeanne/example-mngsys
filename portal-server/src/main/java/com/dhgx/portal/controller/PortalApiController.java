@@ -293,6 +293,9 @@ public class PortalApiController {
                                                                     HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
         String satoken = resolveSaToken(httpRequest);
+        if (!StringUtils.hasText(ptk) && !StringUtils.hasText(satoken)) {
+            return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录凭证缺失，请先登录");
+        }
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
                 request.getEncryptedOldPassword(),
                 request.getOldPassword(),
