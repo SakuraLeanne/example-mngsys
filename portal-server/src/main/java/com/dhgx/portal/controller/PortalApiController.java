@@ -1,5 +1,6 @@
 package com.dhgx.portal.controller;
 
+import com.dhgx.common.cipher.Sm4CbcUtil;
 import com.dhgx.common.feign.dto.AuthLoginResponse;
 import com.dhgx.common.feign.dto.AuthLoginType;
 import com.dhgx.common.portal.dto.PortalActionEnterResponse;
@@ -16,6 +17,7 @@ import com.dhgx.common.portal.dto.PortalSmsSendRequest;
 import com.dhgx.common.portal.dto.PortalSmsVerifyRequest;
 import com.dhgx.common.portal.dto.PortalSsoJumpRequest;
 import com.dhgx.common.portal.dto.PortalSsoJumpResponse;
+import com.dhgx.common.security.PasswordCryptoService;
 import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.PortalUser;
@@ -83,6 +85,8 @@ public class PortalApiController {
      */
     private final AuthClient authClient;
 
+    private final PasswordCryptoService passwordCryptoService;
+
     /**
      * 构造函数，注入门户相关的业务服务。
      *
@@ -96,13 +100,15 @@ public class PortalApiController {
                                PortalPasswordService portalPasswordService,
                                PortalProfileService portalProfileService,
                                PortalUserService portalUserService,
-                               AuthClient authClient) {
+                               AuthClient authClient,
+                               PasswordCryptoService passwordCryptoService) {
         this.portalAuthService = portalAuthService;
         this.portalActionService = portalActionService;
         this.portalPasswordService = portalPasswordService;
         this.portalProfileService = portalProfileService;
         this.portalUserService = portalUserService;
         this.authClient = authClient;
+        this.passwordCryptoService = passwordCryptoService;
     }
 
     /**
@@ -293,7 +299,25 @@ public class PortalApiController {
                                                                     HttpServletResponse httpResponse) {
         String ptk = resolvePtk(httpRequest);
         String satoken = resolveSaToken(httpRequest);
-        if (!StringUtils.hasText(ptk) && !StringUtils.hasText(satoken)) {
+        if (StringUtils.hasText(ptk)) {
+            String key = Sm4CbcUtil.getfirst8last8(ptk);
+            String keyBase64 = Sm4CbcUtil.encodeBase64(key);
+            String newplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedNewPassword(), keyBase64);
+            String oldplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedOldPassword(), keyBase64);
+            String newencrypt = passwordCryptoService.encrypt(newplain);
+            String oldencrypt = passwordCryptoService.encrypt(oldplain);
+            request.setEncryptedNewPassword(newencrypt);
+            request.setEncryptedOldPassword(oldencrypt);
+        } else if (StringUtils.hasText(satoken)) {
+            String key = Sm4CbcUtil.getfirst8last8(satoken);
+            String keyBase64 = Sm4CbcUtil.encodeBase64(key);
+            String newplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedNewPassword(), keyBase64);
+            String oldplain = Sm4CbcUtil.decryptFromCombined(request.getEncryptedOldPassword(), keyBase64);
+            String newencrypt = passwordCryptoService.encrypt(newplain);
+            String oldencrypt = passwordCryptoService.encrypt(oldplain);
+            request.setEncryptedNewPassword(newencrypt);
+            request.setEncryptedOldPassword(oldencrypt);
+        } else if (!StringUtils.hasText(ptk) && !StringUtils.hasText(satoken)) {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录凭证缺失，请先登录");
         }
         PortalPasswordService.ChangeResult result = portalPasswordService.changePassword(
