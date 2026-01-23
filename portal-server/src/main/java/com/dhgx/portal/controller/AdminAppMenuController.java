@@ -26,7 +26,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/app-menus")
 @Validated
-@AdminRequired(scope = "app", allowAnyAppAdmin = true)
 public class AdminAppMenuController {
 
     /**
@@ -67,6 +66,7 @@ public class AdminAppMenuController {
      * @return 操作结果
      */
     @PostMapping
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> save(@Valid @RequestBody AppMenuResource request) {
         String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result;
@@ -94,6 +94,7 @@ public class AdminAppMenuController {
      * @return 操作结果
      */
     @PostMapping("/delete")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> delete(@Valid @RequestBody DeleteMenuRequest request) {
         String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.deleteMenus(
@@ -113,6 +114,7 @@ public class AdminAppMenuController {
      * @return 操作结果
      */
     @GetMapping("/status")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> updateStatus(@RequestParam@NotNull(message = "id 不能为空") Long id,
                                                     @RequestParam
                                                     @NotNull(message = "status 不能为空") Integer status) {

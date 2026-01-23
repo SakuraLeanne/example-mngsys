@@ -24,26 +24,32 @@ public class PortalAdminAppMenuService {
 
     private final AppMenuResourceService appMenuResourceService;
     private final RolePermissionService rolePermissionService;
+    private final AppMenuDeliveryService appMenuDeliveryService;
 
     public PortalAdminAppMenuService(AppMenuResourceService appMenuResourceService,
-                                     RolePermissionService rolePermissionService) {
+                                     RolePermissionService rolePermissionService,
+                                     AppMenuDeliveryService appMenuDeliveryService) {
         this.appMenuResourceService = appMenuResourceService;
         this.rolePermissionService = rolePermissionService;
+        this.appMenuDeliveryService = appMenuDeliveryService;
     }
 
     public Result<List<AppMenuTreeNode>> loadMenuTree(String appCode, String operatorId) {
         String resolvedAppCode = appCode;
-        if (StringUtils.hasText(appCode)) {
-            if (!rolePermissionService.isAppAdmin(operatorId, appCode)) {
-                return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        if (!rolePermissionService.isAppAdmin(operatorId, appCode)) {
+            List<AppMenuTreeNode> menus = appMenuDeliveryService.loadMenus(operatorId);
+            if (!StringUtils.hasText(appCode)) {
+                return Result.success(menus);
             }
-        } else {
+            return Result.success(filterMenusByAppCode(menus, appCode));
+        }
+        if (!StringUtils.hasText(appCode)) {
             Set<String> appCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
             if (appCodes.size() > 1) {
                 return Result.failure(ErrorCode.INVALID_ARGUMENT, "请指定应用编码");
             }
             if (appCodes.isEmpty()) {
-                return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+                return Result.success(new ArrayList<>());
             }
             resolvedAppCode = appCodes.iterator().next();
         }
@@ -237,6 +243,22 @@ public class PortalAdminAppMenuService {
                 sortTree(node.getChildren());
             }
         }
+    }
+
+    private List<AppMenuTreeNode> filterMenusByAppCode(List<AppMenuTreeNode> menus, String appCode) {
+        if (menus == null || menus.isEmpty() || !StringUtils.hasText(appCode)) {
+            return new ArrayList<>();
+        }
+        List<AppMenuTreeNode> filtered = new ArrayList<>();
+        for (AppMenuTreeNode node : menus) {
+            List<AppMenuTreeNode> children = filterMenusByAppCode(node.getChildren(), appCode);
+            if (appCode.equalsIgnoreCase(node.getAppCode()) || !children.isEmpty()) {
+                node.getChildren().clear();
+                node.getChildren().addAll(children);
+                filtered.add(node);
+            }
+        }
+        return filtered;
     }
 
     public static class Result<T> {
