@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/admin/app-users/{userId}/roles")
 @Validated
-@AdminRequired
 public class AdminAppUserRoleController {
 
     /**
@@ -52,8 +51,9 @@ public class AdminAppUserRoleController {
      */
     @GetMapping
     public ApiResponse<List<RoleSummary>> list(@PathVariable String userId) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppUserRoleService.Result<List<AppRole>> result =
-                portalAdminAppUserRoleService.listUserRoles(userId);
+                portalAdminAppUserRoleService.listUserRoles(userId, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -71,8 +71,10 @@ public class AdminAppUserRoleController {
      * @return 授权结果
      */
     @PostMapping
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> grant(@PathVariable String userId,
                                              @Valid @RequestBody GrantRolesRequest request) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppUserRoleService.Result<List<AppRole>> roleResult =
                 portalAdminAppUserRoleService.listRolesByIds(request.getRoleIds());
         if (!roleResult.isSuccess()) {
@@ -83,7 +85,6 @@ public class AdminAppUserRoleController {
         if (hasDisabledRole) {
             return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "角色已停用，无法授权");
         }
-        String operatorId = RequestContext.getUserId();
         PortalAdminAppUserRoleService.Result<Void> result = portalAdminAppUserRoleService.grantRoles(
                 userId,
                 request.getRoleIds(),

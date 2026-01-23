@@ -2,6 +2,7 @@ package com.dhgx.portal.controller;
 
 import com.dhgx.common.api.ActionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
+import com.dhgx.portal.common.context.RequestContext;
 import com.dhgx.portal.entity.AppMenuResource;
 import com.dhgx.portal.security.AdminRequired;
 import com.dhgx.portal.service.PortalAdminAppMenuService;
@@ -25,7 +26,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/app-menus")
 @Validated
-@AdminRequired
 public class AdminAppMenuController {
 
     /**
@@ -50,8 +50,9 @@ public class AdminAppMenuController {
      */
     @GetMapping("/tree")
     public ApiResponse<List<AppMenuTreeNode>> tree(@RequestParam(required = false) String appCode) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<List<AppMenuTreeNode>> result =
-                portalAdminAppMenuService.loadMenuTree(appCode);
+                portalAdminAppMenuService.loadMenuTree(appCode, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -65,7 +66,9 @@ public class AdminAppMenuController {
      * @return 操作结果
      */
     @PostMapping
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> save(@Valid @RequestBody AppMenuResource request) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result;
         if (request.getId() == null) {
             if (request.getSort() == null) {
@@ -74,9 +77,9 @@ public class AdminAppMenuController {
             if (request.getStatus() == null) {
                 request.setStatus(1);
             }
-            result = portalAdminAppMenuService.createMenu(request);
+            result = portalAdminAppMenuService.createMenu(request, operatorId);
         } else {
-            result = portalAdminAppMenuService.updateMenu(request.getId(), request);
+            result = portalAdminAppMenuService.updateMenu(request.getId(), request, operatorId);
         }
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
@@ -91,9 +94,12 @@ public class AdminAppMenuController {
      * @return 操作结果
      */
     @PostMapping("/delete")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> delete(@Valid @RequestBody DeleteMenuRequest request) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.deleteMenus(
-                request.getIds());
+                request.getIds(),
+                operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -108,12 +114,15 @@ public class AdminAppMenuController {
      * @return 操作结果
      */
     @GetMapping("/status")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> updateStatus(@RequestParam@NotNull(message = "id 不能为空") Long id,
                                                     @RequestParam
                                                     @NotNull(message = "status 不能为空") Integer status) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppMenuService.Result<Void> result = portalAdminAppMenuService.updateStatus(
                 id,
-                status);
+                status,
+                operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
