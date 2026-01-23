@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,20 +35,31 @@ public class PortalAdminAppUserRoleService {
     private final AppRoleService appRoleService;
     private final StringRedisTemplate stringRedisTemplate;
     private final EventNotifyPublisher eventNotifyPublisher;
+    private final RolePermissionService rolePermissionService;
 
     public PortalAdminAppUserRoleService(AppUserRoleService appUserRoleService,
                                          AppRoleService appRoleService,
                                          StringRedisTemplate stringRedisTemplate,
-                                         EventNotifyPublisher eventNotifyPublisher) {
+                                         EventNotifyPublisher eventNotifyPublisher,
+                                         RolePermissionService rolePermissionService) {
         this.appUserRoleService = appUserRoleService;
         this.appRoleService = appRoleService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.eventNotifyPublisher = eventNotifyPublisher;
+        this.rolePermissionService = rolePermissionService;
     }
 
-    public Result<List<AppRole>> listUserRoles(String userId) {
+    public Result<List<AppRole>> listUserRoles(String userId, String operatorId) {
         if (!StringUtils.hasText(userId)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "用户ID不能为空");
+        }
+        if (!StringUtils.hasText(operatorId)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        boolean selfRequest = userId.equals(operatorId);
+        Set<String> adminAppCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
+        if (!selfRequest && CollectionUtils.isEmpty(adminAppCodes)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
         List<AppUserRole> relations = appUserRoleService.list(new LambdaQueryWrapper<AppUserRole>()
                 .eq(AppUserRole::getUserId, userId));
@@ -58,8 +70,12 @@ public class PortalAdminAppUserRoleService {
         if (roleIds.isEmpty()) {
             return Result.success(new ArrayList<>());
         }
-        List<AppRole> roles = appRoleService.list(new LambdaQueryWrapper<AppRole>()
-                .in(AppRole::getId, roleIds));
+        LambdaQueryWrapper<AppRole> wrapper = new LambdaQueryWrapper<AppRole>()
+                .in(AppRole::getId, roleIds);
+        if (!CollectionUtils.isEmpty(adminAppCodes) && !selfRequest) {
+            wrapper.in(AppRole::getAppCode, adminAppCodes);
+        }
+        List<AppRole> roles = appRoleService.list(wrapper);
         return Result.success(roles);
     }
 
@@ -84,6 +100,9 @@ public class PortalAdminAppUserRoleService {
         if (!StringUtils.hasText(userId)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "用户ID不能为空");
         }
+        if (CollectionUtils.isEmpty(rolePermissionService.listAppAdminAppCodes(operatorId))) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
         List<Long> normalized = roleIds == null ? new ArrayList<>() : roleIds.stream()
                 .filter(id -> id != null && id > 0)
                 .distinct()
@@ -93,6 +112,13 @@ public class PortalAdminAppUserRoleService {
                     .in(AppRole::getId, normalized));
             if (roles.size() != normalized.size()) {
                 return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
+            }
+            Set<String> adminAppCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
+            boolean appMismatch = roles.stream()
+                    .map(AppRole::getAppCode)
+                    .anyMatch(appCode -> !adminAppCodes.contains(appCode));
+            if (appMismatch) {
+                return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
             }
         }
         appUserRoleService.remove(new LambdaQueryWrapper<AppUserRole>()

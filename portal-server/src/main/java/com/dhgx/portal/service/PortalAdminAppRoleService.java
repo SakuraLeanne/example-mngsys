@@ -25,19 +25,35 @@ public class PortalAdminAppRoleService {
     private final AppRoleService appRoleService;
     private final AppRoleMenuService appRoleMenuService;
     private final AppMenuResourceService appMenuResourceService;
+    private final RolePermissionService rolePermissionService;
 
     public PortalAdminAppRoleService(AppRoleService appRoleService,
                                      AppRoleMenuService appRoleMenuService,
-                                     AppMenuResourceService appMenuResourceService) {
+                                     AppMenuResourceService appMenuResourceService,
+                                     RolePermissionService rolePermissionService) {
         this.appRoleService = appRoleService;
         this.appRoleMenuService = appRoleMenuService;
         this.appMenuResourceService = appMenuResourceService;
+        this.rolePermissionService = rolePermissionService;
     }
 
-    public Result<List<AppRole>> listRoles(String appCode, Integer status) {
+    public Result<List<AppRole>> listRoles(String appCode, Integer status, String operatorId) {
         LambdaQueryWrapper<AppRole> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(appCode)) {
-            wrapper.eq(AppRole::getAppCode, appCode);
+            if (rolePermissionService.isAppAdmin(operatorId, appCode)) {
+                wrapper.eq(AppRole::getAppCode, appCode);
+            } else {
+                return Result.success(listUserRolesByIds(operatorId, status, appCode));
+            }
+        } else if (rolePermissionService.isAnyAppAdmin(operatorId)) {
+            Set<String> appCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
+            if (!CollectionUtils.isEmpty(appCodes)) {
+                wrapper.in(AppRole::getAppCode, appCodes);
+            } else {
+                return Result.success(new ArrayList<>());
+            }
+        } else {
+            return Result.success(listUserRolesByIds(operatorId, status, null));
         }
         if (status != null) {
             wrapper.eq(AppRole::getStatus, status);
@@ -47,11 +63,14 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<AppRole> createRole(AppRole role) {
+    public Result<AppRole> createRole(AppRole role, String operatorId) {
         if (role == null || !StringUtils.hasText(role.getAppCode())
                 || !StringUtils.hasText(role.getRoleCode())
                 || !StringUtils.hasText(role.getRoleName())) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色信息不完整");
+        }
+        if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
         if (existsRoleCode(role.getAppCode(), role.getRoleCode(), null)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色编码已存在");
@@ -64,7 +83,7 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<AppRole> updateRole(Long id, AppRole update) {
+    public Result<AppRole> updateRole(Long id, AppRole update, String operatorId) {
         if (id == null || update == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色信息不完整");
         }
@@ -73,6 +92,9 @@ public class PortalAdminAppRoleService {
             return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
         }
         String appCode = StringUtils.hasText(update.getAppCode()) ? update.getAppCode() : role.getAppCode();
+        if (!rolePermissionService.isAppAdmin(operatorId, appCode)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
         if (StringUtils.hasText(update.getRoleCode())
                 && existsRoleCode(appCode, update.getRoleCode(), id)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色编码已存在");
@@ -95,7 +117,7 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<Void> updateStatus(Long id, Integer status) {
+    public Result<Void> updateStatus(Long id, Integer status, String operatorId) {
         if (id == null || status == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "状态不能为空");
         }
@@ -103,19 +125,25 @@ public class PortalAdminAppRoleService {
         if (role == null) {
             return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
         }
+        if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
         role.setStatus(status);
         appRoleService.updateById(role);
         return Result.success(null);
     }
 
     @Transactional
-    public Result<Void> grantMenus(Long roleId, List<Long> menuIds) {
+    public Result<Void> grantMenus(Long roleId, List<Long> menuIds, String operatorId) {
         if (roleId == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
         }
         AppRole role = appRoleService.getById(roleId);
         if (role == null) {
             return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
+        }
+        if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
         List<Long> normalized = menuIds == null ? new ArrayList<>() : menuIds.stream()
                 .filter(id -> id != null && id > 0)
@@ -147,13 +175,17 @@ public class PortalAdminAppRoleService {
         return Result.success(null);
     }
 
-    public Result<RoleMenuAuthorization> listRoleMenuAuthorization(Long roleId) {
+    public Result<RoleMenuAuthorization> listRoleMenuAuthorization(Long roleId, String operatorId) {
         if (roleId == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
         }
         AppRole role = appRoleService.getById(roleId);
         if (role == null) {
             return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
+        }
+        if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())
+                && !rolePermissionService.hasRoleId(operatorId, roleId)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
         List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
                 .eq(AppMenuResource::getAppCode, role.getAppCode()));
@@ -185,6 +217,22 @@ public class PortalAdminAppRoleService {
             wrapper.ne(AppRole::getId, excludeId);
         }
         return appRoleService.count(wrapper) > 0;
+    }
+
+    private List<AppRole> listUserRolesByIds(String operatorId, Integer status, String appCode) {
+        Set<Long> roleIds = rolePermissionService.listUserRoleIds(operatorId);
+        if (CollectionUtils.isEmpty(roleIds)) {
+            return new ArrayList<>();
+        }
+        LambdaQueryWrapper<AppRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(AppRole::getId, roleIds);
+        if (StringUtils.hasText(appCode)) {
+            wrapper.eq(AppRole::getAppCode, appCode);
+        }
+        if (status != null) {
+            wrapper.eq(AppRole::getStatus, status);
+        }
+        return appRoleService.list(wrapper);
     }
 
     public static class Result<T> {

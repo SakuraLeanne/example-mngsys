@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 /**
  * PortalAdminUserService。
@@ -46,6 +47,8 @@ public class PortalAdminUserService {
     private final AuthClient authClient;
     /** 事件发布器。 */
     private final EventNotifyPublisher eventNotifyPublisher;
+    /** 角色权限服务。 */
+    private final RolePermissionService rolePermissionService;
 
     /**
      * 构造函数，注入依赖。
@@ -54,12 +57,14 @@ public class PortalAdminUserService {
                                   PortalUserAuthStateService portalUserAuthStateService,
                                   UserAuthCacheService userAuthCacheService,
                                   AuthClient authClient,
-                                  EventNotifyPublisher eventNotifyPublisher) {
+                                  EventNotifyPublisher eventNotifyPublisher,
+                                  RolePermissionService rolePermissionService) {
         this.portalUserService = portalUserService;
         this.portalUserAuthStateService = portalUserAuthStateService;
         this.userAuthCacheService = userAuthCacheService;
         this.authClient = authClient;
         this.eventNotifyPublisher = eventNotifyPublisher;
+        this.rolePermissionService = rolePermissionService;
     }
 
     /**
@@ -71,25 +76,36 @@ public class PortalAdminUserService {
      * @param status  用户状态
      * @return 分页结果
      */
-    public Page<PortalUser> listUsers(int page, int size, String keyword, Integer status) {
+    public Page<PortalUser> listUsers(int page, int size, String keyword, Integer status, String requesterId) {
         int pageIndex = Math.max(page, 1);
         int pageSize = Math.max(size, 1);
-        Page<PortalUser> query = new Page<>(pageIndex, pageSize);
-        LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(keyword)) {
-            wrapper.and(inner -> inner.like(PortalUser::getUsername, keyword)
-                    .or()
-                    .like(PortalUser::getRealName, keyword)
-                    .or()
-                    .like(PortalUser::getMobile, keyword)
-                    .or()
-                    .like(PortalUser::getNickName, keyword));
+        if (rolePermissionService.isPortalAdmin(requesterId)) {
+            Page<PortalUser> query = new Page<>(pageIndex, pageSize);
+            LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
+            if (StringUtils.hasText(keyword)) {
+                wrapper.and(inner -> inner.like(PortalUser::getUsername, keyword)
+                        .or()
+                        .like(PortalUser::getRealName, keyword)
+                        .or()
+                        .like(PortalUser::getMobile, keyword)
+                        .or()
+                        .like(PortalUser::getNickName, keyword));
+            }
+            if (status != null) {
+                wrapper.eq(PortalUser::getStatus, status);
+            }
+            wrapper.orderByDesc(PortalUser::getCreateTime);
+            return portalUserService.page(query, wrapper);
         }
-        if (status != null) {
-            wrapper.eq(PortalUser::getStatus, status);
+        Page<PortalUser> result = new Page<>(pageIndex, pageSize);
+        PortalUser user = portalUserService.getById(requesterId);
+        if (user == null) {
+            result.setTotal(0);
+            result.setRecords(Collections.emptyList());
+            return result;
         }
-        wrapper.orderByDesc(PortalUser::getCreateTime);
-        Page<PortalUser> result = portalUserService.page(query, wrapper);
+        result.setTotal(1);
+        result.setRecords(Collections.singletonList(user));
         return result;
     }
 
@@ -99,9 +115,12 @@ public class PortalAdminUserService {
      * @param userId 用户 ID
      * @return 包含详情的结果
      */
-    public UserDetailResult getUserDetail(String userId) {
+    public UserDetailResult getUserDetail(String userId, String requesterId) {
         if (!StringUtils.hasText(userId)) {
             return UserDetailResult.failure(ErrorCode.INVALID_ARGUMENT);
+        }
+        if (!rolePermissionService.isPortalAdmin(requesterId) && !userId.equals(requesterId)) {
+            return UserDetailResult.failure(ErrorCode.FORBIDDEN);
         }
         PortalUser user = portalUserService.getById(userId);
         if (user == null) {
@@ -117,6 +136,9 @@ public class PortalAdminUserService {
     public ActionResult updateUserStatus(String userId, boolean enabled, String operatorId) {
         if (!StringUtils.hasText(userId)) {
             return ActionResult.failure(ErrorCode.INVALID_ARGUMENT);
+        }
+        if (!rolePermissionService.isPortalAdmin(operatorId)) {
+            return ActionResult.failure(ErrorCode.FORBIDDEN);
         }
         PortalUser user = portalUserService.getById(userId);
         if (user == null) {

@@ -2,6 +2,7 @@ package com.dhgx.portal.controller;
 
 import com.dhgx.common.api.ActionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
+import com.dhgx.portal.common.context.RequestContext;
 import com.dhgx.portal.entity.AppMenuResource;
 import com.dhgx.portal.entity.AppRole;
 import com.dhgx.portal.security.AdminRequired;
@@ -28,7 +29,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/admin/app-roles")
 @Validated
-@AdminRequired
 public class AdminAppRoleController {
 
     /**
@@ -55,7 +55,9 @@ public class AdminAppRoleController {
     @GetMapping
     public ApiResponse<List<RoleSummary>> list(@RequestParam(required = false) String appCode,
                                                @RequestParam(required = false) Integer status) {
-        PortalAdminAppRoleService.Result<List<AppRole>> result = portalAdminAppRoleService.listRoles(appCode, status);
+        String operatorId = RequestContext.getUserId();
+        PortalAdminAppRoleService.Result<List<AppRole>> result =
+                portalAdminAppRoleService.listRoles(appCode, status, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -72,12 +74,14 @@ public class AdminAppRoleController {
      * @return 角色概要
      */
     @PostMapping
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<RoleSummary> save(@Valid @RequestBody RoleSummary request) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<AppRole> result;
         if (request.getId() == null) {
-            result = portalAdminAppRoleService.createRole(request.toEntity());
+            result = portalAdminAppRoleService.createRole(request.toEntity(), operatorId);
         } else {
-            result = portalAdminAppRoleService.updateRole(request.getId(), request.toEntity());
+            result = portalAdminAppRoleService.updateRole(request.getId(), request.toEntity(), operatorId);
         }
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
@@ -93,12 +97,15 @@ public class AdminAppRoleController {
      * @return 操作结果
      */
     @GetMapping("/status")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> updateStatus(@RequestParam @NotNull(message = "id 不能为空") Long id,
                                                     @RequestParam
                                                     @NotNull(message = "status 不能为空") Integer status) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.updateStatus(
                 id,
-                status);
+                status,
+                operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -112,10 +119,13 @@ public class AdminAppRoleController {
      * @return 操作结果
      */
     @PostMapping("/grant-menus")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
     public ApiResponse<ActionResponse> grantMenus(@Valid @RequestBody GrantMenusRequest request) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<Void> result = portalAdminAppRoleService.grantMenus(
                 request.getRoleId(),
-                request.getMenuIds());
+                request.getMenuIds(),
+                operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
@@ -130,8 +140,9 @@ public class AdminAppRoleController {
      */
     @GetMapping("/{roleId}/menus")
     public ApiResponse<RoleMenuAuthorizationResponse> listRoleMenus(@PathVariable Long roleId) {
+        String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<PortalAdminAppRoleService.RoleMenuAuthorization> result =
-                portalAdminAppRoleService.listRoleMenuAuthorization(roleId);
+                portalAdminAppRoleService.listRoleMenuAuthorization(roleId, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }

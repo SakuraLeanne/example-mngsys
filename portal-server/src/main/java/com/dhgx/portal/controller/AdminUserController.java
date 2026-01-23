@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/admin/users")
 @Validated
-@AdminRequired
 public class AdminUserController {
 
     /**
@@ -55,7 +54,8 @@ public class AdminUserController {
                                                            @RequestParam(defaultValue = "20") int size,
                                                            @RequestParam(required = false) String keyword,
                                                            @RequestParam(required = false) Integer status) {
-        Page<PortalUser> result = portalAdminUserService.listUsers(page, size, keyword, status);
+        String requesterId = RequestContext.getUserId();
+        Page<PortalUser> result = portalAdminUserService.listUsers(page, size, keyword, status, requesterId);
         PageResponse<PortalUser> response = new PageResponse<>(
                 result.getTotal(),
                 result.getCurrent(),
@@ -73,7 +73,8 @@ public class AdminUserController {
      */
     @GetMapping("/{userId}")
     public ApiResponse<PortalUser> getUser(@PathVariable String userId) {
-        PortalAdminUserService.UserDetailResult result = portalAdminUserService.getUserDetail(userId);
+        String requesterId = RequestContext.getUserId();
+        PortalAdminUserService.UserDetailResult result = portalAdminUserService.getUserDetail(userId, requesterId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
         }
@@ -88,6 +89,7 @@ public class AdminUserController {
      * @return 操作结果
      */
     @GetMapping("/status")
+    @AdminRequired(scope = "portal")
     public ApiResponse<ActionResponse> updateUserStatus(@RequestParam String userId, @RequestParam @NotNull(message = "参数enabled不能为空") Boolean enabled) {
         String operatorId = RequestContext.getUserId();
         PortalAdminUserService.ActionResult result = portalAdminUserService.updateUserStatus(
