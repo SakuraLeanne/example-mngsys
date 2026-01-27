@@ -32,6 +32,8 @@ public class AppMenuResource {
     private String menuPath;
     /** 菜单类型（目录、页面、按钮等）。 */
     private String menuType;
+    /** 菜单模块。 */
+    private String menuModule;
     /** 父菜单 ID，根节点为空或 0。 */
     private Long parentId;
     /** 权限标识（如接口权限或按钮权限）。 */
@@ -44,6 +46,8 @@ public class AppMenuResource {
     private LocalDateTime createTime;
     /** 更新时间。 */
     private LocalDateTime updateTime;
+    /** 最近一次同步时间。 */
+    private LocalDateTime lastSyncTime;
 
     public Long getId() {
         return id;
@@ -93,6 +97,14 @@ public class AppMenuResource {
         this.menuType = menuType;
     }
 
+    public String getMenuModule() {
+        return menuModule;
+    }
+
+    public void setMenuModule(String menuModule) {
+        this.menuModule = menuModule;
+    }
+
     public Long getParentId() {
         return parentId;
     }
@@ -139,5 +151,13 @@ public class AppMenuResource {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public LocalDateTime getLastSyncTime() {
+        return lastSyncTime;
+    }
+
+    public void setLastSyncTime(LocalDateTime lastSyncTime) {
+        this.lastSyncTime = lastSyncTime;
     }
 }

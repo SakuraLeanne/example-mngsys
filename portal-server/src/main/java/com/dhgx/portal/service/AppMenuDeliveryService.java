@@ -90,12 +90,30 @@ public class AppMenuDeliveryService {
     }
 
     /**
+     * 根据用户授权返回菜单列表（非树形）。
+     *
+     * @param userId  用户 ID
+     * @param appCode 应用编码，可为空
+     * @return 授权菜单列表
+     */
+    public List<AppMenuResource> loadAuthorizedMenus(String userId, String appCode) {
+        if (!StringUtils.hasText(userId)) {
+            return new ArrayList<>();
+        }
+        return queryAuthorizedMenus(userId, appCode);
+    }
+
+    /**
      * 查询数据库构建菜单树。
      *
      * @param userId 用户 ID
      * @return 菜单树节点列表
      */
     private List<AppMenuTreeNode> queryMenus(String userId) {
+        return buildTree(queryAuthorizedMenus(userId, null));
+    }
+
+    private List<AppMenuResource> queryAuthorizedMenus(String userId, String appCode) {
         List<AppUserRole> userRoles = appUserRoleService.list(new LambdaQueryWrapper<AppUserRole>()
                 .eq(AppUserRole::getUserId, userId));
         if (userRoles.isEmpty()) {
@@ -118,10 +136,13 @@ public class AppMenuDeliveryService {
         if (CollectionUtils.isEmpty(menuIds)) {
             return new ArrayList<>();
         }
-        List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
+        LambdaQueryWrapper<AppMenuResource> wrapper = new LambdaQueryWrapper<AppMenuResource>()
                 .in(AppMenuResource::getId, menuIds)
-                .eq(AppMenuResource::getStatus, 1));
-        return buildTree(menus);
+                .eq(AppMenuResource::getStatus, 1);
+        if (StringUtils.hasText(appCode)) {
+            wrapper.eq(AppMenuResource::getAppCode, appCode);
+        }
+        return appMenuResourceService.list(wrapper);
     }
 
     /**
