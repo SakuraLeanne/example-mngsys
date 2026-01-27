@@ -32,6 +32,8 @@ public class AppMenuResource {
     private String menuPath;
     /** 菜单类型（目录、页面、按钮等）。 */
     private String menuType;
+    /** 菜单模块。 */
+    private String menuModule;
     /** 父菜单 ID，根节点为空或 0。 */
     private Long parentId;
     /** 权限标识（如接口权限或按钮权限）。 */
@@ -91,6 +93,14 @@ public class AppMenuResource {
 
     public void setMenuType(String menuType) {
         this.menuType = menuType;
+    }
+
+    public String getMenuModule() {
+        return menuModule;
+    }
+
+    public void setMenuModule(String menuModule) {
+        this.menuModule = menuModule;
     }
 
     public Long getParentId() {

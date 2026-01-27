@@ -60,6 +60,22 @@ public class AdminAppMenuController {
     }
 
     /**
+     * 同步菜单数据并返回当前用户可见的菜单列表。
+     *
+     * @return 菜单列表
+     */
+    @PostMapping("/sync")
+    public ApiResponse<List<AppMenuResource>> sync() {
+        String operatorId = RequestContext.getUserId();
+        PortalAdminAppMenuService.Result<List<AppMenuResource>> result =
+                portalAdminAppMenuService.syncMenus(operatorId);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode(), result.getMessage());
+        }
+        return ApiResponse.success(result.getData());
+    }
+
+    /**
      * 创建或更新菜单。
      *
      * @param request 菜单请求

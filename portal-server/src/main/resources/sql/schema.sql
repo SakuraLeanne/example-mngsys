@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS app_menu_resource (
     menu_name VARCHAR(128) NOT NULL COMMENT '菜单/资源名称',
     menu_path VARCHAR(255) DEFAULT NULL COMMENT '前端路由/资源路径',
     menu_type VARCHAR(32) DEFAULT NULL COMMENT '类型：menu/button/link等',
+    menu_module VARCHAR(64) DEFAULT NULL COMMENT '菜单模块',
     parent_id BIGINT DEFAULT NULL COMMENT '父菜单ID',
     permission VARCHAR(128) DEFAULT NULL COMMENT '权限标识',
     sort INT NOT NULL DEFAULT 0 COMMENT '排序号（升序）',
