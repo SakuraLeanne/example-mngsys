@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS app_menu_resource (
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    last_sync_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近一次同步时间',
     UNIQUE KEY uk_app_menu_code (app_code, menu_code),
     KEY idx_app_menu_parent (parent_id),
     KEY idx_app_menu_status (status)

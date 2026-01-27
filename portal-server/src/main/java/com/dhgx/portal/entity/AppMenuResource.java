@@ -46,6 +46,8 @@ public class AppMenuResource {
     private LocalDateTime createTime;
     /** 更新时间。 */
     private LocalDateTime updateTime;
+    /** 最近一次同步时间。 */
+    private LocalDateTime lastSyncTime;
 
     public Long getId() {
         return id;
@@ -149,5 +151,13 @@ public class AppMenuResource {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public LocalDateTime getLastSyncTime() {
+        return lastSyncTime;
+    }
+
+    public void setLastSyncTime(LocalDateTime lastSyncTime) {
+        this.lastSyncTime = lastSyncTime;
     }
 }

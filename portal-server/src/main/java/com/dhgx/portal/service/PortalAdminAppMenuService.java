@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -102,6 +103,7 @@ public class PortalAdminAppMenuService {
         if (services == null || services.isEmpty()) {
             return;
         }
+        LocalDateTime syncTime = LocalDateTime.now();
         List<String> menuCodes = services.stream()
                 .map(OmService::getServiceNum)
                 .filter(StringUtils::hasText)
@@ -131,6 +133,7 @@ public class PortalAdminAppMenuService {
             menu.setMenuPath(service.getServiceJumpAddress());
             menu.setMenuModule(service.getServiceChannel());
             menu.setStatus(parseStatus(service.getStatus()));
+            menu.setLastSyncTime(syncTime);
             if (service.getCreateTime() != null) {
                 menu.setCreateTime(service.getCreateTime());
             }
