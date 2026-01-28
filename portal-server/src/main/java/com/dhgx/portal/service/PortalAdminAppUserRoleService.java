@@ -75,6 +75,8 @@ public class PortalAdminAppUserRoleService {
         if (!CollectionUtils.isEmpty(adminAppCodes) && !selfRequest) {
             wrapper.in(AppRole::getAppCode, adminAppCodes);
         }
+        wrapper.orderByAsc(AppRole::getSort)
+                .orderByDesc(AppRole::getId);
         List<AppRole> roles = appRoleService.list(wrapper);
         return Result.success(roles);
     }
@@ -88,7 +90,9 @@ public class PortalAdminAppUserRoleService {
             return Result.success(new ArrayList<>());
         }
         List<AppRole> roles = appRoleService.list(new LambdaQueryWrapper<AppRole>()
-                .in(AppRole::getId, normalized));
+                .in(AppRole::getId, normalized)
+                .orderByAsc(AppRole::getSort)
+                .orderByDesc(AppRole::getId));
         if (roles.size() != normalized.size()) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
         }

@@ -23,6 +23,8 @@ public class AppRole {
     private String roleCode;
     /** 角色名称。 */
     private String roleName;
+    /** 角色排序号，值越小越靠前。 */
+    private Integer sort;
     /** 角色状态，1 为启用，0 为禁用。 */
     private Integer status;
     /** 角色备注。 */
@@ -62,6 +64,14 @@ public class AppRole {
 
     public void setRoleName(String roleName) {
         this.roleName = roleName;
+    }
+
+    public Integer getSort() {
+        return sort;
+    }
+
+    public void setSort(Integer sort) {
+        this.sort = sort;
     }
 
     public Integer getStatus() {

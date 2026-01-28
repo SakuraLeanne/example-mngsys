@@ -176,6 +176,10 @@ public class AdminAppRoleController {
         @NotBlank(message = "roleName 不能为空")
         private String roleName;
         /**
+         * 排序号，数值越小越靠前。
+         */
+        private Integer sort;
+        /**
          * 状态。
          */
         private Integer status;
@@ -195,12 +199,13 @@ public class AdminAppRoleController {
         public RoleSummary() {
         }
 
-        public RoleSummary(Long id, String appCode, String roleCode, String roleName, Integer status,
+        public RoleSummary(Long id, String appCode, String roleCode, String roleName, Integer sort, Integer status,
                            String remark, LocalDateTime createTime, LocalDateTime updateTime) {
             this.id = id;
             this.appCode = appCode;
             this.roleCode = roleCode;
             this.roleName = roleName;
+            this.sort = sort;
             this.status = status;
             this.remark = remark;
             this.createTime = createTime;
@@ -212,7 +217,7 @@ public class AdminAppRoleController {
                 return null;
             }
             return new RoleSummary(role.getId(), role.getAppCode(), role.getRoleCode(), role.getRoleName(),
-                    role.getStatus(), role.getRemark(), role.getCreateTime(), role.getUpdateTime());
+                    role.getSort(), role.getStatus(), role.getRemark(), role.getCreateTime(), role.getUpdateTime());
         }
 
         public Long getId() {
@@ -245,6 +250,14 @@ public class AdminAppRoleController {
 
         public void setRoleName(String roleName) {
             this.roleName = roleName;
+        }
+
+        public Integer getSort() {
+            return sort;
+        }
+
+        public void setSort(Integer sort) {
+            this.sort = sort;
         }
 
         public Integer getStatus() {
@@ -284,6 +297,7 @@ public class AdminAppRoleController {
             role.setAppCode(appCode);
             role.setRoleCode(roleCode);
             role.setRoleName(roleName);
+            role.setSort(sort);
             role.setStatus(status);
             role.setRemark(remark);
             return role;
