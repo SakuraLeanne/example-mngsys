@@ -4,16 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.controller.dto.AppMenuTreeNode;
 import com.dhgx.portal.entity.AppMenuResource;
+import com.dhgx.portal.entity.OmService;
+import com.dhgx.portal.mapper.OmServiceMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,16 +26,21 @@ import java.util.stream.Collectors;
  */
 public class PortalAdminAppMenuService {
 
+    private static final String DEFAULT_APP_CODE = "E-APP";
+
     private final AppMenuResourceService appMenuResourceService;
     private final RolePermissionService rolePermissionService;
     private final AppMenuDeliveryService appMenuDeliveryService;
+    private final OmServiceMapper omServiceMapper;
 
     public PortalAdminAppMenuService(AppMenuResourceService appMenuResourceService,
                                      RolePermissionService rolePermissionService,
-                                     AppMenuDeliveryService appMenuDeliveryService) {
+                                     AppMenuDeliveryService appMenuDeliveryService,
+                                     OmServiceMapper omServiceMapper) {
         this.appMenuResourceService = appMenuResourceService;
         this.rolePermissionService = rolePermissionService;
         this.appMenuDeliveryService = appMenuDeliveryService;
+        this.omServiceMapper = omServiceMapper;
     }
 
     public Result<List<AppMenuTreeNode>> loadMenuTree(String appCode, String operatorId) {
@@ -61,6 +70,15 @@ public class PortalAdminAppMenuService {
     }
 
     @Transactional
+    public Result<List<AppMenuResource>> syncMenus(String operatorId) {
+        syncFromOmService();
+        if (rolePermissionService.isAppAdmin(operatorId, DEFAULT_APP_CODE)) {
+            return Result.success(listMenusByAppCode(DEFAULT_APP_CODE));
+        }
+        return Result.success(appMenuDeliveryService.loadAuthorizedMenus(operatorId, DEFAULT_APP_CODE));
+    }
+
+    @Transactional
     public Result<Void> createMenu(AppMenuResource menu, String operatorId) {
         if (menu == null || !StringUtils.hasText(menu.getAppCode())
                 || !StringUtils.hasText(menu.getMenuCode())
@@ -78,6 +96,70 @@ public class PortalAdminAppMenuService {
         }
         appMenuResourceService.save(menu);
         return Result.success(null);
+    }
+
+    private void syncFromOmService() {
+        List<OmService> services = omServiceMapper.selectList(new LambdaQueryWrapper<>());
+        if (services == null || services.isEmpty()) {
+            return;
+        }
+        LocalDateTime syncTime = LocalDateTime.now();
+        List<String> menuCodes = services.stream()
+                .map(OmService::getServiceNum)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, AppMenuResource> existingMenus = new HashMap<>();
+        if (!menuCodes.isEmpty()) {
+            existingMenus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
+                            .eq(AppMenuResource::getAppCode, DEFAULT_APP_CODE)
+                            .in(AppMenuResource::getMenuCode, menuCodes))
+                    .stream()
+                    .filter(menu -> StringUtils.hasText(menu.getMenuCode()))
+                    .collect(Collectors.toMap(AppMenuResource::getMenuCode, Function.identity(), (a, b) -> a));
+        }
+        List<AppMenuResource> upserts = new ArrayList<>();
+        for (OmService service : services) {
+            if (!StringUtils.hasText(service.getServiceNum())) {
+                continue;
+            }
+            AppMenuResource menu = existingMenus.get(service.getServiceNum());
+            if (menu == null) {
+                menu = new AppMenuResource();
+                menu.setAppCode(DEFAULT_APP_CODE);
+                menu.setMenuCode(service.getServiceNum());
+            }
+            menu.setMenuName(service.getServiceName());
+            menu.setMenuPath(service.getServiceJumpAddress());
+            menu.setMenuModule(service.getServiceChannel());
+            menu.setStatus(parseStatus(service.getStatus()));
+            menu.setLastSyncTime(syncTime);
+            if (service.getCreateTime() != null) {
+                menu.setCreateTime(service.getCreateTime());
+            }
+            if (service.getUpdateTime() != null) {
+                menu.setUpdateTime(service.getUpdateTime());
+            }
+            upserts.add(menu);
+        }
+        if (!upserts.isEmpty()) {
+            appMenuResourceService.saveOrUpdateBatch(upserts);
+        }
+    }
+
+    private List<AppMenuResource> listMenusByAppCode(String appCode) {
+        if (!StringUtils.hasText(appCode)) {
+            return new ArrayList<>();
+        }
+        return appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
+                .eq(AppMenuResource::getAppCode, appCode));
+    }
+
+    private Integer parseStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return 0;
+        }
+        return "1".equals(status) ? 1 : 0;
     }
 
     @Transactional
