@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS app_role (
     app_code VARCHAR(64) NOT NULL COMMENT '应用编码',
     role_code VARCHAR(64) NOT NULL COMMENT '角色编码',
     role_name VARCHAR(128) NOT NULL COMMENT '角色名称',
+    sort INT NOT NULL DEFAULT 0 COMMENT '排序号（升序，0 最前）',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
     remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

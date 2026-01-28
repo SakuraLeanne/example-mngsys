@@ -58,7 +58,8 @@ public class PortalAdminAppRoleService {
         if (status != null) {
             wrapper.eq(AppRole::getStatus, status);
         }
-        wrapper.orderByDesc(AppRole::getId);
+        wrapper.orderByAsc(AppRole::getSort)
+                .orderByDesc(AppRole::getId);
         return Result.success(appRoleService.list(wrapper));
     }
 
@@ -77,6 +78,9 @@ public class PortalAdminAppRoleService {
         }
         if (role.getStatus() == null) {
             role.setStatus(1);
+        }
+        if (role.getSort() == null) {
+            role.setSort(0);
         }
         appRoleService.save(role);
         return Result.success(role);
@@ -105,6 +109,9 @@ public class PortalAdminAppRoleService {
         }
         if (StringUtils.hasText(update.getRoleName())) {
             role.setRoleName(update.getRoleName());
+        }
+        if (update.getSort() != null) {
+            role.setSort(update.getSort());
         }
         if (update.getRemark() != null) {
             role.setRemark(update.getRemark());
@@ -232,6 +239,8 @@ public class PortalAdminAppRoleService {
         if (status != null) {
             wrapper.eq(AppRole::getStatus, status);
         }
+        wrapper.orderByAsc(AppRole::getSort)
+                .orderByDesc(AppRole::getId);
         return appRoleService.list(wrapper);
     }
 
