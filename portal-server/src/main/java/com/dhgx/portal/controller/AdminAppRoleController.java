@@ -21,7 +21,6 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 管理端应用角色控制器，提供角色查询、创建、修改、授权菜单等接口。
@@ -147,7 +146,10 @@ public class AdminAppRoleController {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
         PortalAdminAppRoleService.RoleMenuAuthorization authorization = result.getData();
-        return ApiResponse.success(RoleMenuAuthorizationResponse.from(authorization));
+        RoleMenuAuthorizationResponse response = new RoleMenuAuthorizationResponse();
+        response.setGrantedMenus(authorization.getGrantedMenus());
+        response.setUngrantedMenus(authorization.getUngrantedMenus());
+        return ApiResponse.success(response);
     }
 
     /**
@@ -324,149 +326,25 @@ public class AdminAppRoleController {
      * 角色菜单授权信息。
      */
     public static class RoleMenuAuthorizationResponse {
-        private List<MenuSummary> grantedMenus;
-        private List<MenuSummary> ungrantedMenus;
+        private List<AppMenuResource> grantedMenus;
+        private List<AppMenuResource> ungrantedMenus;
 
-        public static RoleMenuAuthorizationResponse from(PortalAdminAppRoleService.RoleMenuAuthorization authorization) {
-            RoleMenuAuthorizationResponse response = new RoleMenuAuthorizationResponse();
-            response.setGrantedMenus(authorization.getGrantedMenus().stream()
-                    .map(MenuSummary::from)
-                    .collect(Collectors.toList()));
-            response.setUngrantedMenus(authorization.getUngrantedMenus().stream()
-                    .map(MenuSummary::from)
-                    .collect(Collectors.toList()));
-            return response;
-        }
-
-        public List<MenuSummary> getGrantedMenus() {
+        public List<AppMenuResource> getGrantedMenus() {
             return grantedMenus;
         }
 
-        public void setGrantedMenus(List<MenuSummary> grantedMenus) {
+        public void setGrantedMenus(List<AppMenuResource> grantedMenus) {
             this.grantedMenus = grantedMenus;
         }
 
-        public List<MenuSummary> getUngrantedMenus() {
+        public List<AppMenuResource> getUngrantedMenus() {
             return ungrantedMenus;
         }
 
-        public void setUngrantedMenus(List<MenuSummary> ungrantedMenus) {
+        public void setUngrantedMenus(List<AppMenuResource> ungrantedMenus) {
             this.ungrantedMenus = ungrantedMenus;
         }
     }
 
-    /**
-     * 菜单概要信息。
-     */
-    public static class MenuSummary {
-        private Long id;
-        private String appCode;
-        private String menuCode;
-        private String menuName;
-        private String menuPath;
-        private String menuType;
-        private Long parentId;
-        private String permission;
-        private Integer sort;
-        private Integer status;
-
-        public static MenuSummary from(AppMenuResource menu) {
-            if (menu == null) {
-                return null;
-            }
-            MenuSummary summary = new MenuSummary();
-            summary.setId(menu.getId());
-            summary.setAppCode(menu.getAppCode());
-            summary.setMenuCode(menu.getMenuCode());
-            summary.setMenuName(menu.getMenuName());
-            summary.setMenuPath(menu.getMenuPath());
-            summary.setMenuType(menu.getMenuType());
-            summary.setParentId(menu.getParentId());
-            summary.setPermission(menu.getPermission());
-            summary.setSort(menu.getSort());
-            summary.setStatus(menu.getStatus());
-            return summary;
-        }
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getAppCode() {
-            return appCode;
-        }
-
-        public void setAppCode(String appCode) {
-            this.appCode = appCode;
-        }
-
-        public String getMenuCode() {
-            return menuCode;
-        }
-
-        public void setMenuCode(String menuCode) {
-            this.menuCode = menuCode;
-        }
-
-        public String getMenuName() {
-            return menuName;
-        }
-
-        public void setMenuName(String menuName) {
-            this.menuName = menuName;
-        }
-
-        public String getMenuPath() {
-            return menuPath;
-        }
-
-        public void setMenuPath(String menuPath) {
-            this.menuPath = menuPath;
-        }
-
-        public String getMenuType() {
-            return menuType;
-        }
-
-        public void setMenuType(String menuType) {
-            this.menuType = menuType;
-        }
-
-        public Long getParentId() {
-            return parentId;
-        }
-
-        public void setParentId(Long parentId) {
-            this.parentId = parentId;
-        }
-
-        public String getPermission() {
-            return permission;
-        }
-
-        public void setPermission(String permission) {
-            this.permission = permission;
-        }
-
-        public Integer getSort() {
-            return sort;
-        }
-
-        public void setSort(Integer sort) {
-            this.sort = sort;
-        }
-
-        public Integer getStatus() {
-            return status;
-        }
-
-        public void setStatus(Integer status) {
-            this.status = status;
-        }
-    }
 
 }
