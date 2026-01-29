@@ -78,9 +78,10 @@ public class AdminAppRoleController {
         String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<AppRole> result;
         if (request.getId() == null) {
-            result = portalAdminAppRoleService.createRole(request.toEntity(), operatorId);
+            result = portalAdminAppRoleService.createRole(request.toEntity(), request.getMenuIds(), operatorId);
         } else {
-            result = portalAdminAppRoleService.updateRole(request.getId(), request.toEntity(), operatorId);
+            result = portalAdminAppRoleService.updateRole(request.getId(), request.toEntity(),
+                    request.getMenuIds(), operatorId);
         }
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
@@ -188,6 +189,11 @@ public class AdminAppRoleController {
          */
         private String remark;
         /**
+         * 角色菜单 ID 列表。
+         */
+        @NotNull(message = "menuIds 不能为空")
+        private List<Long> menuIds;
+        /**
          * 创建时间。
          */
         private LocalDateTime createTime;
@@ -274,6 +280,14 @@ public class AdminAppRoleController {
 
         public void setRemark(String remark) {
             this.remark = remark;
+        }
+
+        public List<Long> getMenuIds() {
+            return menuIds;
+        }
+
+        public void setMenuIds(List<Long> menuIds) {
+            this.menuIds = menuIds;
         }
 
         public LocalDateTime getCreateTime() {

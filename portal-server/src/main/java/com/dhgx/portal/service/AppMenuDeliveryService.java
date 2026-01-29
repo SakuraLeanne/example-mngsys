@@ -220,9 +220,8 @@ public class AppMenuDeliveryService {
      * @return 树节点对象
      */
     private AppMenuTreeNode toNode(AppMenuResource menu) {
-        return new AppMenuTreeNode(menu.getId(), menu.getAppCode(), menu.getMenuCode(), menu.getMenuName(),
-                menu.getMenuPath(), menu.getMenuType(), menu.getParentId(), menu.getPermission(), menu.getSort(),
-                menu.getStatus());
+        return new AppMenuTreeNode(menu.getId(), menu.getAppCode(), menu.getMenuCode(), menu.getMenuModule(),
+                menu.getMenuName(), menu.getMenuPath(), menu.getMenuType(), menu.getSort(), menu.getStatus());
     }
 
     /**
