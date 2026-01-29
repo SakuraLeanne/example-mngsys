@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -287,22 +288,26 @@ public class PortalAdminAppMenuService {
         if (menus == null || menus.isEmpty()) {
             return new ArrayList<>();
         }
-        Map<Long, AppMenuTreeNode> nodeMap = new HashMap<>();
+        Map<String, AppMenuTreeNode> moduleNodes = new LinkedHashMap<>();
+        long moduleId = -1L;
         for (AppMenuResource menu : menus) {
-            nodeMap.put(menu.getId(), toNode(menu));
-        }
-        List<AppMenuTreeNode> roots = new ArrayList<>();
-        for (AppMenuResource menu : menus) {
-            AppMenuTreeNode node = nodeMap.get(menu.getId());
-            Long parentId = menu.getParentId();
-            if (parentId == null || parentId == 0 || !nodeMap.containsKey(parentId)) {
-                roots.add(node);
-            } else {
-                nodeMap.get(parentId).getChildren().add(node);
+            String moduleName = StringUtils.hasText(menu.getMenuModule()) ? menu.getMenuModule() : "未分组";
+            AppMenuTreeNode moduleNode = moduleNodes.get(moduleName);
+            if (moduleNode == null) {
+                moduleNode = toModuleNode(menu, moduleName, moduleId--);
+                moduleNodes.put(moduleName, moduleNode);
             }
+            moduleNode.getChildren().add(toNode(menu));
         }
-        sortTree(roots);
-        return roots;
+        Comparator<AppMenuTreeNode> comparator = menuComparator();
+        for (AppMenuTreeNode moduleNode : moduleNodes.values()) {
+            moduleNode.getChildren().sort(comparator);
+        }
+        return new ArrayList<>(moduleNodes.values());
+    }
+
+    private AppMenuTreeNode toModuleNode(AppMenuResource menu, String moduleName, Long id) {
+        return new AppMenuTreeNode(id, menu.getAppCode(), moduleName, moduleName, null, null, null, null, 0, 1);
     }
 
     private AppMenuTreeNode toNode(AppMenuResource menu) {
@@ -311,20 +316,10 @@ public class PortalAdminAppMenuService {
                 menu.getStatus());
     }
 
-    private void sortTree(List<AppMenuTreeNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return;
-        }
-        Comparator<AppMenuTreeNode> comparator = Comparator
+    private Comparator<AppMenuTreeNode> menuComparator() {
+        return Comparator
                 .comparing((AppMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
                 .thenComparing(node -> node.getId() == null ? 0L : node.getId());
-        nodes.sort(comparator);
-        for (AppMenuTreeNode node : nodes) {
-            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
-                node.getChildren().sort(comparator);
-                sortTree(node.getChildren());
-            }
-        }
     }
 
     private List<AppMenuTreeNode> filterMenusByAppCode(List<AppMenuTreeNode> menus, String appCode) {
