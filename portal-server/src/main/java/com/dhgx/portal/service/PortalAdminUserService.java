@@ -72,24 +72,24 @@ public class PortalAdminUserService {
      *
      * @param page    页码（从 1 开始）
      * @param size    每页数量
-     * @param keyword 搜索关键字
+     * @param username 用户名
+     * @param mobile  手机号
      * @param status  用户状态
      * @return 分页结果
      */
-    public Page<PortalUser> listUsers(int page, int size, String keyword, Integer status, String requesterId) {
+    public Page<PortalUser> listUsers(int page, int size, String username, String mobile, Integer status, String requesterId) {
         int pageIndex = Math.max(page, 1);
         int pageSize = Math.max(size, 1);
         if (rolePermissionService.isPortalAdmin(requesterId)) {
             Page<PortalUser> query = new Page<>(pageIndex, pageSize);
             LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
-            if (StringUtils.hasText(keyword)) {
-                wrapper.and(inner -> inner.like(PortalUser::getUsername, keyword)
+            if (StringUtils.hasText(username)) {
+                wrapper.and(inner -> inner.like(PortalUser::getUsername, username)
                         .or()
-                        .like(PortalUser::getRealName, keyword)
-                        .or()
-                        .like(PortalUser::getMobile, keyword)
-                        .or()
-                        .like(PortalUser::getNickName, keyword));
+                        .like(PortalUser::getRealName, username));
+            }
+            if (StringUtils.hasText(mobile)) {
+                wrapper.like(PortalUser::getMobile, mobile);
             }
             if (status != null) {
                 wrapper.eq(PortalUser::getStatus, status);
