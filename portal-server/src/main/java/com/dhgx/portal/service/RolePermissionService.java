@@ -68,9 +68,7 @@ public class RolePermissionService {
         }
         return appRoleService.list(new LambdaQueryWrapper<AppRole>()
                 .in(AppRole::getId, roleIds)
-                .eq(AppRole::getStatus, 1)
-                .orderByAsc(AppRole::getSort)
-                .orderByDesc(AppRole::getId));
+                .eq(AppRole::getStatus, 1));
     }
 
     public Set<Long> listUserRoleIds(String userId) {

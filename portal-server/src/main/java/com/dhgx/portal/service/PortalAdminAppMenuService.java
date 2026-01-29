@@ -56,8 +56,10 @@ public class PortalAdminAppMenuService {
     }
 
     @Transactional
-    public Result<List<AppMenuResource>> syncMenus(String operatorId) {
-        syncFromOmService();
+    public Result<List<AppMenuResource>> syncMenus(boolean enabledSync, String operatorId) {
+        if (enabledSync) {
+            syncFromOmService();
+        }
         if (rolePermissionService.isAppAdmin(operatorId, DEFAULT_APP_CODE)) {
             return Result.success(listMenusByAppCode(DEFAULT_APP_CODE));
         }

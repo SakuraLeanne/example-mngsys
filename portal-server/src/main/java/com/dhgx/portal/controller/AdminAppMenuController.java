@@ -8,12 +8,7 @@ import com.dhgx.portal.security.AdminRequired;
 import com.dhgx.portal.service.PortalAdminAppMenuService;
 import com.dhgx.portal.controller.dto.AppMenuTreeNode;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotEmpty;
@@ -64,11 +59,15 @@ public class AdminAppMenuController {
      *
      * @return 菜单列表
      */
-    @PostMapping("/sync")
-    public ApiResponse<List<AppMenuResource>> sync() {
+    @PostMapping("/{enabled}/sync")
+    public ApiResponse<List<AppMenuResource>> sync(@PathVariable String enabled) {
         String operatorId = RequestContext.getUserId();
+        boolean enabledSync = false;
+        if ("Y".equals(enabled)) {
+            enabledSync = true;
+        }
         PortalAdminAppMenuService.Result<List<AppMenuResource>> result =
-                portalAdminAppMenuService.syncMenus(operatorId);
+                portalAdminAppMenuService.syncMenus(enabledSync, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
