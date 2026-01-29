@@ -84,7 +84,9 @@ public class PortalAdminUserService {
             Page<PortalUser> query = new Page<>(pageIndex, pageSize);
             LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
             if (StringUtils.hasText(username)) {
-                wrapper.like(PortalUser::getUsername, username);
+                wrapper.and(inner -> inner.like(PortalUser::getUsername, username)
+                        .or()
+                        .like(PortalUser::getRealName, username));
             }
             if (StringUtils.hasText(mobile)) {
                 wrapper.like(PortalUser::getMobile, mobile);
