@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,25 +45,11 @@ public class PortalAdminAppMenuService {
 
     public Result<List<AppMenuTreeNode>> loadMenuTree(String appCode, String operatorId) {
         String resolvedAppCode = appCode;
-        if (!rolePermissionService.isAppAdmin(operatorId, appCode)) {
-            List<AppMenuTreeNode> menus = appMenuDeliveryService.loadMenus(operatorId);
-            if (!StringUtils.hasText(appCode)) {
-                return Result.success(menus);
-            }
-            return Result.success(filterMenusByAppCode(menus, appCode));
-        }
-        if (!StringUtils.hasText(appCode)) {
-            Set<String> appCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
-            if (appCodes.size() > 1) {
-                return Result.failure(ErrorCode.INVALID_ARGUMENT, "请指定应用编码");
-            }
-            if (appCodes.isEmpty()) {
-                return Result.success(new ArrayList<>());
-            }
-            resolvedAppCode = appCodes.iterator().next();
-        }
         LambdaQueryWrapper<AppMenuResource> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AppMenuResource::getAppCode, resolvedAppCode);
+        if (StringUtils.hasText(resolvedAppCode)) {
+            wrapper.eq(AppMenuResource::getAppCode, resolvedAppCode);
+        }
+        wrapper.eq(AppMenuResource::getStatus, 1);
         wrapper.orderByAsc(AppMenuResource::getSort).orderByAsc(AppMenuResource::getId);
         List<AppMenuResource> menus = appMenuResourceService.list(wrapper);
         return Result.success(buildTree(menus));
@@ -320,22 +305,6 @@ public class PortalAdminAppMenuService {
         return Comparator
                 .comparing((AppMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
                 .thenComparing(node -> node.getId() == null ? 0L : node.getId());
-    }
-
-    private List<AppMenuTreeNode> filterMenusByAppCode(List<AppMenuTreeNode> menus, String appCode) {
-        if (menus == null || menus.isEmpty() || !StringUtils.hasText(appCode)) {
-            return new ArrayList<>();
-        }
-        List<AppMenuTreeNode> filtered = new ArrayList<>();
-        for (AppMenuTreeNode node : menus) {
-            List<AppMenuTreeNode> children = filterMenusByAppCode(node.getChildren(), appCode);
-            if (appCode.equalsIgnoreCase(node.getAppCode()) || !children.isEmpty()) {
-                node.getChildren().clear();
-                node.getChildren().addAll(children);
-                filtered.add(node);
-            }
-        }
-        return filtered;
     }
 
     public static class Result<T> {
