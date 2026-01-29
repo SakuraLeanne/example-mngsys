@@ -3,6 +3,7 @@ package com.dhgx.portal.controller;
 import com.dhgx.common.api.ActionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.context.RequestContext;
+import com.dhgx.portal.controller.dto.RoleMenuTreeNode;
 import com.dhgx.portal.entity.AppMenuResource;
 import com.dhgx.portal.entity.AppRole;
 import com.dhgx.portal.security.AdminRequired;
@@ -151,6 +152,25 @@ public class AdminAppRoleController {
         RoleMenuAuthorizationResponse response = new RoleMenuAuthorizationResponse();
         response.setGrantedMenus(authorization.getGrantedMenus());
         response.setUngrantedMenus(authorization.getUngrantedMenus());
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 查询角色菜单树并标记授权状态。
+     *
+     * @param roleId 角色 ID
+     * @return 授权菜单树
+     */
+    @GetMapping("/{roleId}/menu-tree")
+    public ApiResponse<RoleMenuTreeAuthorizationResponse> listRoleMenuTree(@PathVariable Long roleId) {
+        String operatorId = RequestContext.getUserId();
+        PortalAdminAppRoleService.Result<List<RoleMenuTreeNode>> result =
+                portalAdminAppRoleService.listRoleMenuTreeAuthorization(roleId, operatorId);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode(), result.getMessage());
+        }
+        RoleMenuTreeAuthorizationResponse response = new RoleMenuTreeAuthorizationResponse();
+        response.setMenus(result.getData());
         return ApiResponse.success(response);
     }
 
@@ -375,5 +395,19 @@ public class AdminAppRoleController {
         }
     }
 
+    /**
+     * 角色菜单树授权信息。
+     */
+    public static class RoleMenuTreeAuthorizationResponse {
+        private List<RoleMenuTreeNode> menus;
+
+        public List<RoleMenuTreeNode> getMenus() {
+            return menus;
+        }
+
+        public void setMenus(List<RoleMenuTreeNode> menus) {
+            this.menus = menus;
+        }
+    }
 
 }

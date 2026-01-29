@@ -2,6 +2,7 @@ package com.dhgx.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dhgx.portal.common.api.ErrorCode;
+import com.dhgx.portal.controller.dto.RoleMenuTreeNode;
 import com.dhgx.portal.entity.AppMenuResource;
 import com.dhgx.portal.entity.AppRoleMenu;
 import com.dhgx.portal.entity.AppRole;
@@ -12,7 +13,10 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -208,6 +212,28 @@ public class PortalAdminAppRoleService {
         return Result.success(new RoleMenuAuthorization(grantedMenus, ungrantedMenus));
     }
 
+    public Result<List<RoleMenuTreeNode>> listRoleMenuTreeAuthorization(Long roleId, String operatorId) {
+        if (roleId == null) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
+        }
+        AppRole role = appRoleService.getById(roleId);
+        if (role == null) {
+            return Result.failure(ErrorCode.NOT_FOUND, "角色不存在");
+        }
+        if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())
+                && !rolePermissionService.hasRoleId(operatorId, roleId)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
+                .eq(AppMenuResource::getAppCode, role.getAppCode()));
+        List<AppRoleMenu> roleMenus = appRoleMenuService.list(new LambdaQueryWrapper<AppRoleMenu>()
+                .eq(AppRoleMenu::getRoleId, roleId));
+        Set<Long> grantedMenuIds = roleMenus.stream()
+                .map(AppRoleMenu::getMenuId)
+                .collect(Collectors.toSet());
+        return Result.success(buildRoleMenuTree(menus, grantedMenuIds));
+    }
+
     private boolean existsRoleCode(String appCode, String roleCode, Long excludeId) {
         if (!StringUtils.hasText(appCode) || !StringUtils.hasText(roleCode)) {
             return false;
@@ -281,6 +307,45 @@ public class PortalAdminAppRoleService {
                 .filter(id -> id != null && id > 0)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    private List<RoleMenuTreeNode> buildRoleMenuTree(List<AppMenuResource> menus, Set<Long> grantedMenuIds) {
+        if (menus == null || menus.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<Long, RoleMenuTreeNode> nodeMap = new HashMap<>();
+        for (AppMenuResource menu : menus) {
+            boolean granted = grantedMenuIds != null && grantedMenuIds.contains(menu.getId());
+            nodeMap.put(menu.getId(), RoleMenuTreeNode.from(menu, granted));
+        }
+        List<RoleMenuTreeNode> roots = new ArrayList<>();
+        for (AppMenuResource menu : menus) {
+            RoleMenuTreeNode node = nodeMap.get(menu.getId());
+            Long parentId = menu.getParentId();
+            if (parentId == null || parentId == 0 || !nodeMap.containsKey(parentId)) {
+                roots.add(node);
+            } else {
+                nodeMap.get(parentId).getChildren().add(node);
+            }
+        }
+        sortRoleMenuTree(roots);
+        return roots;
+    }
+
+    private void sortRoleMenuTree(List<RoleMenuTreeNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+        Comparator<RoleMenuTreeNode> comparator = Comparator
+                .comparing((RoleMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
+                .thenComparing(node -> node.getId() == null ? 0L : node.getId());
+        nodes.sort(comparator);
+        for (RoleMenuTreeNode node : nodes) {
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
+                node.getChildren().sort(comparator);
+                sortRoleMenuTree(node.getChildren());
+            }
+        }
     }
 
     public static class Result<T> {
