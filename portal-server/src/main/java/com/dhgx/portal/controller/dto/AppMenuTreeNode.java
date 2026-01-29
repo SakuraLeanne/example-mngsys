@@ -20,6 +20,10 @@ public class AppMenuTreeNode {
      */
     private final String menuCode;
     /**
+     * 菜单模块。
+     */
+    private final String menuModule;
+    /**
      * 菜单名称。
      */
     private final String menuName;
@@ -31,14 +35,6 @@ public class AppMenuTreeNode {
      * 菜单类型。
      */
     private final String menuType;
-    /**
-     * 父级菜单 ID。
-     */
-    private final Long parentId;
-    /**
-     * 权限标识。
-     */
-    private final String permission;
     /**
      * 排序值。
      */
@@ -52,16 +48,16 @@ public class AppMenuTreeNode {
      */
     private final List<AppMenuTreeNode> children = new ArrayList<>();
 
-    public AppMenuTreeNode(Long id, String appCode, String menuCode, String menuName, String menuPath,
-                           String menuType, Long parentId, String permission, Integer sort, Integer status) {
+    public AppMenuTreeNode(Long id, String appCode, String menuCode, String menuModule, String menuName,
+                           String menuPath, String menuType, Integer sort,
+                           Integer status) {
         this.id = id;
         this.appCode = appCode;
         this.menuCode = menuCode;
+        this.menuModule = menuModule;
         this.menuName = menuName;
         this.menuPath = menuPath;
         this.menuType = menuType;
-        this.parentId = parentId;
-        this.permission = permission;
         this.sort = sort;
         this.status = status;
     }
@@ -78,6 +74,10 @@ public class AppMenuTreeNode {
         return menuCode;
     }
 
+    public String getMenuModule() {
+        return menuModule;
+    }
+
     public String getMenuName() {
         return menuName;
     }
@@ -88,14 +88,6 @@ public class AppMenuTreeNode {
 
     public String getMenuType() {
         return menuType;
-    }
-
-    public Long getParentId() {
-        return parentId;
-    }
-
-    public String getPermission() {
-        return permission;
     }
 
     public Integer getSort() {
