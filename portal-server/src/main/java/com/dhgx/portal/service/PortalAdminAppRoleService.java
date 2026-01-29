@@ -357,11 +357,6 @@ public class PortalAdminAppRoleService {
                 .thenComparing(node -> node.getId() == null ? 0L : node.getId());
     }
 
-    private AppMenuTreeNode toMenuTreeNode(AppMenuResource menu) {
-        return new AppMenuTreeNode(menu.getId(), menu.getAppCode(), menu.getMenuCode(), menu.getMenuModule(),
-                menu.getMenuName(), menu.getMenuPath(), menu.getMenuType(), menu.getSort(), menu.getStatus());
-    }
-
     private boolean refreshGrantedFromChildren(List<AppMenuTreeNode> nodes) {
         boolean allGranted = true;
         for (AppMenuTreeNode node : nodes) {
