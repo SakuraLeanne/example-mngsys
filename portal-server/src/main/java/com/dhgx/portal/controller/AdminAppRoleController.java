@@ -3,7 +3,7 @@ package com.dhgx.portal.controller;
 import com.dhgx.common.api.ActionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.context.RequestContext;
-import com.dhgx.portal.controller.dto.RoleMenuTreeNode;
+import com.dhgx.portal.controller.dto.AppMenuTreeNode;
 import com.dhgx.portal.entity.AppMenuResource;
 import com.dhgx.portal.entity.AppRole;
 import com.dhgx.portal.security.AdminRequired;
@@ -164,13 +164,15 @@ public class AdminAppRoleController {
     @GetMapping("/{roleId}/menu-tree")
     public ApiResponse<RoleMenuTreeAuthorizationResponse> listRoleMenuTree(@PathVariable Long roleId) {
         String operatorId = RequestContext.getUserId();
-        PortalAdminAppRoleService.Result<List<RoleMenuTreeNode>> result =
+        PortalAdminAppRoleService.Result<PortalAdminAppRoleService.RoleMenuTreeAuthorization> result =
                 portalAdminAppRoleService.listRoleMenuTreeAuthorization(roleId, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
+        PortalAdminAppRoleService.RoleMenuTreeAuthorization authorization = result.getData();
         RoleMenuTreeAuthorizationResponse response = new RoleMenuTreeAuthorizationResponse();
-        response.setMenus(result.getData());
+        response.setRole(authorization.getRole());
+        response.setMenus(authorization.getMenus());
         return ApiResponse.success(response);
     }
 
@@ -399,13 +401,22 @@ public class AdminAppRoleController {
      * 角色菜单树授权信息。
      */
     public static class RoleMenuTreeAuthorizationResponse {
-        private List<RoleMenuTreeNode> menus;
+        private AppRole role;
+        private List<AppMenuTreeNode> menus;
 
-        public List<RoleMenuTreeNode> getMenus() {
+        public AppRole getRole() {
+            return role;
+        }
+
+        public void setRole(AppRole role) {
+            this.role = role;
+        }
+
+        public List<AppMenuTreeNode> getMenus() {
             return menus;
         }
 
-        public void setMenus(List<RoleMenuTreeNode> menus) {
+        public void setMenus(List<AppMenuTreeNode> menus) {
             this.menus = menus;
         }
     }
