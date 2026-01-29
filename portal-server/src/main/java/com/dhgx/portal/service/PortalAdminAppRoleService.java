@@ -64,17 +64,24 @@ public class PortalAdminAppRoleService {
     }
 
     @Transactional
-    public Result<AppRole> createRole(AppRole role, String operatorId) {
+    public Result<AppRole> createRole(AppRole role, List<Long> menuIds, String operatorId) {
         if (role == null || !StringUtils.hasText(role.getAppCode())
                 || !StringUtils.hasText(role.getRoleCode())
                 || !StringUtils.hasText(role.getRoleName())) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色信息不完整");
+        }
+        if (menuIds == null) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单不能为空");
         }
         if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())) {
             return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
         if (existsRoleCode(role.getAppCode(), role.getRoleCode(), null)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色编码已存在");
+        }
+        Result<Void> menuCheck = validateMenuIds(role.getAppCode(), menuIds);
+        if (!menuCheck.isSuccess()) {
+            return Result.failure(menuCheck.getErrorCode(), menuCheck.getMessage());
         }
         if (role.getStatus() == null) {
             role.setStatus(1);
@@ -83,13 +90,20 @@ public class PortalAdminAppRoleService {
             role.setSort(0);
         }
         appRoleService.save(role);
+        Result<Void> grantResult = applyRoleMenus(role, menuIds);
+        if (!grantResult.isSuccess()) {
+            return Result.failure(grantResult.getErrorCode(), grantResult.getMessage());
+        }
         return Result.success(role);
     }
 
     @Transactional
-    public Result<AppRole> updateRole(Long id, AppRole update, String operatorId) {
+    public Result<AppRole> updateRole(Long id, AppRole update, List<Long> menuIds, String operatorId) {
         if (id == null || update == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色信息不完整");
+        }
+        if (menuIds == null) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单不能为空");
         }
         AppRole role = appRoleService.getById(id);
         if (role == null) {
@@ -98,6 +112,10 @@ public class PortalAdminAppRoleService {
         String appCode = StringUtils.hasText(update.getAppCode()) ? update.getAppCode() : role.getAppCode();
         if (!rolePermissionService.isAppAdmin(operatorId, appCode)) {
             return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        Result<Void> menuCheck = validateMenuIds(appCode, menuIds);
+        if (!menuCheck.isSuccess()) {
+            return Result.failure(menuCheck.getErrorCode(), menuCheck.getMessage());
         }
         if (StringUtils.hasText(update.getRoleCode())
                 && existsRoleCode(appCode, update.getRoleCode(), id)) {
@@ -120,6 +138,10 @@ public class PortalAdminAppRoleService {
             role.setStatus(update.getStatus());
         }
         appRoleService.updateById(role);
+        Result<Void> grantResult = applyRoleMenus(role, menuIds);
+        if (!grantResult.isSuccess()) {
+            return Result.failure(grantResult.getErrorCode(), grantResult.getMessage());
+        }
         return Result.success(role);
     }
 
@@ -152,34 +174,7 @@ public class PortalAdminAppRoleService {
         if (!rolePermissionService.isAppAdmin(operatorId, role.getAppCode())) {
             return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
-        List<Long> normalized = menuIds == null ? new ArrayList<>() : menuIds.stream()
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
-        if (!CollectionUtils.isEmpty(normalized)) {
-            List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
-                    .in(AppMenuResource::getId, normalized));
-            if (menus.size() != normalized.size()) {
-                return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单不存在");
-            }
-            Set<String> appCodes = menus.stream().map(AppMenuResource::getAppCode).collect(Collectors.toSet());
-            if (appCodes.size() > 1 || !appCodes.contains(role.getAppCode())) {
-                return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单应用不匹配");
-            }
-        }
-        appRoleMenuService.remove(new LambdaQueryWrapper<AppRoleMenu>()
-                .eq(AppRoleMenu::getRoleId, roleId));
-        if (!CollectionUtils.isEmpty(normalized)) {
-            List<AppRoleMenu> relations = normalized.stream().map(menuId -> {
-                AppRoleMenu relation = new AppRoleMenu();
-                relation.setRoleId(roleId);
-                relation.setMenuId(menuId);
-                relation.setCreateTime(LocalDateTime.now());
-                return relation;
-            }).collect(Collectors.toList());
-            appRoleMenuService.saveBatch(relations);
-        }
-        return Result.success(null);
+        return applyRoleMenus(role, menuIds);
     }
 
     public Result<RoleMenuAuthorization> listRoleMenuAuthorization(Long roleId, String operatorId) {
@@ -242,6 +237,50 @@ public class PortalAdminAppRoleService {
         wrapper.orderByAsc(AppRole::getSort)
                 .orderByDesc(AppRole::getId);
         return appRoleService.list(wrapper);
+    }
+
+    private Result<Void> validateMenuIds(String appCode, List<Long> menuIds) {
+        List<Long> normalized = normalizeMenuIds(menuIds);
+        if (CollectionUtils.isEmpty(normalized)) {
+            return Result.success(null);
+        }
+        List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
+                .in(AppMenuResource::getId, normalized));
+        if (menus.size() != normalized.size()) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单不存在");
+        }
+        Set<String> appCodes = menus.stream().map(AppMenuResource::getAppCode).collect(Collectors.toSet());
+        if (appCodes.size() > 1 || !appCodes.contains(appCode)) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单应用不匹配");
+        }
+        return Result.success(null);
+    }
+
+    private Result<Void> applyRoleMenus(AppRole role, List<Long> menuIds) {
+        List<Long> normalized = normalizeMenuIds(menuIds);
+        appRoleMenuService.remove(new LambdaQueryWrapper<AppRoleMenu>()
+                .eq(AppRoleMenu::getRoleId, role.getId()));
+        if (!CollectionUtils.isEmpty(normalized)) {
+            List<AppRoleMenu> relations = normalized.stream().map(menuId -> {
+                AppRoleMenu relation = new AppRoleMenu();
+                relation.setRoleId(role.getId());
+                relation.setMenuId(menuId);
+                relation.setCreateTime(LocalDateTime.now());
+                return relation;
+            }).collect(Collectors.toList());
+            appRoleMenuService.saveBatch(relations);
+        }
+        return Result.success(null);
+    }
+
+    private List<Long> normalizeMenuIds(List<Long> menuIds) {
+        if (menuIds == null) {
+            return new ArrayList<>();
+        }
+        return menuIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     public static class Result<T> {
