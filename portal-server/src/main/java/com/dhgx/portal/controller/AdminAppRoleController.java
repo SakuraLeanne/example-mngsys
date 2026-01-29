@@ -21,6 +21,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -63,6 +64,7 @@ public class AdminAppRoleController {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
         List<RoleSummary> roles = result.getData().stream()
+                .sorted(Comparator.comparing(AppRole::getSort, Comparator.nullsLast(Integer::compareTo)))
                 .map(RoleSummary::from)
                 .collect(Collectors.toList());
         return ApiResponse.success(roles);
