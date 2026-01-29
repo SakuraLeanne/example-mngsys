@@ -2,7 +2,7 @@ package com.dhgx.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dhgx.portal.common.api.ErrorCode;
-import com.dhgx.portal.controller.dto.RoleMenuTreeNode;
+import com.dhgx.portal.controller.dto.AppMenuTreeNode;
 import com.dhgx.portal.entity.AppMenuResource;
 import com.dhgx.portal.entity.AppRoleMenu;
 import com.dhgx.portal.entity.AppRole;
@@ -212,7 +212,7 @@ public class PortalAdminAppRoleService {
         return Result.success(new RoleMenuAuthorization(grantedMenus, ungrantedMenus));
     }
 
-    public Result<List<RoleMenuTreeNode>> listRoleMenuTreeAuthorization(Long roleId, String operatorId) {
+    public Result<RoleMenuTreeAuthorization> listRoleMenuTreeAuthorization(Long roleId, String operatorId) {
         if (roleId == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
         }
@@ -231,7 +231,8 @@ public class PortalAdminAppRoleService {
         Set<Long> grantedMenuIds = roleMenus.stream()
                 .map(AppRoleMenu::getMenuId)
                 .collect(Collectors.toSet());
-        return Result.success(buildRoleMenuTree(menus, grantedMenuIds));
+        List<AppMenuTreeNode> menuTree = buildRoleMenuTree(menus, grantedMenuIds);
+        return Result.success(new RoleMenuTreeAuthorization(role, menuTree));
     }
 
     private boolean existsRoleCode(String appCode, String roleCode, Long excludeId) {
@@ -309,18 +310,20 @@ public class PortalAdminAppRoleService {
                 .collect(Collectors.toList());
     }
 
-    private List<RoleMenuTreeNode> buildRoleMenuTree(List<AppMenuResource> menus, Set<Long> grantedMenuIds) {
+    private List<AppMenuTreeNode> buildRoleMenuTree(List<AppMenuResource> menus, Set<Long> grantedMenuIds) {
         if (menus == null || menus.isEmpty()) {
             return new ArrayList<>();
         }
-        Map<Long, RoleMenuTreeNode> nodeMap = new HashMap<>();
+        Map<Long, AppMenuTreeNode> nodeMap = new HashMap<>();
         for (AppMenuResource menu : menus) {
             boolean granted = grantedMenuIds != null && grantedMenuIds.contains(menu.getId());
-            nodeMap.put(menu.getId(), RoleMenuTreeNode.from(menu, granted));
+            AppMenuTreeNode node = toMenuTreeNode(menu);
+            node.setGranted(granted);
+            nodeMap.put(menu.getId(), node);
         }
-        List<RoleMenuTreeNode> roots = new ArrayList<>();
+        List<AppMenuTreeNode> roots = new ArrayList<>();
         for (AppMenuResource menu : menus) {
-            RoleMenuTreeNode node = nodeMap.get(menu.getId());
+            AppMenuTreeNode node = nodeMap.get(menu.getId());
             Long parentId = menu.getParentId();
             if (parentId == null || parentId == 0 || !nodeMap.containsKey(parentId)) {
                 roots.add(node);
@@ -329,23 +332,42 @@ public class PortalAdminAppRoleService {
             }
         }
         sortRoleMenuTree(roots);
+        refreshGrantedFromChildren(roots);
         return roots;
     }
 
-    private void sortRoleMenuTree(List<RoleMenuTreeNode> nodes) {
+    private void sortRoleMenuTree(List<AppMenuTreeNode> nodes) {
         if (nodes == null || nodes.isEmpty()) {
             return;
         }
-        Comparator<RoleMenuTreeNode> comparator = Comparator
-                .comparing((RoleMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
+        Comparator<AppMenuTreeNode> comparator = Comparator
+                .comparing((AppMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
                 .thenComparing(node -> node.getId() == null ? 0L : node.getId());
         nodes.sort(comparator);
-        for (RoleMenuTreeNode node : nodes) {
+        for (AppMenuTreeNode node : nodes) {
             if (node.getChildren() != null && !node.getChildren().isEmpty()) {
                 node.getChildren().sort(comparator);
                 sortRoleMenuTree(node.getChildren());
             }
         }
+    }
+
+    private boolean refreshGrantedFromChildren(List<AppMenuTreeNode> nodes) {
+        boolean allGranted = true;
+        for (AppMenuTreeNode node : nodes) {
+            List<AppMenuTreeNode> children = node.getChildren();
+            if (children != null && !children.isEmpty()) {
+                boolean childrenGranted = refreshGrantedFromChildren(children);
+                node.setGranted(childrenGranted);
+            }
+            allGranted = allGranted && node.isGranted();
+        }
+        return allGranted;
+    }
+
+    private AppMenuTreeNode toMenuTreeNode(AppMenuResource menu) {
+        return new AppMenuTreeNode(menu.getId(), menu.getAppCode(), menu.getMenuCode(), menu.getMenuModule(),
+                menu.getMenuName(), menu.getMenuPath(), menu.getMenuType(), menu.getSort(), menu.getStatus());
     }
 
     public static class Result<T> {
@@ -401,6 +423,24 @@ public class PortalAdminAppRoleService {
 
         public List<AppMenuResource> getUngrantedMenus() {
             return ungrantedMenus;
+        }
+    }
+
+    public static class RoleMenuTreeAuthorization {
+        private final AppRole role;
+        private final List<AppMenuTreeNode> menus;
+
+        public RoleMenuTreeAuthorization(AppRole role, List<AppMenuTreeNode> menus) {
+            this.role = role;
+            this.menus = menus;
+        }
+
+        public AppRole getRole() {
+            return role;
+        }
+
+        public List<AppMenuTreeNode> getMenus() {
+            return menus;
         }
     }
 }
