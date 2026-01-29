@@ -44,6 +44,10 @@ public class AppMenuTreeNode {
      */
     private final Integer status;
     /**
+     * 是否已授权，默认 false。
+     */
+    private boolean granted = false;
+    /**
      * 子菜单列表。
      */
     private final List<AppMenuTreeNode> children = new ArrayList<>();
@@ -96,6 +100,14 @@ public class AppMenuTreeNode {
 
     public Integer getStatus() {
         return status;
+    }
+
+    public boolean isGranted() {
+        return granted;
+    }
+
+    public void setGranted(boolean granted) {
+        this.granted = granted;
     }
 
     public List<AppMenuTreeNode> getChildren() {
