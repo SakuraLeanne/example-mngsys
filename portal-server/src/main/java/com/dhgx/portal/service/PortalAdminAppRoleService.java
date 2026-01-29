@@ -362,6 +362,24 @@ public class PortalAdminAppRoleService {
                 menu.getMenuName(), menu.getMenuPath(), menu.getMenuType(), menu.getSort(), menu.getStatus());
     }
 
+    private boolean refreshGrantedFromChildren(List<AppMenuTreeNode> nodes) {
+        boolean allGranted = true;
+        for (AppMenuTreeNode node : nodes) {
+            List<AppMenuTreeNode> children = node.getChildren();
+            if (children != null && !children.isEmpty()) {
+                boolean childrenGranted = refreshGrantedFromChildren(children);
+                node.setGranted(childrenGranted);
+            }
+            allGranted = allGranted && node.isGranted();
+        }
+        return allGranted;
+    }
+
+    private AppMenuTreeNode toMenuTreeNode(AppMenuResource menu) {
+        return new AppMenuTreeNode(menu.getId(), menu.getAppCode(), menu.getMenuCode(), menu.getMenuModule(),
+                menu.getMenuName(), menu.getMenuPath(), menu.getMenuType(), menu.getSort(), menu.getStatus());
+    }
+
     public static class Result<T> {
         private final boolean success;
         private final ErrorCode errorCode;
