@@ -14,7 +14,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -314,42 +314,52 @@ public class PortalAdminAppRoleService {
         if (menus == null || menus.isEmpty()) {
             return new ArrayList<>();
         }
-        Map<Long, AppMenuTreeNode> nodeMap = new HashMap<>();
+        Map<String, AppMenuTreeNode> moduleNodes = new LinkedHashMap<>();
+        long moduleId = -1L;
         for (AppMenuResource menu : menus) {
-            boolean granted = grantedMenuIds != null && grantedMenuIds.contains(menu.getId());
-            AppMenuTreeNode node = toMenuTreeNode(menu);
-            node.setGranted(granted);
-            nodeMap.put(menu.getId(), node);
-        }
-        List<AppMenuTreeNode> roots = new ArrayList<>();
-        for (AppMenuResource menu : menus) {
-            AppMenuTreeNode node = nodeMap.get(menu.getId());
-            Long parentId = menu.getParentId();
-            if (parentId == null || parentId == 0 || !nodeMap.containsKey(parentId)) {
-                roots.add(node);
-            } else {
-                nodeMap.get(parentId).getChildren().add(node);
+            String moduleName = StringUtils.hasText(menu.getMenuModule()) ? menu.getMenuModule() : "未分组";
+            AppMenuTreeNode moduleNode = moduleNodes.get(moduleName);
+            if (moduleNode == null) {
+                moduleNode = toModuleNode(menu, moduleName, moduleId--);
+                moduleNodes.put(moduleName, moduleNode);
             }
+            AppMenuTreeNode menuNode = toMenuTreeNode(menu);
+            menuNode.setGranted(grantedMenuIds != null && grantedMenuIds.contains(menu.getId()));
+            moduleNode.getChildren().add(menuNode);
         }
-        sortRoleMenuTree(roots);
-        refreshGrantedFromChildren(roots);
-        return roots;
+        Comparator<AppMenuTreeNode> comparator = menuComparator();
+        for (AppMenuTreeNode moduleNode : moduleNodes.values()) {
+            moduleNode.getChildren().sort(comparator);
+            moduleNode.setGranted(childrenGranted(moduleNode.getChildren()));
+        }
+        return new ArrayList<>(moduleNodes.values());
     }
 
-    private void sortRoleMenuTree(List<AppMenuTreeNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return;
+    private boolean childrenGranted(List<AppMenuTreeNode> children) {
+        if (children == null || children.isEmpty()) {
+            return false;
         }
-        Comparator<AppMenuTreeNode> comparator = Comparator
-                .comparing((AppMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
-                .thenComparing(node -> node.getId() == null ? 0L : node.getId());
-        nodes.sort(comparator);
-        for (AppMenuTreeNode node : nodes) {
-            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
-                node.getChildren().sort(comparator);
-                sortRoleMenuTree(node.getChildren());
+        for (AppMenuTreeNode child : children) {
+            if (!child.isGranted()) {
+                return false;
             }
         }
+        return true;
+    }
+
+    private AppMenuTreeNode toModuleNode(AppMenuResource menu, String moduleName, Long id) {
+        return new AppMenuTreeNode(id, menu.getAppCode(), moduleName, moduleName, null, null, null, 0, 1);
+    }
+
+    private Comparator<AppMenuTreeNode> menuComparator() {
+        return Comparator
+                .comparing((AppMenuTreeNode node) -> node.getSort() == null ? 0 : node.getSort())
+                .thenComparing(node -> node.getId() == null ? 0L : node.getId());
+    }
+
+    private AppMenuTreeNode toMenuTreeNode(AppMenuResource menu) {
+        return new AppMenuTreeNode(menu.getId(), menu.getAppCode(), menu.getMenuCode(), menu.getMenuModule(),
+                menu.getMenuName(), menu.getMenuPath(), menu.getMenuType(), menu.getSort(), menu.getStatus());
     }
 
     private boolean refreshGrantedFromChildren(List<AppMenuTreeNode> nodes) {
