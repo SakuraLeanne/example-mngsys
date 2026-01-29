@@ -45,17 +45,19 @@ public class AdminUserController {
      *
      * @param page    页码
      * @param size    页大小
-     * @param keyword 关键词
+     * @param username 用户名
+     * @param mobile  手机号
      * @param status  用户状态
      * @return 用户分页数据
      */
     @GetMapping
     public ApiResponse<PageResponse<PortalUser>> listUsers(@RequestParam(defaultValue = "1") int page,
                                                            @RequestParam(defaultValue = "20") int size,
-                                                           @RequestParam(required = false) String keyword,
+                                                           @RequestParam(required = false) String username,
+                                                           @RequestParam(required = false) String mobile,
                                                            @RequestParam(required = false) Integer status) {
         String requesterId = RequestContext.getUserId();
-        Page<PortalUser> result = portalAdminUserService.listUsers(page, size, keyword, status, requesterId);
+        Page<PortalUser> result = portalAdminUserService.listUsers(page, size, username, mobile, status, requesterId);
         PageResponse<PortalUser> response = new PageResponse<>(
                 result.getTotal(),
                 result.getCurrent(),
