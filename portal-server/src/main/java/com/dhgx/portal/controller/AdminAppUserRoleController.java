@@ -1,10 +1,13 @@
 package com.dhgx.portal.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dhgx.common.api.ActionResponse;
+import com.dhgx.common.api.PageResponse;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.common.context.RequestContext;
 import com.dhgx.portal.entity.AppRole;
+import com.dhgx.portal.entity.PortalUser;
 import com.dhgx.portal.security.AdminRequired;
 import com.dhgx.portal.service.PortalAdminAppUserRoleService;
 import org.springframework.validation.annotation.Validated;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
@@ -93,6 +97,74 @@ public class AdminAppUserRoleController {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
         return ApiResponse.success(new ActionResponse(true));
+    }
+
+    /**
+     * 根据角色 ID 分页查询已授权用户列表。
+     *
+     * @param roleId   角色 ID
+     * @param page     页码
+     * @param size     页大小
+     * @param username 用户名/真实姓名
+     * @param mobile   手机号
+     * @return 已授权用户分页数据
+     */
+    @GetMapping("/granted-users")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
+    public ApiResponse<PageResponse<PortalUser>> listGrantedUsers(@PathVariable String userId,
+                                                                  @RequestParam Long roleId,
+                                                                  @RequestParam(defaultValue = "1") int page,
+                                                                  @RequestParam(defaultValue = "20") int size,
+                                                                  @RequestParam(required = false) String username,
+                                                                  @RequestParam(required = false) String mobile) {
+        String operatorId = RequestContext.getUserId();
+        PortalAdminAppUserRoleService.Result<Page<PortalUser>> result =
+                portalAdminAppUserRoleService.listRoleGrantedUsers(roleId, page, size, username, mobile, operatorId);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode(), result.getMessage());
+        }
+        Page<PortalUser> pageResult = result.getData();
+        PageResponse<PortalUser> response = new PageResponse<>(
+                pageResult.getTotal(),
+                pageResult.getCurrent(),
+                pageResult.getRecords().size(),
+                pageResult.getRecords()
+        );
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 根据角色 ID 分页查询未授权用户列表。
+     *
+     * @param roleId   角色 ID
+     * @param page     页码
+     * @param size     页大小
+     * @param username 用户名/真实姓名
+     * @param mobile   手机号
+     * @return 未授权用户分页数据
+     */
+    @GetMapping("/ungranted-users")
+    @AdminRequired(scope = "app", allowAnyAppAdmin = true)
+    public ApiResponse<PageResponse<PortalUser>> listUngrantedUsers(@PathVariable String userId,
+                                                                    @RequestParam Long roleId,
+                                                                    @RequestParam(defaultValue = "1") int page,
+                                                                    @RequestParam(defaultValue = "20") int size,
+                                                                    @RequestParam(required = false) String username,
+                                                                    @RequestParam(required = false) String mobile) {
+        String operatorId = RequestContext.getUserId();
+        PortalAdminAppUserRoleService.Result<Page<PortalUser>> result =
+                portalAdminAppUserRoleService.listRoleUngrantedUsers(roleId, page, size, username, mobile, operatorId);
+        if (!result.isSuccess()) {
+            return ApiResponse.failure(result.getErrorCode(), result.getMessage());
+        }
+        Page<PortalUser> pageResult = result.getData();
+        PageResponse<PortalUser> response = new PageResponse<>(
+                pageResult.getTotal(),
+                pageResult.getCurrent(),
+                pageResult.getRecords().size(),
+                pageResult.getRecords()
+        );
+        return ApiResponse.success(response);
     }
 
     /**
