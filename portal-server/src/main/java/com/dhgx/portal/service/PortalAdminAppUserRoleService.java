@@ -1,11 +1,13 @@
 package com.dhgx.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dhgx.api.notify.core.EventNotifyPublisher;
 import com.dhgx.common.redis.RedisKeys;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.AppRole;
 import com.dhgx.portal.entity.AppUserRole;
+import com.dhgx.portal.entity.PortalUser;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,17 +36,20 @@ public class PortalAdminAppUserRoleService {
 
     private final AppUserRoleService appUserRoleService;
     private final AppRoleService appRoleService;
+    private final PortalUserService portalUserService;
     private final StringRedisTemplate stringRedisTemplate;
     private final EventNotifyPublisher eventNotifyPublisher;
     private final RolePermissionService rolePermissionService;
 
     public PortalAdminAppUserRoleService(AppUserRoleService appUserRoleService,
                                          AppRoleService appRoleService,
+                                         PortalUserService portalUserService,
                                          StringRedisTemplate stringRedisTemplate,
                                          EventNotifyPublisher eventNotifyPublisher,
                                          RolePermissionService rolePermissionService) {
         this.appUserRoleService = appUserRoleService;
         this.appRoleService = appRoleService;
+        this.portalUserService = portalUserService;
         this.stringRedisTemplate = stringRedisTemplate;
         this.eventNotifyPublisher = eventNotifyPublisher;
         this.rolePermissionService = rolePermissionService;
@@ -141,6 +147,70 @@ public class PortalAdminAppUserRoleService {
         Long tokenVersion = bumpTokenVersion(userId);
         publishTokenVersionUpdated(userId, tokenVersion, operatorId);*/
         return Result.success(null);
+    }
+
+    public Result<Page<PortalUser>> listRoleGrantedUsers(Long roleId, int page, int size, String username,
+                                                         String mobile, String operatorId) {
+        return listRoleUsers(roleId, page, size, username, mobile, operatorId, true);
+    }
+
+    public Result<Page<PortalUser>> listRoleUngrantedUsers(Long roleId, int page, int size, String username,
+                                                           String mobile, String operatorId) {
+        return listRoleUsers(roleId, page, size, username, mobile, operatorId, false);
+    }
+
+    private Result<Page<PortalUser>> listRoleUsers(Long roleId, int page, int size, String username, String mobile,
+                                                   String operatorId, boolean granted) {
+        if (roleId == null || roleId <= 0) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
+        }
+        if (!StringUtils.hasText(operatorId)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        Set<String> adminAppCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
+        if (CollectionUtils.isEmpty(adminAppCodes)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        AppRole role = appRoleService.getById(roleId);
+        if (role == null) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
+        }
+        if (!adminAppCodes.contains(role.getAppCode())) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        List<AppUserRole> relations = appUserRoleService.list(new LambdaQueryWrapper<AppUserRole>()
+                .eq(AppUserRole::getRoleId, roleId));
+        List<String> userIds = relations.stream()
+                .map(AppUserRole::getUserId)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+        int pageIndex = Math.max(page, 1);
+        int pageSize = Math.max(size, 1);
+        Page<PortalUser> query = new Page<>(pageIndex, pageSize);
+        if (granted && userIds.isEmpty()) {
+            query.setTotal(0);
+            query.setRecords(Collections.emptyList());
+            return Result.success(query);
+        }
+        LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(username)) {
+            wrapper.and(inner -> inner.like(PortalUser::getUsername, username)
+                    .or()
+                    .like(PortalUser::getRealName, username));
+        }
+        if (StringUtils.hasText(mobile)) {
+            wrapper.like(PortalUser::getMobile, mobile);
+        }
+        wrapper.eq(PortalUser::getStatus, 1);
+        if (granted) {
+            wrapper.in(PortalUser::getId, userIds);
+        } else if (!userIds.isEmpty()) {
+            wrapper.notIn(PortalUser::getId, userIds);
+        }
+        wrapper.orderByDesc(PortalUser::getCreateTime);
+        Page<PortalUser> result = portalUserService.page(query, wrapper);
+        return Result.success(result);
     }
 
     private String buildMenuCacheKey(String userId) {
