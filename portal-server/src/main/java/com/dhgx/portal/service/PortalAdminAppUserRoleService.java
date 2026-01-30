@@ -224,6 +224,9 @@ public class PortalAdminAppUserRoleService {
         if (role == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
         }
+        if (role.getStatus() == null || role.getStatus() != 1) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色已停用，无法操作");
+        }
         if (!adminAppCodes.contains(role.getAppCode())) {
             return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
@@ -276,6 +279,9 @@ public class PortalAdminAppUserRoleService {
         AppRole role = appRoleService.getById(roleId);
         if (role == null) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
+        }
+        if (role.getStatus() == null || role.getStatus() != 1) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色已停用，无法操作");
         }
         if (!adminAppCodes.contains(role.getAppCode())) {
             return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
