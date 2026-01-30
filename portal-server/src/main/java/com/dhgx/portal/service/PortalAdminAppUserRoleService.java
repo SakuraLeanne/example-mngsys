@@ -159,6 +159,55 @@ public class PortalAdminAppUserRoleService {
         return listRoleUsers(roleId, page, size, username, mobile, operatorId, false);
     }
 
+    @Transactional
+    public Result<Void> grantUsersToRole(Long roleId, List<String> userIds, String operatorId) {
+        Result<AppRole> roleResult = validateRoleOperation(roleId, operatorId);
+        if (!roleResult.isSuccess()) {
+            return Result.failure(roleResult.getErrorCode(), roleResult.getMessage());
+        }
+        List<String> normalized = normalizeUserIds(userIds);
+        if (normalized.isEmpty()) {
+            return Result.success(null);
+        }
+        List<AppUserRole> existing = appUserRoleService.list(new LambdaQueryWrapper<AppUserRole>()
+                .eq(AppUserRole::getRoleId, roleId)
+                .in(AppUserRole::getUserId, normalized));
+        Set<String> existingUserIds = existing.stream()
+                .map(AppUserRole::getUserId)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
+        List<AppUserRole> toSave = normalized.stream()
+                .filter(userId -> !existingUserIds.contains(userId))
+                .map(userId -> {
+                    AppUserRole relation = new AppUserRole();
+                    relation.setRoleId(roleId);
+                    relation.setUserId(userId);
+                    relation.setCreateTime(LocalDateTime.now());
+                    return relation;
+                })
+                .collect(Collectors.toList());
+        if (!toSave.isEmpty()) {
+            appUserRoleService.saveBatch(toSave);
+        }
+        return Result.success(null);
+    }
+
+    @Transactional
+    public Result<Void> revokeUsersFromRole(Long roleId, List<String> userIds, String operatorId) {
+        Result<AppRole> roleResult = validateRoleOperation(roleId, operatorId);
+        if (!roleResult.isSuccess()) {
+            return Result.failure(roleResult.getErrorCode(), roleResult.getMessage());
+        }
+        List<String> normalized = normalizeUserIds(userIds);
+        if (normalized.isEmpty()) {
+            return Result.success(null);
+        }
+        appUserRoleService.remove(new LambdaQueryWrapper<AppUserRole>()
+                .eq(AppUserRole::getRoleId, roleId)
+                .in(AppUserRole::getUserId, normalized));
+        return Result.success(null);
+    }
+
     private Result<Page<PortalUser>> listRoleUsers(Long roleId, int page, int size, String username, String mobile,
                                                    String operatorId, boolean granted) {
         if (roleId == null || roleId <= 0) {
@@ -211,6 +260,37 @@ public class PortalAdminAppUserRoleService {
         wrapper.orderByDesc(PortalUser::getCreateTime);
         Page<PortalUser> result = portalUserService.page(query, wrapper);
         return Result.success(result);
+    }
+
+    private Result<AppRole> validateRoleOperation(Long roleId, String operatorId) {
+        if (roleId == null || roleId <= 0) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色ID不能为空");
+        }
+        if (!StringUtils.hasText(operatorId)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        Set<String> adminAppCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
+        if (CollectionUtils.isEmpty(adminAppCodes)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        AppRole role = appRoleService.getById(roleId);
+        if (role == null) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "角色不存在");
+        }
+        if (!adminAppCodes.contains(role.getAppCode())) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
+        return Result.success(role);
+    }
+
+    private List<String> normalizeUserIds(List<String> userIds) {
+        if (userIds == null) {
+            return new ArrayList<>();
+        }
+        return userIds.stream()
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private String buildMenuCacheKey(String userId) {
