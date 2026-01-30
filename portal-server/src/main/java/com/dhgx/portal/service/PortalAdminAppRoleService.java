@@ -276,6 +276,10 @@ public class PortalAdminAppRoleService {
         if (menus.size() != normalized.size()) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单不存在");
         }
+        boolean hasDisabled = menus.stream().anyMatch(menu -> menu.getStatus() != null && menu.getStatus() == 0);
+        if (hasDisabled) {
+            return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单已禁用");
+        }
         Set<String> appCodes = menus.stream().map(AppMenuResource::getAppCode).collect(Collectors.toSet());
         if (appCodes.size() > 1 || !appCodes.contains(appCode)) {
             return Result.failure(ErrorCode.INVALID_ARGUMENT, "菜单应用不匹配");
