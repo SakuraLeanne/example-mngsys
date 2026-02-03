@@ -57,6 +57,9 @@ public class PortalAdminAppMenuService {
 
     @Transactional
     public Result<List<AppMenuResource>> syncMenus(boolean enabledSync, String operatorId) {
+        if (enabledSync && !rolePermissionService.isAppAdmin(operatorId, DEFAULT_APP_CODE)) {
+            return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
+        }
         if (enabledSync) {
             syncFromOmService();
         }
