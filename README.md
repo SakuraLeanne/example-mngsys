@@ -96,6 +96,62 @@ String plainPassword = cryptoService.decrypt(encryptedPassword, "admin123456");
 - 根目录新增聚合 `pom.xml`，统一管理各模块版本，可直接执行 `mvn -DskipTests package` 进行多模块构建。
 - 通用能力已抽取为 `common-utils` 模块，后续可在其他服务中以 Maven 依赖方式复用。
 
+## 服务脚本执行说明
+
+> 适用于在服务器 `/opt/dhgx/dhgx-portal` 目录下部署 `gateway-server`、`auth-server`、`portal-server` 的场景。
+
+### 目录约定
+
+```
+/opt/dhgx/dhgx-portal/
+├─ gateway-server/
+│  ├─ gateway-server.jar
+│  └─ bootstrap.yml
+├─ auth-server/
+│  ├─ auth-server.jar
+│  └─ bootstrap.yml
+├─ portal-server/
+│  ├─ portal-server.jar
+│  └─ bootstrap.yml
+├─ logs/
+└─ run/
+```
+
+### 脚本说明
+
+- `gateway-server.sh`、`auth-server.sh`、`portal-server.sh` 支持 `start|stop|restart`。
+- 启动时通过 `-Dspring.config.location=/opt/dhgx/dhgx-portal/<service>/bootstrap.yml` 指定配置文件。
+- 日志输出到 `/opt/dhgx/dhgx-portal/logs/<service>.log`，PID 写入 `/opt/dhgx/dhgx-portal/run/<service>.pid`。
+- 若服务器安装 `logrotate`，脚本会自动进行日志切割（单文件 5MB）并保留最近 5 天。
+
+### 使用示例
+
+1. 赋予脚本执行权限（首次执行）
+   ```bash
+   chmod +x gateway-server.sh auth-server.sh portal-server.sh
+   ```
+
+2. 启动服务
+   ```bash
+   ./gateway-server.sh start
+   ./auth-server.sh start
+   ./portal-server.sh start
+   ```
+
+3. 停止服务
+   ```bash
+   ./gateway-server.sh stop
+   ./auth-server.sh stop
+   ./portal-server.sh stop
+   ```
+
+4. 重启服务
+   ```bash
+   ./gateway-server.sh restart
+   ./auth-server.sh restart
+   ./portal-server.sh restart
+   ```
+
 ## 网关（gateway-server）
 
 ### Nacos 路由配置示例
