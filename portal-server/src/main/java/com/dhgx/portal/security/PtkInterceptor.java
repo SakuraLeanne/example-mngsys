@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 /**
@@ -32,6 +33,7 @@ public class PtkInterceptor implements HandlerInterceptor {
     private static final List<ScopeEntry> SCOPE_ENTRIES = Arrays.asList(
             new ScopeEntry("POST", "/portal-server/password/change", "PWD_CHANGE"),
             new ScopeEntry("GET", "/portal-server/profile", "PROFILE_EDIT"),
+            new ScopeEntry("GET", "/portal-server/profile", "PWD_CHANGE"),
             new ScopeEntry("POST", "/portal-server/profile", "PROFILE_EDIT")
     );
 
@@ -48,8 +50,8 @@ public class PtkInterceptor implements HandlerInterceptor {
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }
-        ScopeEntry scopeEntry = matchScopeEntry(request);
-        if (scopeEntry == null) {
+        List<ScopeEntry> scopeEntries = matchScopeEntries(request);
+        if (scopeEntries.isEmpty()) {
             return true;
         }
         if (RequestContext.getUserId() != null) {
@@ -70,7 +72,9 @@ public class PtkInterceptor implements HandlerInterceptor {
             writeFailure(response, ErrorCode.PTK_INVALID);
             return false;
         }
-        if (!scopeEntry.matchesScope(ptkPayload.getScope())) {
+        boolean scopeMatched = scopeEntries.stream()
+                .anyMatch(entry -> entry.matchesScope(ptkPayload.getScope()));
+        if (!scopeMatched) {
             writeFailure(response, ErrorCode.PTK_SCOPE_MISMATCH);
             return false;
         }
@@ -81,10 +85,10 @@ public class PtkInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private ScopeEntry matchScopeEntry(HttpServletRequest request) {
+    private List<ScopeEntry> matchScopeEntries(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
-        return SCOPE_ENTRIES.stream().filter(entry -> entry.matches(method, path)).findFirst().orElse(null);
+        return SCOPE_ENTRIES.stream().filter(entry -> entry.matches(method, path)).collect(Collectors.toList());
     }
 
     private String resolvePtk(HttpServletRequest request) {
