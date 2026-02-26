@@ -41,13 +41,13 @@ public class PortalAdminAppRoleService {
         this.rolePermissionService = rolePermissionService;
     }
 
-    public Result<List<AppRole>> listRoles(String appCode, Integer status, String operatorId) {
+    public Result<List<AppRole>> listRoles(String appCode, String roleName, String roleCode, Integer status, String operatorId) {
         LambdaQueryWrapper<AppRole> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(appCode)) {
             if (rolePermissionService.isAppAdmin(operatorId, appCode)) {
                 wrapper.eq(AppRole::getAppCode, appCode);
             } else {
-                return Result.success(listUserRolesByIds(operatorId, status, appCode));
+                return Result.success(listUserRolesByIds(operatorId, roleName, roleCode, status, appCode));
             }
         } else if (rolePermissionService.isAnyAppAdmin(operatorId)) {
             Set<String> appCodes = rolePermissionService.listAppAdminAppCodes(operatorId);
@@ -57,7 +57,13 @@ public class PortalAdminAppRoleService {
                 return Result.success(new ArrayList<>());
             }
         } else {
-            return Result.success(listUserRolesByIds(operatorId, status, null));
+            return Result.success(listUserRolesByIds(operatorId, roleName, roleCode, status, null));
+        }
+        if (StringUtils.hasText(roleName)) {
+            wrapper.like(AppRole::getRoleName, roleName);
+        }
+        if (StringUtils.hasText(roleCode)) {
+            wrapper.like(AppRole::getRoleCode, roleCode);
         }
         if (status != null) {
             wrapper.eq(AppRole::getStatus, status);
@@ -248,7 +254,8 @@ public class PortalAdminAppRoleService {
         return appRoleService.count(wrapper) > 0;
     }
 
-    private List<AppRole> listUserRolesByIds(String operatorId, Integer status, String appCode) {
+    private List<AppRole> listUserRolesByIds(String operatorId, String roleName, String roleCode, Integer status,
+                                             String appCode) {
         Set<Long> roleIds = rolePermissionService.listUserRoleIds(operatorId);
         if (CollectionUtils.isEmpty(roleIds)) {
             return new ArrayList<>();
@@ -257,6 +264,12 @@ public class PortalAdminAppRoleService {
         wrapper.in(AppRole::getId, roleIds);
         if (StringUtils.hasText(appCode)) {
             wrapper.eq(AppRole::getAppCode, appCode);
+        }
+        if (StringUtils.hasText(roleName)) {
+            wrapper.like(AppRole::getRoleName, roleName);
+        }
+        if (StringUtils.hasText(roleCode)) {
+            wrapper.like(AppRole::getRoleCode, roleCode);
         }
         if (status != null) {
             wrapper.eq(AppRole::getStatus, status);

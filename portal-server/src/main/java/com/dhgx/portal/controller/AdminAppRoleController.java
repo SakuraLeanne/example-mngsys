@@ -51,15 +51,19 @@ public class AdminAppRoleController {
      * 查询角色列表。
      *
      * @param appCode 应用编码，可选
+     * @param roleName 角色名称，可选
+     * @param roleCode 角色编码，可选
      * @param status  状态，可选
      * @return 角色概要列表
      */
     @GetMapping
     public ApiResponse<List<RoleSummary>> list(@RequestParam(required = false) String appCode,
+                                               @RequestParam(required = false) String roleName,
+                                               @RequestParam(required = false) String roleCode,
                                                @RequestParam(required = false) Integer status) {
         String operatorId = RequestContext.getUserId();
         PortalAdminAppRoleService.Result<List<AppRole>> result =
-                portalAdminAppRoleService.listRoles(appCode, status, operatorId);
+                portalAdminAppRoleService.listRoles(appCode, roleName, roleCode, status, operatorId);
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode(), result.getMessage());
         }
