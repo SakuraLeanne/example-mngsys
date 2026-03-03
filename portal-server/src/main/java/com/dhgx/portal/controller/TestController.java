@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,8 +36,8 @@ public class TestController {
      * @return 跳转链接
      */
     @GetMapping("/pwd")
-    public ApiResponse<Map<String, String>> createPwdTicket(@RequestParam("userId") long userId,
-                                                            @RequestParam("returnUrl") String returnUrl) {
+    public ApiResponse<Map<String, String>> createPwdTicket(@RequestParam("userId") @Min(value = 1, message = "必须大于0") long userId,
+                                                            @RequestParam("returnUrl") @NotBlank(message = "不能为空") String returnUrl) {
         String jumpUrl = portalActionTicketUtil.createPwdChangeJumpUrl(userId, returnUrl);
         Map<String, String> data = new HashMap<>();
         data.put("jumpUrl", jumpUrl);
@@ -49,8 +52,8 @@ public class TestController {
      * @return 跳转链接
      */
     @GetMapping("/profile")
-    public ApiResponse<Map<String, String>> createProfileTicket(@RequestParam("userId") long userId,
-                                                                @RequestParam("returnUrl") String returnUrl) {
+    public ApiResponse<Map<String, String>> createProfileTicket(@RequestParam("userId") @Min(value = 1, message = "必须大于0") long userId,
+                                                                @RequestParam("returnUrl") @NotBlank(message = "不能为空") String returnUrl) {
         String jumpUrl = portalActionTicketUtil.createProfileEditJumpUrl(userId, returnUrl);
         Map<String, String> data = new HashMap<>();
         data.put("jumpUrl", jumpUrl);
