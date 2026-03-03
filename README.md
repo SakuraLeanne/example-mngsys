@@ -194,12 +194,15 @@
 | --- | --- | --- |
 | `POST /portal/api/sso/jump-url` | `100100` | 未登录无法签发 ticket |
 |  | `100301` | `targetUrl` 不在白名单或格式非法 |
-| `POST /portal/api/sso/ticket/verify` | `400210` | ticket 无效/过期/参数缺失 |
+| `POST /portal/api/sso/ticket/verify` | `400210` | ticket 无效/过期、参数缺失，或票据未携带可用会话信息（如 `tokenValue` 缺失） |
 |  | `400211` | `systemCode` 与票据绑定系统不一致 |
 |  | `400212` | `redirectUri` 与票据绑定地址不一致 |
-|  | `400213` | `state` 校验失败 |
+|  | `400213` | `state` 校验失败（防重放状态不一致） |
 |  | `400214` | 触发频率限制 |
-|  | `400215` | Redis 脚本执行异常、票据载荷异常、用户不存在等系统级问题 |
+|  | `400215` | Redis 脚本执行异常、票据载荷解析失败、用户不存在等系统级问题 |
+| `POST /portal/api/sso/ticket/logout` | `400210` | `gSessionId`/`logoutToken` 无效、缺失，或全局会话不存在 |
+|  | `400211` | `systemCode` 与该 `gSessionId` 绑定系统不一致 |
+|  | `400215` | 全局会话映射数据损坏等系统级问题 |
 
 ### 6) 门户后台管理接口（admin）
 

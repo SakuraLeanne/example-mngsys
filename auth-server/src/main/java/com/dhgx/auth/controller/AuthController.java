@@ -20,6 +20,7 @@ import com.dhgx.common.feign.dto.AuthSessionResponse;
 import com.dhgx.common.feign.dto.AuthSmsScene;
 import com.dhgx.common.feign.dto.AuthSmsSendRequest;
 import com.dhgx.common.feign.dto.AuthSmsVerifyRequest;
+import com.dhgx.common.feign.dto.AuthTokenLogoutRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
@@ -253,6 +254,27 @@ public class AuthController {
                     .body(ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "内部鉴权失败"));
         }
         StpUtil.logout(request.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+
+
+    /**
+     * 按 token 精确注销会话，仅允许内部服务凭借内部 Token 调用。
+     *
+     * @param internalToken 内部鉴权 Token
+     * @param request       请求体，包含 tokenValue
+     * @return 注销结果
+     */
+    @PostMapping("/session/logout-by-token")
+    public ResponseEntity<ApiResponse<Void>> logoutByToken(
+            @RequestHeader(value = "X-Internal-Token", required = false) String internalToken,
+            @Valid @RequestBody AuthTokenLogoutRequest request) {
+        if (internalToken == null || !internalToken.equals(authProperties.getInternalToken())) {
+            return ResponseEntity.status(ErrorCode.UNAUTHENTICATED.getHttpStatus())
+                    .body(ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "内部鉴权失败"));
+        }
+        StpUtil.logoutByTokenValue(request.getTokenValue());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

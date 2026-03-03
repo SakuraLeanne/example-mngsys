@@ -362,12 +362,17 @@ public class PortalApiController {
      * @return 跳转链接响应
      */
     @PostMapping("/sso/jump-url")
-    public ApiResponse<PortalSsoJumpResponse> ssoJumpUrl(@Valid @RequestBody PortalSsoJumpRequest request) {
+    public ApiResponse<PortalSsoJumpResponse> ssoJumpUrl(@Valid @RequestBody PortalSsoJumpRequest request,
+                                                       HttpServletRequest httpServletRequest) {
         String userId = RequestContext.getUserId();
         if (userId == null) {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED);
         }
-        String jumpUrl = portalAuthService.createSsoJumpUrl(userId, request.getSystemCode(), request.getTargetUrl());
+        String jumpUrl = portalAuthService.createSsoJumpUrl(
+                userId,
+                request.getSystemCode(),
+                request.getTargetUrl(),
+                resolveSaToken(httpServletRequest));
         return ApiResponse.success(new PortalSsoJumpResponse(jumpUrl));
     }
 

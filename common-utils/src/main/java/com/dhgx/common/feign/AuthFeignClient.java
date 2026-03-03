@@ -5,6 +5,7 @@ import com.dhgx.common.feign.dto.AuthKickRequest;
 import com.dhgx.common.feign.dto.AuthLoginRequest;
 import com.dhgx.common.feign.dto.AuthSmsSendRequest;
 import com.dhgx.common.feign.dto.AuthSmsVerifyRequest;
+import com.dhgx.common.feign.dto.AuthTokenLogoutRequest;
 import feign.Response;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -104,4 +105,16 @@ public interface AuthFeignClient {
     @PostMapping("/session/kick")
     Response kick(@RequestHeader("X-Internal-Token") String internalToken,
                   @RequestBody AuthKickRequest request);
+
+    /**
+     * 按 token 注销会话。
+     *
+     * @param internalToken 内部鉴权 Token
+     * @param request       请求体
+     * @return 原始响应
+     */
+    @PostMapping("/session/logout-by-token")
+    Response logoutByToken(@RequestHeader("X-Internal-Token") String internalToken,
+                           @RequestBody AuthTokenLogoutRequest request);
+
 }

@@ -1,6 +1,7 @@
 package com.dhgx.portal.controller;
 
-import com.dhgx.common.portal.dto.PortalLoginResponse;
+import com.dhgx.common.portal.dto.PortalSsoLogoutRequest;
+import com.dhgx.common.portal.dto.PortalSsoTicketLoginResponse;
 import com.dhgx.common.portal.dto.PortalSsoTicketVerifyRequest;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
@@ -28,7 +29,7 @@ public class PortalSsoTicketController {
     }
 
     @PostMapping("/verify")
-    public ApiResponse<PortalLoginResponse> verify(@Valid @RequestBody PortalSsoTicketVerifyRequest request) {
+    public ApiResponse<PortalSsoTicketLoginResponse> verify(@Valid @RequestBody PortalSsoTicketVerifyRequest request) {
         PortalSsoTicketService.VerifyResult result = portalSsoTicketService.verifyAndConsume(
                 request.getSystemCode(),
                 request.getTicket(),
@@ -40,4 +41,18 @@ public class PortalSsoTicketController {
         }
         return ApiResponse.success(result.getLoginResponse());
     }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Valid @RequestBody PortalSsoLogoutRequest request) {
+        PortalSsoTicketService.VerifyResult result = portalSsoTicketService.logoutByGlobalSession(
+                request.getSystemCode(),
+                request.getGSessionId(),
+                request.getLogoutToken());
+        if (!result.isSuccess()) {
+            ErrorCode errorCode = result.getErrorCode() == null ? ErrorCode.SSO_TICKET_SYSTEM_ERROR : result.getErrorCode();
+            return ApiResponse.failure(errorCode);
+        }
+        return ApiResponse.success(null);
+    }
+
 }
