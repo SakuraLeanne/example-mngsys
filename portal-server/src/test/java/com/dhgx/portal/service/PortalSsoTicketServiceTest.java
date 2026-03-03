@@ -3,6 +3,7 @@ package com.dhgx.portal.service;
 import com.dhgx.common.portal.dto.PortalSsoTicketLoginResponse;
 import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.common.SsoTicketUtils;
+import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.PortalUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -164,6 +165,31 @@ class PortalSsoTicketServiceTest {
         assertThat(stringRedisTemplate.hasKey("PORTAL:GSESSION:" + loginResponse.getGSessionId())).isFalse();
         assertThat(stringRedisTemplate.hasKey("PORTAL:LOGOUT_TOKEN:" + loginResponse.getGSessionId())).isFalse();
         Mockito.verify(authClient).logoutByTokenValue("satoken-u3");
+    }
+
+
+    @Test
+    void shouldKeepMappingsWhenAuthLogoutFailed() {
+        String ticket = "logoutfailed123456";
+        writeTicket(ticket, "u-4", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u4");
+        PortalUser user = createUser("u-4");
+        given(portalUserService.getById("u-4")).willReturn(user);
+        given(authClient.logoutByTokenValue("satoken-u4")).willReturn(ApiResponse.failure(ErrorCode.SSO_TICKET_SYSTEM_ERROR));
+
+        PortalSsoTicketService.VerifyResult verifyResult =
+                portalSsoTicketService.verifyAndConsume("biz-a", ticket, "https://biz-a.example.com/sso/callback");
+
+        assertThat(verifyResult.isSuccess()).isTrue();
+        PortalSsoTicketLoginResponse loginResponse = verifyResult.getLoginResponse();
+
+        PortalSsoTicketService.VerifyResult logoutResult = portalSsoTicketService.logoutByGlobalSession(
+                "biz-a", loginResponse.getGSessionId(), loginResponse.getLogoutToken());
+
+        assertThat(logoutResult.isSuccess()).isFalse();
+        assertThat(logoutResult.getErrorCode()).isEqualTo(ErrorCode.SSO_TICKET_SYSTEM_ERROR);
+        assertThat(stringRedisTemplate.hasKey("PORTAL:GSESSION:" + loginResponse.getGSessionId())).isTrue();
+        assertThat(stringRedisTemplate.hasKey("PORTAL:LOGOUT_TOKEN:" + loginResponse.getGSessionId())).isTrue();
+        Mockito.verify(authClient).logoutByTokenValue("satoken-u4");
     }
 
     @Test

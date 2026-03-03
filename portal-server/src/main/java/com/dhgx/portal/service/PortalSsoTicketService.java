@@ -3,6 +3,7 @@ package com.dhgx.portal.service;
 import com.dhgx.common.portal.dto.PortalSsoTicketLoginResponse;
 import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.common.SsoTicketUtils;
+import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.PortalUser;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -147,7 +148,12 @@ public class PortalSsoTicketService {
         if (!StringUtils.hasText(expectedHash) || !expectedHash.equals(hashToken(logoutToken))) {
             return VerifyResult.failure(ErrorCode.SSO_TICKET_INVALID);
         }
-        authClient.logoutByTokenValue(tokenValue);
+        ApiResponse<Void> logoutResponse = authClient.logoutByTokenValue(tokenValue);
+        if (logoutResponse == null || logoutResponse.getCode() != 0) {
+            log.warn("SSO global logout failed at auth-server. gSessionId={}, systemCode={}, message={}",
+                    gSessionId, systemCode, logoutResponse == null ? null : logoutResponse.getMessage());
+            return VerifyResult.failure(ErrorCode.SSO_TICKET_SYSTEM_ERROR);
+        }
         stringRedisTemplate.delete(buildGSessionKey(gSessionId));
         stringRedisTemplate.delete(buildLogoutTokenKey(gSessionId));
         return VerifyResult.logoutSuccess();
