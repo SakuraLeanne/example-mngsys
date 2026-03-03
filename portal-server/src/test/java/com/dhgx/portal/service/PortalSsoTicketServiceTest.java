@@ -72,7 +72,7 @@ class PortalSsoTicketServiceTest {
     @Test
     void shouldVerifyAndConsumeTicketOnce() {
         String ticket = "abc123ticketvalue";
-        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u1");
         PortalUser user = createUser("u-1");
         given(portalUserService.getById("u-1")).willReturn(user);
 
@@ -93,7 +93,7 @@ class PortalSsoTicketServiceTest {
     @Test
     void shouldReturnInvalidWhenExpired() throws Exception {
         String ticket = "expiredticketvalue123";
-        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u1");
         stringRedisTemplate.expire(SsoTicketUtils.buildTicketKey(ticket), 1, TimeUnit.SECONDS);
 
         Thread.sleep(1200);
@@ -107,7 +107,7 @@ class PortalSsoTicketServiceTest {
     @Test
     void shouldInvalidateOnClientMismatch() {
         String ticket = "clientmismatch12345";
-        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u1");
 
         PortalSsoTicketService.VerifyResult result =
                 portalSsoTicketService.verifyAndConsume("biz-b", ticket, "https://biz-a.example.com/sso/callback");
@@ -120,7 +120,7 @@ class PortalSsoTicketServiceTest {
     @Test
     void shouldInvalidateOnRedirectMismatch() {
         String ticket = "redirectmismatch123";
-        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u1");
 
         PortalSsoTicketService.VerifyResult result =
                 portalSsoTicketService.verifyAndConsume("biz-a", ticket, "https://biz-a.example.com/sso/other");
@@ -133,7 +133,7 @@ class PortalSsoTicketServiceTest {
     @Test
     void shouldReturnStateMismatchWithoutConsuming() {
         String ticket = "statemismatch12345";
-        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "state-value");
+        writeTicket(ticket, "u-1", "biz-a", "https://biz-a.example.com/sso/callback", "state-value", "satoken-u1");
 
         PortalSsoTicketService.VerifyResult result =
                 portalSsoTicketService.verifyAndConsume("biz-a", ticket, "https://biz-a.example.com/sso/callback", "another-state");
@@ -147,7 +147,7 @@ class PortalSsoTicketServiceTest {
     @Test
     void shouldLogoutByGlobalSession() {
         String ticket = "logoutticket123456";
-        writeTicket(ticket, "u-3", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        writeTicket(ticket, "u-3", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u3");
         PortalUser user = createUser("u-3");
         given(portalUserService.getById("u-3")).willReturn(user);
 
@@ -163,13 +163,13 @@ class PortalSsoTicketServiceTest {
         assertThat(logoutResult.isSuccess()).isTrue();
         assertThat(stringRedisTemplate.hasKey("PORTAL:GSESSION:" + loginResponse.getGSessionId())).isFalse();
         assertThat(stringRedisTemplate.hasKey("PORTAL:LOGOUT_TOKEN:" + loginResponse.getGSessionId())).isFalse();
-        Mockito.verify(authClient).kick("u-3");
+        Mockito.verify(authClient).logoutByTokenValue("satoken-u3");
     }
 
     @Test
     void shouldAllowConcurrentVerifyOnlyOnce() throws Exception {
         String ticket = "concurrentticket12345";
-        writeTicket(ticket, "u-2", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        writeTicket(ticket, "u-2", "biz-a", "https://biz-a.example.com/sso/callback", "", "satoken-u2");
         PortalUser user = createUser("u-2");
         given(portalUserService.getById("u-2")).willReturn(user);
 
@@ -197,13 +197,14 @@ class PortalSsoTicketServiceTest {
         assertThat(successCount.get()).isEqualTo(1);
     }
 
-    private void writeTicket(String ticket, String userId, String systemCode, String redirectUri, String state) {
+    private void writeTicket(String ticket, String userId, String systemCode, String redirectUri, String state, String tokenValue) {
         Map<String, String> fields = new HashMap<>();
         fields.put("userId", userId);
         fields.put("systemCode", systemCode);
         fields.put("issuedAt", String.valueOf(Instant.now().toEpochMilli()));
         fields.put("redirectUriHash", SsoTicketUtils.hashRedirectUri(redirectUri));
         fields.put("stateHash", SsoTicketUtils.hashValue(state));
+        fields.put("tokenValue", tokenValue);
         String key = SsoTicketUtils.buildTicketKey(ticket);
         stringRedisTemplate.opsForHash().putAll(key, fields);
         stringRedisTemplate.expire(key, 60, TimeUnit.SECONDS);
