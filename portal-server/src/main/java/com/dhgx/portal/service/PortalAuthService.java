@@ -112,7 +112,7 @@ public class PortalAuthService {
         String systemCode = loginRequest.getSystemCode();
         String returnUrl = loginRequest.getReturnUrl();
         if (body != null && body.getCode() == 0 && StringUtils.hasText(systemCode) && StringUtils.hasText(returnUrl)) {
-            String jumpUrl = createSsoJumpUrl(extractUserId(body.getData()), systemCode, returnUrl);
+            String jumpUrl = createSsoJumpUrl(extractUserId(body.getData()), systemCode, returnUrl, extractSaToken(body.getData()));
             result.setJumpUrl(jumpUrl);
         } else if (StringUtils.hasText(systemCode) ^ StringUtils.hasText(returnUrl)) {
             throw new IllegalArgumentException("systemCode 与 returnUrl 必须同时提供");
@@ -131,9 +131,16 @@ public class PortalAuthService {
      * 创建单点登录跳转地址并写入 Ticket 缓存。
      */
     public String createSsoJumpUrl(String userId, String systemCode, String targetUrl) {
+        return createSsoJumpUrl(userId, systemCode, targetUrl, null);
+    }
+
+    public String createSsoJumpUrl(String userId, String systemCode, String targetUrl, String tokenValue) {
         validateReturnUrl(targetUrl);
         if (userId == null) {
             throw new IllegalArgumentException("登录状态已失效，请重新登录");
+        }
+        if (!StringUtils.hasText(tokenValue)) {
+            throw new IllegalArgumentException("登录凭证缺失，请重新登录");
         }
         String ticket = UUID.randomUUID().toString().replace("-", "");
         Instant issuedAt = Instant.now();
@@ -146,6 +153,7 @@ public class PortalAuthService {
         payload.put("expireAt", String.valueOf(expireAt.toEpochMilli()));
         payload.put("redirectUriHash", SsoTicketUtils.hashRedirectUri(targetUrl));
         payload.put("stateHash", "");
+        payload.put("tokenValue", tokenValue);
         String key = buildTicketKey(ticket);
         stringRedisTemplate.opsForHash().putAll(key, payload);
         stringRedisTemplate.expire(key, ttlSeconds, TimeUnit.SECONDS);
@@ -197,6 +205,21 @@ public class PortalAuthService {
      */
     private String buildTicketKey(String ticket) {
         return SsoTicketUtils.buildTicketKey(ticket);
+    }
+
+
+    private String extractSaToken(Object data) {
+        if (data == null) {
+            return null;
+        }
+        if (data instanceof AuthLoginResponse) {
+            return ((AuthLoginResponse) data).getSatoken();
+        }
+        if (data instanceof Map) {
+            Object value = ((Map<?, ?>) data).get("satoken");
+            return value == null ? null : String.valueOf(value);
+        }
+        return null;
     }
 
     private long normalizeTicketTtlSeconds(long ttlSeconds) {
