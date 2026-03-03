@@ -185,6 +185,8 @@
 |  | `200111` | ticket 过期 |
 |  | `200112` | ticket 已被消费（重放） |
 | `POST /portal/api/action/profile/enter` | 同上 | 与密码动作入口一致 |
+| `GET /test/action-ticket/pwd` | `100300` / `100301` / `100404` / `300100` | `userId<=0`、`returnUrl` 为空等参数校验失败；回跳地址不在白名单；用户不存在或已禁用 |
+| `GET /test/action-ticket/profile` | `100300` / `100301` / `100404` / `300100` | `userId<=0`、`returnUrl` 为空等参数校验失败；回跳地址不在白名单；用户不存在或已禁用 |
 
 ### 5) 门户 SSO 接口（portal-server）
 
