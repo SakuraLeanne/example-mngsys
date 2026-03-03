@@ -96,7 +96,9 @@ public class PortalSsoTicketService {
         String payloadJson = result.size() > 2 ? String.valueOf(result.get(2)) : "";
         Map<String, Object> payload = parsePayload(payloadJson);
         String userId = payload == null ? null : String.valueOf(payload.get("userId"));
-        if (!StringUtils.hasText(userId) || "null".equalsIgnoreCase(userId)) {
+        String tokenValue = payload == null ? null : String.valueOf(payload.get("tokenValue"));
+        if (!StringUtils.hasText(userId) || "null".equalsIgnoreCase(userId)
+                || !StringUtils.hasText(tokenValue) || "null".equalsIgnoreCase(tokenValue)) {
             log.warn("SSO ticket payload missing userId. ticket={}", SsoTicketUtils.maskTicket(ticket));
             return VerifyResult.failure(ErrorCode.SSO_TICKET_SYSTEM_ERROR);
         }
@@ -108,7 +110,7 @@ public class PortalSsoTicketService {
         String gSessionId = buildGSessionId();
         String logoutToken = buildLogoutToken();
         long ttlSeconds = resolveGlobalSessionTtlSeconds();
-        writeGlobalSessionMapping(gSessionId, user.getId(), systemCode, logoutToken, ttlSeconds);
+        writeGlobalSessionMapping(gSessionId, tokenValue, systemCode, logoutToken, ttlSeconds);
         String expireAt = LocalDateTime.now().plusSeconds(ttlSeconds).format(EXPIRE_TIME_FORMATTER);
 
         PortalSsoTicketLoginResponse response = new PortalSsoTicketLoginResponse(
@@ -136,7 +138,7 @@ public class PortalSsoTicketService {
         if (values.length < 2) {
             return VerifyResult.failure(ErrorCode.SSO_TICKET_SYSTEM_ERROR);
         }
-        String loginId = values[0];
+        String tokenValue = values[0];
         String expectedSystemCode = values[1];
         if (!systemCode.equals(expectedSystemCode)) {
             return VerifyResult.failure(ErrorCode.SSO_TICKET_CLIENT_MISMATCH);
@@ -145,7 +147,7 @@ public class PortalSsoTicketService {
         if (!StringUtils.hasText(expectedHash) || !expectedHash.equals(hashToken(logoutToken))) {
             return VerifyResult.failure(ErrorCode.SSO_TICKET_INVALID);
         }
-        authClient.kick(loginId);
+        authClient.logoutByTokenValue(tokenValue);
         stringRedisTemplate.delete(buildGSessionKey(gSessionId));
         stringRedisTemplate.delete(buildLogoutTokenKey(gSessionId));
         return VerifyResult.logoutSuccess();
@@ -191,11 +193,11 @@ public class PortalSsoTicketService {
     }
 
     private void writeGlobalSessionMapping(String gSessionId,
-                                           String loginId,
+                                           String tokenValue,
                                            String systemCode,
                                            String logoutToken,
                                            long ttlSeconds) {
-        String mappingValue = loginId + "|" + systemCode;
+        String mappingValue = tokenValue + "|" + systemCode;
         stringRedisTemplate.opsForValue().set(buildGSessionKey(gSessionId), mappingValue, ttlSeconds, TimeUnit.SECONDS);
         stringRedisTemplate.opsForValue().set(buildLogoutTokenKey(gSessionId), hashToken(logoutToken), ttlSeconds, TimeUnit.SECONDS);
     }
@@ -285,8 +287,9 @@ public class PortalSsoTicketService {
                 + "end\n"
                 + "local userId = redis.call('HGET', key, 'userId')\n"
                 + "local issuedAt = redis.call('HGET', key, 'issuedAt')\n"
+                + "local tokenValue = redis.call('HGET', key, 'tokenValue')\n"
                 + "redis.call('DEL', key)\n"
-                + "return {1,'OK', cjson.encode({userId=userId, systemCode=systemCode, issuedAt=issuedAt})}\n";
+                + "return {1,'OK', cjson.encode({userId=userId, systemCode=systemCode, issuedAt=issuedAt, tokenValue=tokenValue})}\n";
         DefaultRedisScript<List> redisScript = new DefaultRedisScript<>();
         redisScript.setResultType(List.class);
         redisScript.setScriptText(script);

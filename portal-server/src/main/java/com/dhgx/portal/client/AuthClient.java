@@ -9,6 +9,7 @@ import com.dhgx.common.feign.dto.AuthResetTokenResponse;
 import com.dhgx.common.feign.dto.AuthSessionResponse;
 import com.dhgx.common.feign.dto.AuthSmsSendRequest;
 import com.dhgx.common.feign.dto.AuthSmsVerifyRequest;
+import com.dhgx.common.feign.dto.AuthTokenLogoutRequest;
 import com.dhgx.portal.config.AuthClientProperties;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
@@ -120,6 +121,14 @@ public class AuthClient {
     public ApiResponse<Void> kick(String userId) {
         AuthKickRequest request = new AuthKickRequest(userId);
         return parseResponseBody(authFeignClient.kick(authClientProperties.getInternalToken(), request),
+                new TypeReference<ApiResponse<Void>>() {
+                });
+    }
+
+
+    public ApiResponse<Void> logoutByTokenValue(String tokenValue) {
+        AuthTokenLogoutRequest request = new AuthTokenLogoutRequest(tokenValue);
+        return parseResponseBody(authFeignClient.logoutByToken(authClientProperties.getInternalToken(), request),
                 new TypeReference<ApiResponse<Void>>() {
                 });
     }
