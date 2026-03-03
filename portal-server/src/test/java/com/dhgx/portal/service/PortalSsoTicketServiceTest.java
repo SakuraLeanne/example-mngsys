@@ -1,6 +1,7 @@
 package com.dhgx.portal.service;
 
-import com.dhgx.common.portal.dto.PortalLoginResponse;
+import com.dhgx.common.portal.dto.PortalSsoTicketLoginResponse;
+import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.common.SsoTicketUtils;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.PortalUser;
@@ -37,6 +38,7 @@ class PortalSsoTicketServiceTest {
     private StringRedisTemplate stringRedisTemplate;
     private PortalUserService portalUserService;
     private PortalSsoTicketService portalSsoTicketService;
+    private AuthClient authClient;
 
     @BeforeAll
     static void startRedis() throws Exception {
@@ -63,7 +65,8 @@ class PortalSsoTicketServiceTest {
         connectionFactory.afterPropertiesSet();
         stringRedisTemplate = new StringRedisTemplate(connectionFactory);
         portalUserService = Mockito.mock(PortalUserService.class);
-        portalSsoTicketService = new PortalSsoTicketService(stringRedisTemplate, portalUserService, new ObjectMapper());
+        authClient = Mockito.mock(AuthClient.class);
+        portalSsoTicketService = new PortalSsoTicketService(stringRedisTemplate, portalUserService, authClient, new ObjectMapper());
     }
 
     @Test
@@ -79,7 +82,9 @@ class PortalSsoTicketServiceTest {
                 portalSsoTicketService.verifyAndConsume("biz-a", ticket, "https://biz-a.example.com/sso/callback");
 
         assertThat(first.isSuccess()).isTrue();
-        PortalLoginResponse response = first.getLoginResponse();
+        PortalSsoTicketLoginResponse response = first.getLoginResponse();
+        assertThat(response.getGSessionId()).startsWith("G-");
+        assertThat(response.getLogoutToken()).startsWith("L-");
         assertThat(response.getUserId()).isEqualTo("u-1");
         assertThat(second.isSuccess()).isFalse();
         assertThat(second.getErrorCode()).isEqualTo(ErrorCode.SSO_TICKET_INVALID);
@@ -136,6 +141,29 @@ class PortalSsoTicketServiceTest {
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorCode()).isEqualTo(ErrorCode.SSO_TICKET_STATE_MISMATCH);
         assertThat(stringRedisTemplate.hasKey(SsoTicketUtils.buildTicketKey(ticket))).isTrue();
+    }
+
+
+    @Test
+    void shouldLogoutByGlobalSession() {
+        String ticket = "logoutticket123456";
+        writeTicket(ticket, "u-3", "biz-a", "https://biz-a.example.com/sso/callback", "");
+        PortalUser user = createUser("u-3");
+        given(portalUserService.getById("u-3")).willReturn(user);
+
+        PortalSsoTicketService.VerifyResult verifyResult =
+                portalSsoTicketService.verifyAndConsume("biz-a", ticket, "https://biz-a.example.com/sso/callback");
+
+        assertThat(verifyResult.isSuccess()).isTrue();
+        PortalSsoTicketLoginResponse loginResponse = verifyResult.getLoginResponse();
+
+        PortalSsoTicketService.VerifyResult logoutResult = portalSsoTicketService.logoutByGlobalSession(
+                "biz-a", loginResponse.getGSessionId(), loginResponse.getLogoutToken());
+
+        assertThat(logoutResult.isSuccess()).isTrue();
+        assertThat(stringRedisTemplate.hasKey("PORTAL:GSESSION:" + loginResponse.getGSessionId())).isFalse();
+        assertThat(stringRedisTemplate.hasKey("PORTAL:LOGOUT_TOKEN:" + loginResponse.getGSessionId())).isFalse();
+        Mockito.verify(authClient).kick("u-3");
     }
 
     @Test
