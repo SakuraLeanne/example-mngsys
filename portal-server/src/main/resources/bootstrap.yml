@@ -56,6 +56,17 @@ portal:
       failWindowSeconds: 900
       hashSecret: a10e76f41c41b9be634a9e0e741383389437e4a8277ee850aff293e794d59426
       caseInsensitive: true
+  sync:
+    user:
+      baseUrl: http://md.elht.com:9090
+      accountPath: /default/public/api/rest/esbmule/services/query/DH_SELECT_ZH
+      empPath: /default/public/api/rest/emp/queryByCode
+      accountUsercode: dhgxjkyh
+      accountPassword: rBZQ5*q6AV
+      empUsercode: dhgxjkyh
+      empPassword: aBZQ6@q6AV
+      pageSize: 50
+      empRequestIntervalMs: 300
 
 auth:
   internalToken: f5b5a43301af2e236e82563c31d56996e969cb5e0e01b1ea98b97437bd2428e6

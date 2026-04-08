@@ -7,16 +7,20 @@ import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.context.RequestContext;
 import com.dhgx.portal.entity.PortalUser;
 import com.dhgx.portal.security.AdminRequired;
+import com.dhgx.portal.service.LegacyUserSyncService;
 import com.dhgx.portal.service.PortalAdminUserService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 管理端用户控制器，提供用户查询、启用/禁用等接口。
@@ -30,14 +34,17 @@ public class AdminUserController {
      * 管理端用户服务，处理用户相关业务。
      */
     private final PortalAdminUserService portalAdminUserService;
+    private final LegacyUserSyncService legacyUserSyncService;
 
     /**
      * 构造函数，注入用户服务。
      *
      * @param portalAdminUserService 用户业务服务
      */
-    public AdminUserController(PortalAdminUserService portalAdminUserService) {
+    public AdminUserController(PortalAdminUserService portalAdminUserService,
+                               LegacyUserSyncService legacyUserSyncService) {
         this.portalAdminUserService = portalAdminUserService;
+        this.legacyUserSyncService = legacyUserSyncService;
     }
 
     /**
@@ -102,6 +109,44 @@ public class AdminUserController {
             return ApiResponse.failure(result.getErrorCode());
         }
         return ApiResponse.success(new ActionResponse(true));
+    }
+
+    /**
+     * 手动触发外部系统用户同步。
+     *
+     * @param start    增量开始时间，可空，格式 yyyy-MM-ddTHH:mm:ss
+     * @param end      增量结束时间，可空，格式 yyyy-MM-ddTHH:mm:ss
+     * @param pageSize 每页数量，可空
+     * @return 同步统计结果
+     */
+    @PostMapping("/sync/manual")
+    @AdminRequired(scope = "portal")
+    public ApiResponse<Map<String, Integer>> manualSyncUsers(@RequestParam(required = false) String start,
+                                                             @RequestParam(required = false) String end,
+                                                             @RequestParam(required = false) Integer pageSize) {
+        LocalDateTime startTime = parseDateTime(start);
+        LocalDateTime endTime = parseDateTime(end);
+        LegacyUserSyncService.SyncResult syncResult = legacyUserSyncService.syncUsers(startTime, endTime, pageSize);
+        Map<String, Integer> result = new HashMap<>();
+        result.put("apiTotal", syncResult.getApiTotal());
+        result.put("apiSuccess", syncResult.getApiSuccess());
+        result.put("apiFailed", syncResult.getApiFailed());
+        result.put("tbTotal", syncResult.getTbTotal());
+        result.put("tbInserted", syncResult.getTbInserted());
+        result.put("tbUpdated", syncResult.getTbUpdated());
+        result.put("tbFailed", syncResult.getTbFailed());
+        result.put("tbSkippedDuplicate", syncResult.getTbSkippedDuplicate());
+        result.put("tbSkippedNoMobile", syncResult.getTbSkippedNoMobile());
+        result.put("empCalls", syncResult.getEmpCalls());
+        result.put("mobileOverwritten", syncResult.getMobileOverwritten());
+        return ApiResponse.success(result);
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return LocalDateTime.parse(value.trim());
     }
 
     /**
