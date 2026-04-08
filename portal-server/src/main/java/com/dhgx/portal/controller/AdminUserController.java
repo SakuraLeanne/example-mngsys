@@ -135,6 +135,7 @@ public class AdminUserController {
         result.put("tbInserted", syncResult.getTbInserted());
         result.put("tbUpdated", syncResult.getTbUpdated());
         result.put("tbFailed", syncResult.getTbFailed());
+        result.put("tbManualReview", syncResult.getTbManualReview());
         result.put("tbSkippedDuplicate", syncResult.getTbSkippedDuplicate());
         result.put("tbSkippedNoMobile", syncResult.getTbSkippedNoMobile());
         result.put("empCalls", syncResult.getEmpCalls());
