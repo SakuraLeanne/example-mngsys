@@ -27,12 +27,30 @@ import java.util.UUID;
 
 /**
  * 手动触发的用户同步服务。
+ * <p>
+ * 同步分为两个阶段：
+ * <ol>
+ *     <li>外部接口同步：分页拉取账号数据（接口1），按工号查询员工详情（接口2），写入 portal_user。</li>
+ *     <li>tb_app_user 补充同步：仅同步 status=0 且 del_flag=0 的用户，按手机号/用户名去重后写入 portal_user。</li>
+ * </ol>
+ * </p>
+ * <p>
+ * 冲突规则：
+ * <ul>
+ *     <li>手机号冲突时，若冲突记录来源是接口同步（create_by=sync_api），tb_app_user 数据不允许覆盖。</li>
+ *     <li>否则允许覆盖，并将被覆盖记录手机号回退到其 username 或 id。</li>
+ * </ul>
+ * </p>
  */
 @Service
 public class LegacyUserSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(LegacyUserSyncService.class);
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /**
+     * 默认密码（BCrypt 哈希值）。
+     * 明文密码：123456。
+     */
     private static final String DEFAULT_PASSWORD = "{bcrypt}$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Cw5IV/pY5PaaC2l5x4pnW5sA8vz";
     private static final String SOURCE_API = "sync_api";
     private static final String SOURCE_TB_APP = "sync_tb_app";
@@ -62,6 +80,15 @@ public class LegacyUserSyncService {
         return result;
     }
 
+    /**
+     * 同步外部接口用户（接口1/2）。
+     *
+     * @param startTime 增量开始时间
+     * @param endTime   增量结束时间
+     * @param pageSize  每页数量
+     * @param empCache  员工详情缓存（同一次任务中同工号仅查询一次接口2）
+     * @param result    同步统计
+     */
     private void syncApiUsers(LocalDateTime startTime,
                               LocalDateTime endTime,
                               int pageSize,
@@ -88,6 +115,13 @@ public class LegacyUserSyncService {
         }
     }
 
+    /**
+     * 同步单个接口用户。
+     *
+     * @param account 接口1账号记录
+     * @param empCache 员工详情缓存
+     * @param result 统计信息
+     */
     private void upsertApiOne(Map<String, Object> account,
                               Map<String, Map<String, Object>> empCache,
                               SyncResult result) throws InterruptedException {
@@ -128,6 +162,10 @@ public class LegacyUserSyncService {
         }
     }
 
+    /**
+     * 同步 tb_app_user 表中有效用户。
+     * 只同步 status=0 且 del_flag=0 的记录。
+     */
     private void syncTbAppUsers(SyncResult result) {
         LambdaQueryWrapper<TbAppUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(TbAppUser::getStatus, "0").eq(TbAppUser::getDelFlag, "0");
@@ -143,6 +181,19 @@ public class LegacyUserSyncService {
         }
     }
 
+    /**
+     * 同步单个 tb_app_user 记录。
+     * <p>
+     * 去重优先级：手机号优先、用户名其次。
+     * </p>
+     * <p>
+     * 约束：
+     * <ul>
+     *     <li>phonenumber 为空直接跳过。</li>
+     *     <li>若匹配到接口来源用户（create_by=sync_api），视为重复，跳过同步。</li>
+     * </ul>
+     * </p>
+     */
     private void syncOneTbAppUser(TbAppUser tbUser, SyncResult result) {
         if (tbUser == null) {
             return;
@@ -208,6 +259,13 @@ public class LegacyUserSyncService {
         }
     }
 
+    /**
+     * 填充 portal_user 必填字段与同步来源标记。
+     *
+     * @param user 目标用户
+     * @param defaultMobile 默认手机号（当目标手机号为空时兜底）
+     * @param source 来源标识（sync_api / sync_tb_app）
+     */
     private void fillRequiredFields(PortalUser user, String defaultMobile, String source) {
         if (!StringUtils.hasText(user.getMobile())) {
             user.setMobile(defaultMobile);
@@ -231,6 +289,13 @@ public class LegacyUserSyncService {
         user.setUpdateBy(source);
     }
 
+    /**
+     * 处理手机号冲突。
+     *
+     * @param user 同步中的目标用户
+     * @param incomingSource 本次同步来源
+     * @param result 统计信息
+     */
     private void resolveMobileConflict(PortalUser user, String incomingSource, SyncResult result) {
         if (!StringUtils.hasText(user.getMobile())) {
             return;
