@@ -174,6 +174,10 @@ public class LegacyUserSyncService {
             result.tbTotal++;
             try {
                 syncOneTbAppUser(tbUser, result);
+            } catch (ManualReviewRequiredException ex) {
+                result.tbManualReview++;
+                log.warn("sync tb_app_user manual review required, userId={}, reason={}",
+                        tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
             } catch (Exception ex) {
                 result.tbFailed++;
                 log.warn("sync tb_app_user failed, userId={}, err={}", tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
@@ -306,6 +310,17 @@ public class LegacyUserSyncService {
         }
         if (SOURCE_TB_APP.equals(incomingSource) && isApiSource(occupied)) {
             throw new IllegalStateException("手机号被接口同步数据占用，不允许覆盖");
+        }
+        if (SOURCE_TB_APP.equals(incomingSource) && SOURCE_TB_APP.equals(occupied.getCreateBy())) {
+            boolean occupiedHasRealName = StringUtils.hasText(occupied.getRealName());
+            boolean incomingHasRealName = StringUtils.hasText(user.getRealName());
+            if (!occupiedHasRealName && incomingHasRealName) {
+                // 允许覆盖：新数据完整性更高
+            } else if (occupiedHasRealName && !incomingHasRealName) {
+                throw new IllegalStateException("手机号被更完整的tb_app_user记录占用，不允许覆盖");
+            } else {
+                throw new ManualReviewRequiredException("组合4完整性规则未命中（需人工干预）");
+            }
         }
         String fallback = StringUtils.hasText(occupied.getUsername()) ? occupied.getUsername() : occupied.getId();
         if (user.getMobile().equals(fallback)) {
@@ -502,6 +517,7 @@ public class LegacyUserSyncService {
         private int tbInserted;
         private int tbUpdated;
         private int tbFailed;
+        private int tbManualReview;
         private int tbSkippedDuplicate;
         private int tbSkippedNoMobile;
         private int empCalls;
@@ -535,6 +551,10 @@ public class LegacyUserSyncService {
             return tbFailed;
         }
 
+        public int getTbManualReview() {
+            return tbManualReview;
+        }
+
         public int getTbSkippedDuplicate() {
             return tbSkippedDuplicate;
         }
@@ -549,6 +569,12 @@ public class LegacyUserSyncService {
 
         public int getMobileOverwritten() {
             return mobileOverwritten;
+        }
+    }
+
+    private static class ManualReviewRequiredException extends RuntimeException {
+        ManualReviewRequiredException(String message) {
+            super(message);
         }
     }
 }
