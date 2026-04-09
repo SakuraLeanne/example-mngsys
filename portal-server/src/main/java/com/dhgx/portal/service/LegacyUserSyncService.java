@@ -13,13 +13,13 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.sql.SQLRecoverableException;
 import java.sql.SQLTransientConnectionException;
-import org.springframework.scheduling.annotation.Async;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +29,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 手动触发的用户同步服务。
@@ -59,11 +66,13 @@ public class LegacyUserSyncService {
     private static final String DEFAULT_PASSWORD = "{bcrypt}$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5Cw5IV/pY5PaaC2l5x4pnW5sA8vz";
     private static final String SOURCE_API = "sync_api";
     private static final String SOURCE_TB_APP = "sync_tb_app";
+    private static final int MOBILE_LOCK_SIZE = 256;
 
     private final LegacyUserSyncProperties properties;
     private final PortalUserMapper portalUserMapper;
     private final TbAppUserMapper tbAppUserMapper;
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ReentrantLock[] mobileLocks = new ReentrantLock[MOBILE_LOCK_SIZE];
 
     public LegacyUserSyncService(LegacyUserSyncProperties properties,
                                  PortalUserMapper portalUserMapper,
@@ -71,6 +80,9 @@ public class LegacyUserSyncService {
         this.properties = properties;
         this.portalUserMapper = portalUserMapper;
         this.tbAppUserMapper = tbAppUserMapper;
+        for (int i = 0; i < MOBILE_LOCK_SIZE; i++) {
+            mobileLocks[i] = new ReentrantLock();
+        }
     }
 
     public SyncResult syncUsers(LocalDateTime start, LocalDateTime end, Integer pageSizeArg) {
@@ -191,35 +203,100 @@ public class LegacyUserSyncService {
      * 只同步 status=0 且 del_flag=0 的记录。
      */
     private void syncTbAppUsers(SyncResult result, int pageSize) {
+        int threads = Math.max(1, properties.getTbThreads());
+        int chunkSize = Math.max(1, properties.getTbChunkSize());
+        int queueSize = Math.max(threads, properties.getTbQueueSize());
+        ExecutorService executor = new ThreadPoolExecutor(
+                threads,
+                threads,
+                60L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(queueSize),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
         int currentPage = 1;
         int totalPages = 1;
-        while (currentPage <= totalPages) {
-            LambdaQueryWrapper<TbAppUser> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(TbAppUser::getStatus, "0").eq(TbAppUser::getDelFlag, "0");
-            Page<TbAppUser> page = safeSelectTbAppUserPage(currentPage, pageSize, queryWrapper);
-            totalPages = (int) page.getPages();
-            int pageProcessed = 0;
-            for (TbAppUser tbUser : page.getRecords()) {
-                result.tbTotal++;
-                try {
-                    syncOneTbAppUser(tbUser, result);
-                    pageProcessed++;
-                } catch (ManualReviewRequiredException ex) {
-                    result.tbManualReview++;
-                    log.warn("sync tb_app_user manual review required, userId={}, reason={}",
-                            tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
-                } catch (Exception ex) {
-                    result.tbFailed++;
-                    log.warn("sync tb_app_user failed, userId={}, err={}", tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
+        try {
+            while (currentPage <= totalPages) {
+                LambdaQueryWrapper<TbAppUser> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(TbAppUser::getStatus, "0").eq(TbAppUser::getDelFlag, "0");
+                Page<TbAppUser> page = safeSelectTbAppUserPage(currentPage, pageSize, queryWrapper);
+                totalPages = (int) page.getPages();
+
+                List<List<TbAppUser>> chunks = splitChunks(page.getRecords(), chunkSize);
+                List<Future<SyncResult>> futures = new ArrayList<>();
+                for (List<TbAppUser> chunk : chunks) {
+                    futures.add(executor.submit(() -> processTbChunk(chunk)));
                 }
+
+                int pageProcessed = 0;
+                for (Future<SyncResult> future : futures) {
+                    try {
+                        SyncResult chunkResult = future.get();
+                        result.mergeFrom(chunkResult);
+                        pageProcessed += chunkResult.getTbInserted() + chunkResult.getTbUpdated();
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        log.warn("sync tb_app_user chunk interrupted, currentPage={}", currentPage);
+                    } catch (ExecutionException ex) {
+                        result.tbFailed++;
+                        log.warn("sync tb_app_user chunk failed, currentPage={}, err={}", currentPage, ex.getMessage());
+                    }
+                }
+
+                log.info("sync_tb_app page progress: currentPage={}, totalPages={}, pageSize={}, chunkCount={}, threads={}, pageProcessed={}, tbProcessedTotal={}",
+                        currentPage, totalPages, page.getRecords().size(), chunks.size(), threads, pageProcessed, result.tbInserted + result.tbUpdated);
+                currentPage++;
             }
-            log.info("sync_tb_app page progress: currentPage={}, totalPages={}, pageSize={}, pageProcessed={}, tbProcessedTotal={}",
-                    currentPage, totalPages, page.getRecords().size(), pageProcessed, result.tbInserted + result.tbUpdated);
-            currentPage++;
+        } finally {
+            executor.shutdown();
         }
         log.info("sync_tb_app finished: tbTotal={}, tbInserted={}, tbUpdated={}, tbFailed={}, tbManualReview={}, tbSkippedDuplicate={}, tbSkippedNoMobile={}",
                 result.tbTotal, result.tbInserted, result.tbUpdated, result.tbFailed, result.tbManualReview,
                 result.tbSkippedDuplicate, result.tbSkippedNoMobile);
+    }
+
+    private SyncResult processTbChunk(List<TbAppUser> chunk) {
+        SyncResult chunkResult = new SyncResult();
+        for (TbAppUser tbUser : chunk) {
+            chunkResult.tbTotal++;
+            String mobile = tbUser == null ? null : stringValue(tbUser.getPhonenumber());
+            ReentrantLock lock = getMobileLock(mobile);
+            lock.lock();
+            try {
+                syncOneTbAppUser(tbUser, chunkResult);
+            } catch (ManualReviewRequiredException ex) {
+                chunkResult.tbManualReview++;
+                log.warn("sync tb_app_user manual review required, userId={}, reason={}",
+                        tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
+            } catch (Exception ex) {
+                chunkResult.tbFailed++;
+                log.warn("sync tb_app_user failed, userId={}, err={}", tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
+            } finally {
+                lock.unlock();
+            }
+        }
+        return chunkResult;
+    }
+
+    private List<List<TbAppUser>> splitChunks(List<TbAppUser> users, int chunkSize) {
+        List<List<TbAppUser>> chunks = new ArrayList<>();
+        if (users == null || users.isEmpty()) {
+            return chunks;
+        }
+        for (int i = 0; i < users.size(); i += chunkSize) {
+            int end = Math.min(i + chunkSize, users.size());
+            chunks.add(new ArrayList<>(users.subList(i, end)));
+        }
+        return chunks;
+    }
+
+    private ReentrantLock getMobileLock(String mobile) {
+        if (!StringUtils.hasText(mobile)) {
+            return mobileLocks[0];
+        }
+        int idx = Math.abs(mobile.hashCode()) % MOBILE_LOCK_SIZE;
+        return mobileLocks[idx];
     }
 
     /**
@@ -671,6 +748,24 @@ public class LegacyUserSyncService {
 
         public int getMobileOverwritten() {
             return mobileOverwritten;
+        }
+
+        public void mergeFrom(SyncResult other) {
+            if (other == null) {
+                return;
+            }
+            this.apiTotal += other.apiTotal;
+            this.apiSuccess += other.apiSuccess;
+            this.apiFailed += other.apiFailed;
+            this.tbTotal += other.tbTotal;
+            this.tbInserted += other.tbInserted;
+            this.tbUpdated += other.tbUpdated;
+            this.tbFailed += other.tbFailed;
+            this.tbManualReview += other.tbManualReview;
+            this.tbSkippedDuplicate += other.tbSkippedDuplicate;
+            this.tbSkippedNoMobile += other.tbSkippedNoMobile;
+            this.empCalls += other.empCalls;
+            this.mobileOverwritten += other.mobileOverwritten;
         }
     }
 

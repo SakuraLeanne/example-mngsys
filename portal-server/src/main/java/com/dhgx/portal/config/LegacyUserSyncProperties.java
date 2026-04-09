@@ -19,6 +19,12 @@ public class LegacyUserSyncProperties {
     private String empPassword = "aBZQ6@q6AV";
     private int pageSize = 50;
     private long empRequestIntervalMs = 300L;
+    /** tb_app_user 同步线程数。 */
+    private int tbThreads = 4;
+    /** tb_app_user 每个并行任务处理条数。 */
+    private int tbChunkSize = 30;
+    /** tb_app_user 并行任务队列长度。 */
+    private int tbQueueSize = 200;
 
     public String getBaseUrl() {
         return baseUrl;
@@ -90,5 +96,29 @@ public class LegacyUserSyncProperties {
 
     public void setEmpRequestIntervalMs(long empRequestIntervalMs) {
         this.empRequestIntervalMs = empRequestIntervalMs;
+    }
+
+    public int getTbThreads() {
+        return tbThreads;
+    }
+
+    public void setTbThreads(int tbThreads) {
+        this.tbThreads = tbThreads;
+    }
+
+    public int getTbChunkSize() {
+        return tbChunkSize;
+    }
+
+    public void setTbChunkSize(int tbChunkSize) {
+        this.tbChunkSize = tbChunkSize;
+    }
+
+    public int getTbQueueSize() {
+        return tbQueueSize;
+    }
+
+    public void setTbQueueSize(int tbQueueSize) {
+        this.tbQueueSize = tbQueueSize;
     }
 }
