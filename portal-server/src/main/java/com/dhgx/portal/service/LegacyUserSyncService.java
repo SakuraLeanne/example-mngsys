@@ -16,6 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+
+import java.sql.SQLRecoverableException;
+import java.sql.SQLTransientConnectionException;
 import org.springframework.scheduling.annotation.Async;
 
 import java.time.LocalDate;
@@ -150,7 +153,7 @@ public class LegacyUserSyncService {
         if (!StringUtils.hasText(empCode)) {
             throw new IllegalArgumentException("DESC13工号为空");
         }
-        PortalUser user = portalUserMapper.selectById(empCode);
+        PortalUser user = safeSelectPortalUserById(empCode);
         if (user == null) {
             user = new PortalUser();
             user.setId(empCode);
@@ -176,10 +179,10 @@ public class LegacyUserSyncService {
         fillRequiredFields(user, stringValue(account.get("DESC1")), SOURCE_API);
 
         resolveMobileConflict(user, SOURCE_API, result);
-        if (portalUserMapper.selectById(user.getId()) == null) {
-            portalUserMapper.insert(user);
+        if (safeSelectPortalUserById(user.getId()) == null) {
+            safeInsertPortalUser(user);
         } else {
-            portalUserMapper.updateById(user);
+            safeUpdatePortalUser(user);
         }
     }
 
@@ -193,7 +196,7 @@ public class LegacyUserSyncService {
         while (currentPage <= totalPages) {
             LambdaQueryWrapper<TbAppUser> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(TbAppUser::getStatus, "0").eq(TbAppUser::getDelFlag, "0");
-            Page<TbAppUser> page = tbAppUserMapper.selectPage(new Page<>(currentPage, pageSize), queryWrapper);
+            Page<TbAppUser> page = safeSelectTbAppUserPage(currentPage, pageSize, queryWrapper);
             totalPages = (int) page.getPages();
             int pageProcessed = 0;
             for (TbAppUser tbUser : page.getRecords()) {
@@ -260,7 +263,7 @@ public class LegacyUserSyncService {
         PortalUser user = null;
         String userId = stringValue(tbUser.getUserId());
         if (StringUtils.hasText(userId)) {
-            user = portalUserMapper.selectById(userId);
+            user = safeSelectPortalUserById(userId);
         }
         if (user == null) {
             user = existedByMobile != null ? existedByMobile : null;
@@ -288,11 +291,11 @@ public class LegacyUserSyncService {
         fillRequiredFields(user, mobile, SOURCE_TB_APP);
         resolveMobileConflict(user, SOURCE_TB_APP, result);
 
-        if (portalUserMapper.selectById(user.getId()) == null) {
-            portalUserMapper.insert(user);
+        if (safeSelectPortalUserById(user.getId()) == null) {
+            safeInsertPortalUser(user);
             result.tbInserted++;
         } else {
-            portalUserMapper.updateById(user);
+            safeUpdatePortalUser(user);
             result.tbUpdated++;
         }
     }
@@ -363,7 +366,7 @@ public class LegacyUserSyncService {
         occupied.setMobile(fallback);
         occupied.setUsername(fallback);
         occupied.setUpdateBy(incomingSource);
-        portalUserMapper.updateById(occupied);
+        safeUpdatePortalUser(occupied);
         result.mobileOverwritten++;
     }
 
@@ -433,7 +436,7 @@ public class LegacyUserSyncService {
         }
         LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PortalUser::getMobile, mobile).last("limit 1");
-        return portalUserMapper.selectOne(wrapper);
+        return safeSelectPortalUserOne(wrapper);
     }
 
     private PortalUser findByUsername(String username) {
@@ -442,7 +445,7 @@ public class LegacyUserSyncService {
         }
         LambdaQueryWrapper<PortalUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PortalUser::getUsername, username).last("limit 1");
-        return portalUserMapper.selectOne(wrapper);
+        return safeSelectPortalUserOne(wrapper);
     }
 
     private PortalUser findByMobileExcludeId(String mobile, String userId) {
@@ -450,7 +453,7 @@ public class LegacyUserSyncService {
         mobileWrapper.eq(PortalUser::getMobile, mobile)
                 .ne(StringUtils.hasText(userId), PortalUser::getId, userId)
                 .last("limit 1");
-        return portalUserMapper.selectOne(mobileWrapper);
+        return safeSelectPortalUserOne(mobileWrapper);
     }
 
     private boolean isApiSource(PortalUser user) {
@@ -541,6 +544,71 @@ public class LegacyUserSyncService {
 
     private String stringValue(Object value) {
         return value == null ? null : String.valueOf(value).trim();
+    }
+
+    private PortalUser safeSelectPortalUserById(String id) {
+        return executeWithRetry(() -> portalUserMapper.selectById(id), "selectById portal_user");
+    }
+
+    private PortalUser safeSelectPortalUserOne(LambdaQueryWrapper<PortalUser> wrapper) {
+        return executeWithRetry(() -> portalUserMapper.selectOne(wrapper), "selectOne portal_user");
+    }
+
+    private void safeUpdatePortalUser(PortalUser user) {
+        executeWithRetry(() -> {
+            portalUserMapper.updateById(user);
+            return 1;
+        }, "updateById portal_user");
+    }
+
+    private void safeInsertPortalUser(PortalUser user) {
+        executeWithRetry(() -> {
+            portalUserMapper.insert(user);
+            return 1;
+        }, "insert portal_user");
+    }
+
+    private Page<TbAppUser> safeSelectTbAppUserPage(int currentPage, int pageSize, LambdaQueryWrapper<TbAppUser> wrapper) {
+        return executeWithRetry(() -> tbAppUserMapper.selectPage(new Page<>(currentPage, pageSize), wrapper), "selectPage tb_app_user");
+    }
+
+    private <T> T executeWithRetry(java.util.concurrent.Callable<T> callable, String action) {
+        int maxAttempts = 2;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return callable.call();
+            } catch (Exception ex) {
+                if (attempt >= maxAttempts || !isRetryableDbException(ex)) {
+                    throw new IllegalStateException("db action failed: " + action, ex);
+                }
+                log.warn("db action retry, action={}, attempt={}, err={}", action, attempt, ex.getMessage());
+                sleepSilently(300L);
+            }
+        }
+        throw new IllegalStateException("db action failed: " + action);
+    }
+
+    private boolean isRetryableDbException(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof SQLTransientConnectionException || current instanceof SQLRecoverableException) {
+                return true;
+            }
+            String name = current.getClass().getName();
+            if (name.contains("CommunicationsException") || name.contains("CJCommunicationsException")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private void sleepSilently(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public static class SyncResult {
