@@ -36,6 +36,12 @@ spring:
         - data-id: portal-share-config.yml
           group: DEFAULT_GROUP
           refresh: true
+  datasource:
+    hikari:
+      maxLifetime: 30000
+      keepaliveTime: 15000
+      validationTimeout: 5000
+      connectionTimeout: 30000
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
