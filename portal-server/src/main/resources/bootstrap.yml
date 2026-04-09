@@ -73,6 +73,9 @@ portal:
       empPassword: aBZQ6@q6AV
       pageSize: 50
       empRequestIntervalMs: 300
+      tbThreads: 4
+      tbChunkSize: 30
+      tbQueueSize: 200
 
 auth:
   internalToken: f5b5a43301af2e236e82563c31d56996e969cb5e0e01b1ea98b97437bd2428e6
