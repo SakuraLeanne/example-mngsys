@@ -126,20 +126,9 @@ public class AdminUserController {
                                                              @RequestParam(required = false) Integer pageSize) {
         LocalDateTime startTime = parseDateTime(start);
         LocalDateTime endTime = parseDateTime(end);
-        LegacyUserSyncService.SyncResult syncResult = legacyUserSyncService.syncUsers(startTime, endTime, pageSize);
         Map<String, Integer> result = new HashMap<>();
-        result.put("apiTotal", syncResult.getApiTotal());
-        result.put("apiSuccess", syncResult.getApiSuccess());
-        result.put("apiFailed", syncResult.getApiFailed());
-        result.put("tbTotal", syncResult.getTbTotal());
-        result.put("tbInserted", syncResult.getTbInserted());
-        result.put("tbUpdated", syncResult.getTbUpdated());
-        result.put("tbFailed", syncResult.getTbFailed());
-        result.put("tbManualReview", syncResult.getTbManualReview());
-        result.put("tbSkippedDuplicate", syncResult.getTbSkippedDuplicate());
-        result.put("tbSkippedNoMobile", syncResult.getTbSkippedNoMobile());
-        result.put("empCalls", syncResult.getEmpCalls());
-        result.put("mobileOverwritten", syncResult.getMobileOverwritten());
+        legacyUserSyncService.syncUsersAsync(startTime, endTime, pageSize);
+        result.put("accepted", 1);
         return ApiResponse.success(result);
     }
 

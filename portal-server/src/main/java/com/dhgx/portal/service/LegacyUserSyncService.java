@@ -1,6 +1,7 @@
 package com.dhgx.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dhgx.portal.config.LegacyUserSyncProperties;
 import com.dhgx.portal.entity.PortalUser;
 import com.dhgx.portal.entity.TbAppUser;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.scheduling.annotation.Async;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -75,9 +77,22 @@ public class LegacyUserSyncService {
         Map<String, Map<String, Object>> empCache = new HashMap<>();
 
         SyncResult result = new SyncResult();
+        log.info("legacy user sync start, start={}, end={}, pageSize={}", startTime, endTime, pageSize);
         syncApiUsers(startTime, endTime, pageSize, empCache, result);
-        syncTbAppUsers(result);
+        syncTbAppUsers(result, pageSize);
+        log.info("legacy user sync finished, apiTotal={}, apiSuccess={}, apiFailed={}, tbTotal={}, tbInserted={}, tbUpdated={}, tbFailed={}, tbManualReview={}, tbSkippedDuplicate={}, tbSkippedNoMobile={}",
+                result.apiTotal, result.apiSuccess, result.apiFailed,
+                result.tbTotal, result.tbInserted, result.tbUpdated, result.tbFailed,
+                result.tbManualReview, result.tbSkippedDuplicate, result.tbSkippedNoMobile);
         return result;
+    }
+
+    /**
+     * 异步执行同步任务。
+     */
+    @Async
+    public void syncUsersAsync(LocalDateTime start, LocalDateTime end, Integer pageSizeArg) {
+        syncUsers(start, end, pageSizeArg);
     }
 
     /**
@@ -101,18 +116,24 @@ public class LegacyUserSyncService {
             Map<String, Object> esb = map(pageResp.get("ESB"));
             totalPages = intValue(map(map(esb.get("DATA")).get("SPLITPAGE")).get("TOTALPAGES"), totalPages);
             List<Map<String, Object>> rows = list(map(map(esb.get("DATA")).get("DATAINFOS")).get("DATAINFO"));
+            int pageSuccess = 0;
             for (Map<String, Object> row : rows) {
                 result.apiTotal++;
                 try {
                     upsertApiOne(row, empCache, result);
                     result.apiSuccess++;
+                    pageSuccess++;
                 } catch (Exception ex) {
                     result.apiFailed++;
                     log.warn("sync api user failed, code={}, err={}", stringValue(row.get("DESC13")), ex.getMessage());
                 }
             }
+            log.info("sync_api page progress: currentPage={}, totalPages={}, pageSize={}, pageSuccess={}, apiSuccessTotal={}",
+                    pageNo, totalPages, rows.size(), pageSuccess, result.apiSuccess);
             pageNo++;
         }
+        log.info("sync_api finished: totalPages={}, apiTotal={}, apiSuccess={}, apiFailed={}",
+                totalPages, result.apiTotal, result.apiSuccess, result.apiFailed);
     }
 
     /**
@@ -166,23 +187,36 @@ public class LegacyUserSyncService {
      * 同步 tb_app_user 表中有效用户。
      * 只同步 status=0 且 del_flag=0 的记录。
      */
-    private void syncTbAppUsers(SyncResult result) {
-        LambdaQueryWrapper<TbAppUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(TbAppUser::getStatus, "0").eq(TbAppUser::getDelFlag, "0");
-        List<TbAppUser> users = tbAppUserMapper.selectList(queryWrapper);
-        for (TbAppUser tbUser : users) {
-            result.tbTotal++;
-            try {
-                syncOneTbAppUser(tbUser, result);
-            } catch (ManualReviewRequiredException ex) {
-                result.tbManualReview++;
-                log.warn("sync tb_app_user manual review required, userId={}, reason={}",
-                        tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
-            } catch (Exception ex) {
-                result.tbFailed++;
-                log.warn("sync tb_app_user failed, userId={}, err={}", tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
+    private void syncTbAppUsers(SyncResult result, int pageSize) {
+        int currentPage = 1;
+        int totalPages = 1;
+        while (currentPage <= totalPages) {
+            LambdaQueryWrapper<TbAppUser> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TbAppUser::getStatus, "0").eq(TbAppUser::getDelFlag, "0");
+            Page<TbAppUser> page = tbAppUserMapper.selectPage(new Page<>(currentPage, pageSize), queryWrapper);
+            totalPages = (int) page.getPages();
+            int pageProcessed = 0;
+            for (TbAppUser tbUser : page.getRecords()) {
+                result.tbTotal++;
+                try {
+                    syncOneTbAppUser(tbUser, result);
+                    pageProcessed++;
+                } catch (ManualReviewRequiredException ex) {
+                    result.tbManualReview++;
+                    log.warn("sync tb_app_user manual review required, userId={}, reason={}",
+                            tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
+                } catch (Exception ex) {
+                    result.tbFailed++;
+                    log.warn("sync tb_app_user failed, userId={}, err={}", tbUser == null ? null : tbUser.getUserId(), ex.getMessage());
+                }
             }
+            log.info("sync_tb_app page progress: currentPage={}, totalPages={}, pageSize={}, pageProcessed={}, tbProcessedTotal={}",
+                    currentPage, totalPages, page.getRecords().size(), pageProcessed, result.tbInserted + result.tbUpdated);
+            currentPage++;
         }
+        log.info("sync_tb_app finished: tbTotal={}, tbInserted={}, tbUpdated={}, tbFailed={}, tbManualReview={}, tbSkippedDuplicate={}, tbSkippedNoMobile={}",
+                result.tbTotal, result.tbInserted, result.tbUpdated, result.tbFailed, result.tbManualReview,
+                result.tbSkippedDuplicate, result.tbSkippedNoMobile);
     }
 
     /**
