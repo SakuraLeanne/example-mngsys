@@ -10,6 +10,7 @@ import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.client.wechat.WechatMiniProgramClient;
 import com.dhgx.portal.client.wechat.WechatMiniProgramSessionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
+import com.dhgx.portal.config.AuthClientProperties;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.PortalUser;
 import com.dhgx.portal.entity.PortalUserIdentity;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -49,19 +51,25 @@ public class PortalMobileAuthService {
     private final WechatMiniProgramClient wechatMiniProgramClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+    private final AuthClientProperties authClientProperties;
+    private final PasswordEncoder passwordEncoder;
 
     public PortalMobileAuthService(PortalUserIdentityService portalUserIdentityService,
                                    PortalUserService portalUserService,
                                    AuthClient authClient,
                                    WechatMiniProgramClient wechatMiniProgramClient,
                                    StringRedisTemplate stringRedisTemplate,
-                                   ObjectMapper objectMapper) {
+                                   ObjectMapper objectMapper,
+                                   AuthClientProperties authClientProperties,
+                                   PasswordEncoder passwordEncoder) {
         this.portalUserIdentityService = portalUserIdentityService;
         this.portalUserService = portalUserService;
         this.authClient = authClient;
         this.wechatMiniProgramClient = wechatMiniProgramClient;
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
+        this.authClientProperties = authClientProperties;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -101,7 +109,12 @@ public class PortalMobileAuthService {
                 .eq(PortalUser::getMobile, request.getMobile())
                 .last("LIMIT 1"));
         if (user == null) {
-            return ApiResponse.failure(ErrorCode.NOT_FOUND, "手机号未开通门户账号，请联系管理员");
+            // 按 auth.auto-create-user 配置决定是否自动创建门户账号。
+            if (!authClientProperties.isAutoCreateUser()) {
+                return ApiResponse.failure(ErrorCode.NOT_FOUND, "手机号未开通门户账号，请联系管理员");
+            }
+            user = autoCreatePortalUser(request.getMobile());
+            log.info("auto created portal user for mini program bind, userId={}, mobile={}", user.getId(), mask(user.getMobile()));
         }
 
         PortalUserIdentity exists = portalUserIdentityService.findMiniProgramOpenId(openId);
@@ -164,6 +177,23 @@ public class PortalMobileAuthService {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录态已失效");
         }
         return ApiResponse.success(payload);
+    }
+
+
+    /**
+     * 根据手机号自动创建门户用户（当 auth.auto-create-user=true 时生效）。
+     */
+    private PortalUser autoCreatePortalUser(String mobile) {
+        PortalUser portalUser = new PortalUser();
+        portalUser.setUsername(mobile);
+        portalUser.setMobile(mobile);
+        portalUser.setMobileVerified(1);
+        portalUser.setEmailVerified(0);
+        portalUser.setStatus(1);
+        // 仅作为占位密码，不会对外暴露。
+        portalUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        portalUserService.save(portalUser);
+        return portalUser;
     }
 
     private ApiResponse<PortalMobileLoginResponse> doLogin(String userId, String source) {

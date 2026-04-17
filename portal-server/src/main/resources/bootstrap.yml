@@ -84,3 +84,4 @@ portal:
 
 auth:
   internalToken: f5b5a43301af2e236e82563c31d56996e969cb5e0e01b1ea98b97437bd2428e6
+  auto-create-user: false
