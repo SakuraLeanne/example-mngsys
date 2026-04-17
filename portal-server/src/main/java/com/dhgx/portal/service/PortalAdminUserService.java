@@ -94,7 +94,7 @@ public class PortalAdminUserService {
             if (status != null) {
                 wrapper.eq(PortalUser::getStatus, status);
             }
-            wrapper.orderByDesc(PortalUser::getCreateTime);
+            wrapper.orderByDesc(PortalUser::getId);
             return portalUserService.page(query, wrapper);
         }
         Page<PortalUser> result = new Page<>(pageIndex, pageSize);
