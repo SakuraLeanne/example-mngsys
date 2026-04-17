@@ -1,6 +1,7 @@
 package com.dhgx.portal.client;
 
 import com.dhgx.common.feign.AuthFeignClient;
+import com.dhgx.common.feign.dto.AuthInternalLoginRequest;
 import com.dhgx.common.feign.dto.AuthKickRequest;
 import com.dhgx.common.feign.dto.AuthLoginRequest;
 import com.dhgx.common.feign.dto.AuthLoginResponse;
@@ -115,6 +116,14 @@ public class AuthClient {
     public ResponseEntity<ApiResponse<AuthSessionResponse>> sessionMe(String cookie) {
         return exchangeSafely(() -> authFeignClient.sessionMe(cookie),
                 new TypeReference<ApiResponse<AuthSessionResponse>>() {
+                });
+    }
+
+
+    public ApiResponse<AuthLoginResponse> internalLoginByUserId(String userId) {
+        AuthInternalLoginRequest request = new AuthInternalLoginRequest(userId);
+        return parseResponseBody(authFeignClient.internalLogin(authClientProperties.getInternalToken(), request),
+                new TypeReference<ApiResponse<AuthLoginResponse>>() {
                 });
     }
 
