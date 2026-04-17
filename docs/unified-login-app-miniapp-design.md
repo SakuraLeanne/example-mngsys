@@ -138,6 +138,43 @@ CREATE TABLE portal_user_identity (
 - 网关校验 access_token 后，把 `X-User-Id`、`X-Client-Type` 注入下游。
 - 若 satoken 失效（登出/踢下线/版本失效），access_token 校验应同步失败（通过 tokenVersion 或回源校验实现）。
 
+### 5.4 Opaque Token 与 OAuth2 + OIDC 的取舍
+
+你提到的点非常关键：**完全可以采用 OAuth2 + OIDC**，并不是只能 opaque token。
+
+两者关系不是“二选一协议 vs 字符串”，而是：
+
+- OAuth2/OIDC 是授权与身份标准体系（流程、端点、声明规范）。
+- Opaque/JWT 是 access_token 的具体形态（令牌格式）。
+
+也就是说，可以有以下组合：
+
+1. OAuth2/OIDC + opaque token（配 introspection）
+2. OAuth2/OIDC + JWT access token（资源端本地验签）
+3. 非 OAuth2/OIDC + 自定义 opaque token（本方案初稿）
+
+#### 当前项目下的差异
+
+- 采用“自定义 opaque”：
+  - 优点：改造快、与当前 satoken 体系耦合成本低。
+  - 缺点：对外不是标准协议，后续接第三方生态（网关产品、统一 IAM、开放平台）会有迁移成本。
+- 采用“OAuth2 + OIDC”：
+  - 优点：标准化、可扩展、便于未来接入更多客户端/合作方系统。
+  - 成本：需要新增标准端点、client 管理、scope/claim 体系、JWKS/introspection、授权码+PKCE 等能力。
+
+#### 建议落地策略（推荐）
+
+采用“**分阶段标准化**”：
+
+1. **短期（快速上线）**：保留 opaque + Redis，但接口尽量向 OAuth2 命名对齐（如 `/oauth/token`、`/oauth/introspect` 语义）。
+2. **中期（标准化）**：引入 OAuth2 授权服务器能力（可自研轻量版或引入 Spring Authorization Server），先支持移动端关键流程（授权码+PKCE、刷新令牌）。
+3. **长期（统一身份平台）**：补齐 OIDC（`id_token`、`userinfo`、`jwks_uri`、`/.well-known/openid-configuration`），让 APP/小程序/Web/第三方系统统一接入。
+
+#### 结合你们现阶段的明确结论
+
+如果你们希望“一次到位、避免二次重构”，本项目可以直接按 **OAuth2.1 + OIDC Core** 目标设计。
+若当前优先级是“尽快上线 APP/小程序登录”，则先落地 opaque 方案，再按上面的中期路径平滑升级。
+
 ---
 
 ## 6. 登录与绑定流程设计
@@ -299,7 +336,7 @@ CREATE TABLE portal_user_identity (
 
 1. **用户归一**：新增 `portal_user_identity` 表，不改 `portal_user` 主体结构。
 2. **登录编排归口 portal**：微信登录逻辑放在 portal，auth-server继续作为基础会话服务。
-3. **移动令牌独立**：新增 access_token/refresh_token，不直接暴露 satoken 给 APP/小程序。
+3. **移动令牌独立**：新增 access_token/refresh_token，不直接暴露 satoken 给 APP/小程序；令牌体系建议分阶段演进到 OAuth2 + OIDC 标准。
 4. **网关双通道兼容**：Bearer + Cookie 并存，逐步迁移。
 5. **保持现有 SSO ticket 机制稳定**：不与移动端 token 方案互相替代。
 
