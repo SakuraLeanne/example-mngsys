@@ -44,6 +44,22 @@ public class AuthService {
         return toUser(authUser);
     }
 
+
+    /**
+     * 按用户 ID 获取并校验用户状态，用于内部登录。
+     */
+    public User authenticateByUserId(String userId) {
+        if (!StringUtils.hasText(userId)) {
+            throw new IllegalArgumentException("用户ID不能为空");
+        }
+        AuthUser authUser = authUserMapper.selectById(userId);
+        if (authUser == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        validateUserStatus(authUser);
+        return toUser(authUser);
+    }
+
     public User authenticateByUsernameAndPassword(String username, String password) {
         AuthUser authUser = findByUsername(username);
         if (authUser == null) {
