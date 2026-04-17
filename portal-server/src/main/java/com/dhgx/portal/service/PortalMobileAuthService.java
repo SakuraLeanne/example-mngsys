@@ -2,16 +2,19 @@ package com.dhgx.portal.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dhgx.common.feign.dto.AuthLoginResponse;
+import com.dhgx.common.portal.dto.PortalAppWechatLoginRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramBindRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
 import com.dhgx.common.redis.RedisKeys;
 import com.dhgx.portal.client.AuthClient;
+import com.dhgx.portal.client.wechat.WechatAppClient;
+import com.dhgx.portal.client.wechat.WechatAppOauthResponse;
 import com.dhgx.portal.client.wechat.WechatMiniProgramClient;
 import com.dhgx.portal.client.wechat.WechatMiniProgramSessionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
-import com.dhgx.portal.config.AuthClientProperties;
 import com.dhgx.portal.common.api.ErrorCode;
+import com.dhgx.portal.config.AuthClientProperties;
 import com.dhgx.portal.entity.PortalUser;
 import com.dhgx.portal.entity.PortalUserIdentity;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * PortalMobileAuthService。
  * <p>
- * 小程序登录编排服务：处理 openId 登录、手机号绑定、移动 token 签发/刷新/登出。
+ * 移动端登录编排服务：处理 APP/小程序微信登录、手机号绑定、移动 token 签发/刷新/登出。
  * </p>
  */
 @Service
@@ -43,12 +46,19 @@ public class PortalMobileAuthService {
     private static final long ACCESS_TOKEN_TTL_SECONDS = 2 * 60 * 60;
     private static final long REFRESH_TOKEN_TTL_SECONDS = 30L * 24 * 60 * 60;
     private static final long BIND_TOKEN_TTL_SECONDS = 5 * 60;
+
     private static final String CLIENT_TYPE_MINI_PROGRAM = "MINI_PROGRAM";
+    private static final String CLIENT_TYPE_APP = "APP";
+    private static final String PROVIDER_WECHAT_MINI_PROGRAM = "WECHAT_MINI_PROGRAM";
+    private static final String PROVIDER_WECHAT_APP = "WECHAT_APP";
+    private static final String IDENTITY_TYPE_OPENID = "OPENID";
+    private static final String IDENTITY_TYPE_UNIONID = "UNIONID";
 
     private final PortalUserIdentityService portalUserIdentityService;
     private final PortalUserService portalUserService;
     private final AuthClient authClient;
     private final WechatMiniProgramClient wechatMiniProgramClient;
+    private final WechatAppClient wechatAppClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
     private final AuthClientProperties authClientProperties;
@@ -58,6 +68,7 @@ public class PortalMobileAuthService {
                                    PortalUserService portalUserService,
                                    AuthClient authClient,
                                    WechatMiniProgramClient wechatMiniProgramClient,
+                                   WechatAppClient wechatAppClient,
                                    StringRedisTemplate stringRedisTemplate,
                                    ObjectMapper objectMapper,
                                    AuthClientProperties authClientProperties,
@@ -66,6 +77,7 @@ public class PortalMobileAuthService {
         this.portalUserService = portalUserService;
         this.authClient = authClient;
         this.wechatMiniProgramClient = wechatMiniProgramClient;
+        this.wechatAppClient = wechatAppClient;
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
         this.authClientProperties = authClientProperties;
@@ -73,35 +85,53 @@ public class PortalMobileAuthService {
     }
 
     /**
-     * 小程序 openId 登录。已绑定直接登录，未绑定返回 bindToken。
+     * APP 微信授权登录：APP 传 code，门户后端换取 openId/unionId。
+     */
+    public ApiResponse<PortalMobileLoginResponse> loginByWechatApp(PortalAppWechatLoginRequest request) {
+        WechatAppOauthResponse oauthResponse = wechatAppClient.code2Oauth(request.getCode().trim());
+        String openId = oauthResponse.getOpenid();
+        String unionId = oauthResponse.getUnionid();
+
+        // APP 场景优先按 unionId 归一，找不到再按 openId。
+        PortalUserIdentity identity = findAppIdentity(unionId, openId);
+        if (identity == null) {
+            String bindToken = createBindToken(new BindContext(PROVIDER_WECHAT_APP, openId, unionId));
+            log.info("app wechat login requires binding, openId={}, unionId={}", mask(openId), mask(unionId));
+            return ApiResponse.success(PortalMobileLoginResponse.bindRequired(bindToken));
+        }
+        return doLogin(identity.getUserId(), CLIENT_TYPE_APP, "app-wechat");
+    }
+
+    /**
+     * 小程序登录：小程序端传 code，门户后端调用 jscode2session 换 openId。
      */
     public ApiResponse<PortalMobileLoginResponse> loginByMiniProgram(PortalMiniProgramLoginRequest request) {
-        // 小程序端传 code，门户后端调用微信 jscode2session 换取 openId。
         WechatMiniProgramSessionResponse sessionResponse = wechatMiniProgramClient.code2Session(request.getCode().trim());
         String openId = sessionResponse.getOpenid();
-        PortalUserIdentity identity = portalUserIdentityService.findMiniProgramOpenId(openId);
+        PortalUserIdentity identity = portalUserIdentityService.findByIdentity(
+                PROVIDER_WECHAT_MINI_PROGRAM, IDENTITY_TYPE_OPENID, openId);
         if (identity == null) {
-            String bindToken = createBindToken(openId);
+            String bindToken = createBindToken(new BindContext(PROVIDER_WECHAT_MINI_PROGRAM, openId, sessionResponse.getUnionid()));
             log.info("mini program login requires binding, openId={}", mask(openId));
             return ApiResponse.success(PortalMobileLoginResponse.bindRequired(bindToken));
         }
-        return doLogin(identity.getUserId(), "mini-program-openid");
+        return doLogin(identity.getUserId(), CLIENT_TYPE_MINI_PROGRAM, "mini-program-openid");
     }
 
     /**
      * 绑定手机号并登录。
      */
     public ApiResponse<PortalMobileLoginResponse> bindMobileAndLogin(PortalMiniProgramBindRequest request) {
-        String bindKey = RedisKeys.miniBindToken(request.getBindToken());
-        String openId = stringRedisTemplate.opsForValue().get(bindKey);
-        if (!StringUtils.hasText(openId)) {
+        BindContext bindContext = readBindContext(request.getBindToken());
+        if (bindContext == null || !StringUtils.hasText(bindContext.getOpenId())
+                || !StringUtils.hasText(bindContext.getProvider())) {
             return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "绑定令牌无效或已过期");
         }
 
         ApiResponse<Void> smsVerifyResp = authClient.verifySms(request.getMobile(), request.getCode());
         if (smsVerifyResp == null || smsVerifyResp.getCode() != 0) {
             String msg = smsVerifyResp == null ? "短信验证码校验失败" : smsVerifyResp.getMessage();
-            log.warn("mini program bind failed: sms verify failed, mobile={}, msg={}", mask(request.getMobile()), msg);
+            log.warn("wechat bind failed: sms verify failed, mobile={}, msg={}", mask(request.getMobile()), msg);
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, msg);
         }
 
@@ -114,27 +144,21 @@ public class PortalMobileAuthService {
                 return ApiResponse.failure(ErrorCode.NOT_FOUND, "手机号未开通门户账号，请联系管理员");
             }
             user = autoCreatePortalUser(request.getMobile());
-            log.info("auto created portal user for mini program bind, userId={}, mobile={}", user.getId(), mask(user.getMobile()));
+            log.info("auto created portal user for wechat bind, userId={}, mobile={}", user.getId(), mask(user.getMobile()));
         }
 
-        PortalUserIdentity exists = portalUserIdentityService.findMiniProgramOpenId(openId);
-        if (exists != null && !user.getId().equals(exists.getUserId())) {
+        PortalUserIdentity existsOpenId = portalUserIdentityService.findByIdentity(
+                bindContext.getProvider(), IDENTITY_TYPE_OPENID, bindContext.getOpenId());
+        if (existsOpenId != null && !user.getId().equals(existsOpenId.getUserId())) {
             return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "该微信身份已绑定其他账号");
         }
-        if (exists == null) {
-            PortalUserIdentity identity = new PortalUserIdentity();
-            identity.setUserId(user.getId());
-            identity.setIdentityProvider("WECHAT_MINI_PROGRAM");
-            identity.setIdentityType("OPENID");
-            identity.setIdentityKey(openId);
-            identity.setBindStatus(1);
-            identity.setBindTime(LocalDateTime.now());
-            portalUserIdentityService.save(identity);
-            log.info("mini program identity bind success, userId={}, openId={}", user.getId(), mask(openId));
-        }
 
-        stringRedisTemplate.delete(bindKey);
-        return doLogin(user.getId(), "mini-program-bind");
+        saveIdentityIfAbsent(user.getId(), bindContext.getProvider(), IDENTITY_TYPE_OPENID, bindContext.getOpenId());
+        saveIdentityIfAbsent(user.getId(), bindContext.getProvider(), IDENTITY_TYPE_UNIONID, bindContext.getUnionId());
+
+        stringRedisTemplate.delete(RedisKeys.miniBindToken(request.getBindToken()));
+        String clientType = PROVIDER_WECHAT_APP.equals(bindContext.getProvider()) ? CLIENT_TYPE_APP : CLIENT_TYPE_MINI_PROGRAM;
+        return doLogin(user.getId(), clientType, "wechat-bind");
     }
 
     public ApiResponse<PortalMobileLoginResponse> refresh(String refreshToken) {
@@ -147,7 +171,7 @@ public class PortalMobileAuthService {
             RefreshTokenPayload payload = objectMapper.readValue(refreshPayload, RefreshTokenPayload.class);
             // 刷新时重新签发 token，并删除旧 refresh_token，避免重放。
             stringRedisTemplate.delete(refreshKey);
-            return doLogin(payload.getUserId(), "mini-program-refresh");
+            return doLogin(payload.getUserId(), payload.getClientType(), "mobile-refresh");
         } catch (JsonProcessingException ex) {
             log.error("refresh token payload parse error", ex);
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "令牌解析失败");
@@ -179,7 +203,6 @@ public class PortalMobileAuthService {
         return ApiResponse.success(payload);
     }
 
-
     /**
      * 根据手机号自动创建门户用户（当 auth.auto-create-user=true 时生效）。
      */
@@ -196,11 +219,11 @@ public class PortalMobileAuthService {
         return portalUser;
     }
 
-    private ApiResponse<PortalMobileLoginResponse> doLogin(String userId, String source) {
+    private ApiResponse<PortalMobileLoginResponse> doLogin(String userId, String clientType, String source) {
         ApiResponse<AuthLoginResponse> authResp = authClient.internalLoginByUserId(userId);
         if (authResp == null || authResp.getCode() != 0 || authResp.getData() == null) {
             String msg = authResp == null ? "鉴权服务无响应" : authResp.getMessage();
-            log.warn("mini program {} login failed, userId={}, msg={}", source, userId, msg);
+            log.warn("{} login failed, userId={}, msg={}", source, userId, msg);
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, msg);
         }
         AuthLoginResponse loginResponse = authResp.getData();
@@ -208,27 +231,53 @@ public class PortalMobileAuthService {
         String refreshToken = randomToken();
         TokenPayload accessPayload = new TokenPayload();
         accessPayload.setUserId(userId);
-        accessPayload.setClientType(CLIENT_TYPE_MINI_PROGRAM);
+        accessPayload.setClientType(clientType);
         accessPayload.setSaToken(loginResponse.getSatoken());
         accessPayload.setRefreshToken(refreshToken);
         accessPayload.setExpireAt(Instant.now().plusSeconds(ACCESS_TOKEN_TTL_SECONDS).toEpochMilli());
 
         RefreshTokenPayload refreshPayload = new RefreshTokenPayload();
         refreshPayload.setUserId(userId);
-        refreshPayload.setClientType(CLIENT_TYPE_MINI_PROGRAM);
+        refreshPayload.setClientType(clientType);
 
         try {
             stringRedisTemplate.opsForValue().set(RedisKeys.mobileAccessToken(accessToken),
                     objectMapper.writeValueAsString(accessPayload), ACCESS_TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
             stringRedisTemplate.opsForValue().set(RedisKeys.mobileRefreshToken(refreshToken),
                     objectMapper.writeValueAsString(refreshPayload), REFRESH_TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
-            log.info("mini program login success, userId={}, source={}", userId, source);
+            log.info("mobile login success, userId={}, source={}, clientType={}", userId, source, clientType);
             return ApiResponse.success(PortalMobileLoginResponse.loginSuccess(
                     accessToken, refreshToken, ACCESS_TOKEN_TTL_SECONDS, userId));
         } catch (JsonProcessingException ex) {
             log.error("write mobile token payload failed, userId={}", userId, ex);
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "令牌签发失败");
         }
+    }
+
+    private PortalUserIdentity findAppIdentity(String unionId, String openId) {
+        PortalUserIdentity byUnion = portalUserIdentityService.findByIdentity(PROVIDER_WECHAT_APP, IDENTITY_TYPE_UNIONID, unionId);
+        if (byUnion != null) {
+            return byUnion;
+        }
+        return portalUserIdentityService.findByIdentity(PROVIDER_WECHAT_APP, IDENTITY_TYPE_OPENID, openId);
+    }
+
+    private void saveIdentityIfAbsent(String userId, String provider, String identityType, String identityKey) {
+        if (!StringUtils.hasText(identityKey)) {
+            return;
+        }
+        PortalUserIdentity exists = portalUserIdentityService.findByIdentity(provider, identityType, identityKey);
+        if (exists != null) {
+            return;
+        }
+        PortalUserIdentity identity = new PortalUserIdentity();
+        identity.setUserId(userId);
+        identity.setIdentityProvider(provider);
+        identity.setIdentityType(identityType);
+        identity.setIdentityKey(identityKey);
+        identity.setBindStatus(1);
+        identity.setBindTime(LocalDateTime.now());
+        portalUserIdentityService.save(identity);
     }
 
     private TokenPayload readAccessPayload(String accessToken) {
@@ -245,10 +294,31 @@ public class PortalMobileAuthService {
         }
     }
 
-    private String createBindToken(String openId) {
+    private BindContext readBindContext(String bindToken) {
+        String raw = stringRedisTemplate.opsForValue().get(RedisKeys.miniBindToken(bindToken));
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(raw, BindContext.class);
+        } catch (JsonProcessingException ex) {
+            log.warn("bind token payload parse failed, bindToken={}", mask(bindToken));
+            return null;
+        }
+    }
+
+    private String createBindToken(BindContext bindContext) {
         String bindToken = randomToken();
-        stringRedisTemplate.opsForValue().set(RedisKeys.miniBindToken(bindToken), openId, BIND_TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
-        return bindToken;
+        try {
+            stringRedisTemplate.opsForValue().set(
+                    RedisKeys.miniBindToken(bindToken),
+                    objectMapper.writeValueAsString(bindContext),
+                    BIND_TOKEN_TTL_SECONDS,
+                    TimeUnit.SECONDS);
+            return bindToken;
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("生成绑定令牌失败", ex);
+        }
     }
 
     private String randomToken() {
@@ -331,6 +401,45 @@ public class PortalMobileAuthService {
 
         public void setClientType(String clientType) {
             this.clientType = clientType;
+        }
+    }
+
+    private static class BindContext {
+        private String provider;
+        private String openId;
+        private String unionId;
+
+        public BindContext() {
+        }
+
+        public BindContext(String provider, String openId, String unionId) {
+            this.provider = provider;
+            this.openId = openId;
+            this.unionId = unionId;
+        }
+
+        public String getProvider() {
+            return provider;
+        }
+
+        public void setProvider(String provider) {
+            this.provider = provider;
+        }
+
+        public String getOpenId() {
+            return openId;
+        }
+
+        public void setOpenId(String openId) {
+            this.openId = openId;
+        }
+
+        public String getUnionId() {
+            return unionId;
+        }
+
+        public void setUnionId(String unionId) {
+            this.unionId = unionId;
         }
     }
 }

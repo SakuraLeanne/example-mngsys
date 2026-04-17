@@ -9,4 +9,9 @@ import com.dhgx.portal.entity.PortalUserIdentity;
 public interface PortalUserIdentityService extends IService<PortalUserIdentity> {
 
     PortalUserIdentity findMiniProgramOpenId(String openId);
+
+    /**
+     * 按 provider/type/key 查询已绑定身份。
+     */
+    PortalUserIdentity findByIdentity(String provider, String identityType, String identityKey);
 }

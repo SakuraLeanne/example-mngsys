@@ -203,6 +203,7 @@ public class PortalProperties {
 
     public static class Wechat {
         private MiniProgram miniProgram = new MiniProgram();
+        private App app = new App();
 
         public MiniProgram getMiniProgram() {
             return miniProgram;
@@ -210,6 +211,45 @@ public class PortalProperties {
 
         public void setMiniProgram(MiniProgram miniProgram) {
             this.miniProgram = miniProgram;
+        }
+
+        public App getApp() {
+            return app;
+        }
+
+        public void setApp(App app) {
+            this.app = app;
+        }
+
+
+        public static class App {
+            private String appId;
+            private String appSecret;
+            private String oauthAccessTokenUrl = "https://api.weixin.qq.com/sns/oauth2/access_token";
+
+            public String getAppId() {
+                return appId;
+            }
+
+            public void setAppId(String appId) {
+                this.appId = appId;
+            }
+
+            public String getAppSecret() {
+                return appSecret;
+            }
+
+            public void setAppSecret(String appSecret) {
+                this.appSecret = appSecret;
+            }
+
+            public String getOauthAccessTokenUrl() {
+                return oauthAccessTokenUrl;
+            }
+
+            public void setOauthAccessTokenUrl(String oauthAccessTokenUrl) {
+                this.oauthAccessTokenUrl = oauthAccessTokenUrl;
+            }
         }
 
         public static class MiniProgram {

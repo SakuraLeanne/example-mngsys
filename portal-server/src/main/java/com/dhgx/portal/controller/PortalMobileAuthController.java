@@ -1,5 +1,6 @@
 package com.dhgx.portal.controller;
 
+import com.dhgx.common.portal.dto.PortalAppWechatLoginRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramBindRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
@@ -31,6 +32,12 @@ public class PortalMobileAuthController {
 
     public PortalMobileAuthController(PortalMobileAuthService portalMobileAuthService) {
         this.portalMobileAuthService = portalMobileAuthService;
+    }
+
+
+    @PostMapping("/mobile/login/wechat/app")
+    public ApiResponse<PortalMobileLoginResponse> appWechatLogin(@Valid @RequestBody PortalAppWechatLoginRequest request) {
+        return portalMobileAuthService.loginByWechatApp(request);
     }
 
     @PostMapping("/mobile/login/wechat/mini-program")

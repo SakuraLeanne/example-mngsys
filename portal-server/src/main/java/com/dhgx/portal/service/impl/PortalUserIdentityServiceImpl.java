@@ -20,13 +20,18 @@ public class PortalUserIdentityServiceImpl extends ServiceImpl<PortalUserIdentit
 
     @Override
     public PortalUserIdentity findMiniProgramOpenId(String openId) {
-        if (!StringUtils.hasText(openId)) {
+        return findByIdentity(PROVIDER_WECHAT_MINI_PROGRAM, TYPE_OPENID, openId);
+    }
+
+    @Override
+    public PortalUserIdentity findByIdentity(String provider, String identityType, String identityKey) {
+        if (!StringUtils.hasText(provider) || !StringUtils.hasText(identityType) || !StringUtils.hasText(identityKey)) {
             return null;
         }
         LambdaQueryWrapper<PortalUserIdentity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(PortalUserIdentity::getIdentityProvider, PROVIDER_WECHAT_MINI_PROGRAM)
-                .eq(PortalUserIdentity::getIdentityType, TYPE_OPENID)
-                .eq(PortalUserIdentity::getIdentityKey, openId)
+        wrapper.eq(PortalUserIdentity::getIdentityProvider, provider)
+                .eq(PortalUserIdentity::getIdentityType, identityType)
+                .eq(PortalUserIdentity::getIdentityKey, identityKey)
                 .eq(PortalUserIdentity::getBindStatus, 1)
                 .last("LIMIT 1");
         return getOne(wrapper, false);
