@@ -7,6 +7,8 @@ import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
 import com.dhgx.common.redis.RedisKeys;
 import com.dhgx.portal.client.AuthClient;
+import com.dhgx.portal.client.wechat.WechatMiniProgramClient;
+import com.dhgx.portal.client.wechat.WechatMiniProgramSessionResponse;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.entity.PortalUser;
@@ -44,17 +46,20 @@ public class PortalMobileAuthService {
     private final PortalUserIdentityService portalUserIdentityService;
     private final PortalUserService portalUserService;
     private final AuthClient authClient;
+    private final WechatMiniProgramClient wechatMiniProgramClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
 
     public PortalMobileAuthService(PortalUserIdentityService portalUserIdentityService,
                                    PortalUserService portalUserService,
                                    AuthClient authClient,
+                                   WechatMiniProgramClient wechatMiniProgramClient,
                                    StringRedisTemplate stringRedisTemplate,
                                    ObjectMapper objectMapper) {
         this.portalUserIdentityService = portalUserIdentityService;
         this.portalUserService = portalUserService;
         this.authClient = authClient;
+        this.wechatMiniProgramClient = wechatMiniProgramClient;
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
     }
@@ -63,7 +68,9 @@ public class PortalMobileAuthService {
      * 小程序 openId 登录。已绑定直接登录，未绑定返回 bindToken。
      */
     public ApiResponse<PortalMobileLoginResponse> loginByMiniProgram(PortalMiniProgramLoginRequest request) {
-        String openId = request.getOpenId().trim();
+        // 小程序端传 code，门户后端调用微信 jscode2session 换取 openId。
+        WechatMiniProgramSessionResponse sessionResponse = wechatMiniProgramClient.code2Session(request.getCode().trim());
+        String openId = sessionResponse.getOpenid();
         PortalUserIdentity identity = portalUserIdentityService.findMiniProgramOpenId(openId);
         if (identity == null) {
             String bindToken = createBindToken(openId);

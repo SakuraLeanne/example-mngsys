@@ -53,6 +53,11 @@ portal:
     cacheTtlSeconds: 600
   events:
     streamKey: portal:events
+  wechat:
+    miniProgram:
+      appId: ${WECHAT_MINI_APP_ID:}
+      appSecret: ${WECHAT_MINI_APP_SECRET:}
+      jsCode2SessionUrl: https://api.weixin.qq.com/sns/jscode2session
   security:
     captcha:
       enabled: true
