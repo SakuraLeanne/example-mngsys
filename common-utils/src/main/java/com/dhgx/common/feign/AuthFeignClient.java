@@ -2,6 +2,7 @@ package com.dhgx.common.feign;
 
 import com.dhgx.common.feign.dto.AuthPasswordResetRequest;
 import com.dhgx.common.feign.dto.AuthKickRequest;
+import com.dhgx.common.feign.dto.AuthInternalLoginRequest;
 import com.dhgx.common.feign.dto.AuthLoginRequest;
 import com.dhgx.common.feign.dto.AuthSmsSendRequest;
 import com.dhgx.common.feign.dto.AuthSmsVerifyRequest;
@@ -94,6 +95,17 @@ public interface AuthFeignClient {
      */
     @GetMapping("/session-info")
     Response sessionMe(@RequestHeader(value = "Cookie", required = false) String cookie);
+
+    /**
+     * 内部按用户 ID 建立登录会话。
+     *
+     * @param internalToken 内部鉴权 Token
+     * @param request       登录请求
+     * @return 原始响应
+     */
+    @PostMapping("/session/internal-login")
+    Response internalLogin(@RequestHeader("X-Internal-Token") String internalToken,
+                           @RequestBody AuthInternalLoginRequest request);
 
     /**
      * 踢出指定用户。
