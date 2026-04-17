@@ -16,6 +16,7 @@ public class PortalProperties {
     private Ptk ptk = new Ptk();
     private UserAuth userAuth = new UserAuth();
     private Events events = new Events();
+    private Wechat wechat = new Wechat();
 
     public Security getSecurity() {
         return security;
@@ -55,6 +56,14 @@ public class PortalProperties {
 
     public void setEvents(Events events) {
         this.events = events;
+    }
+
+    public Wechat getWechat() {
+        return wechat;
+    }
+
+    public void setWechat(Wechat wechat) {
+        this.wechat = wechat;
     }
 
     public static class Security {
@@ -189,6 +198,48 @@ public class PortalProperties {
 
         public void setStreamKey(String streamKey) {
             this.streamKey = streamKey;
+        }
+    }
+
+    public static class Wechat {
+        private MiniProgram miniProgram = new MiniProgram();
+
+        public MiniProgram getMiniProgram() {
+            return miniProgram;
+        }
+
+        public void setMiniProgram(MiniProgram miniProgram) {
+            this.miniProgram = miniProgram;
+        }
+
+        public static class MiniProgram {
+            private String appId;
+            private String appSecret;
+            private String jsCode2SessionUrl = "https://api.weixin.qq.com/sns/jscode2session";
+
+            public String getAppId() {
+                return appId;
+            }
+
+            public void setAppId(String appId) {
+                this.appId = appId;
+            }
+
+            public String getAppSecret() {
+                return appSecret;
+            }
+
+            public void setAppSecret(String appSecret) {
+                this.appSecret = appSecret;
+            }
+
+            public String getJsCode2SessionUrl() {
+                return jsCode2SessionUrl;
+            }
+
+            public void setJsCode2SessionUrl(String jsCode2SessionUrl) {
+                this.jsCode2SessionUrl = jsCode2SessionUrl;
+            }
         }
     }
 }
