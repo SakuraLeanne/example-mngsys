@@ -231,7 +231,8 @@ public class PortalAdminAppRoleService {
             return Result.failure(ErrorCode.FORBIDDEN, "权限不足，请联系管理员");
         }
         List<AppMenuResource> menus = appMenuResourceService.list(new LambdaQueryWrapper<AppMenuResource>()
-                .eq(AppMenuResource::getAppCode, role.getAppCode()));
+                .eq(AppMenuResource::getAppCode, role.getAppCode())
+                .eq(AppMenuResource::getStatus, 1));
         List<AppRoleMenu> roleMenus = appRoleMenuService.list(new LambdaQueryWrapper<AppRoleMenu>()
                 .eq(AppRoleMenu::getRoleId, roleId));
         Set<Long> grantedMenuIds = roleMenus.stream()
