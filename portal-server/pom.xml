@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.dhgx</groupId>
         <artifactId>dhgx-portal</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -72,7 +72,7 @@
         <dependency>
             <groupId>com.dhgx</groupId>
             <artifactId>common-utils</artifactId>
-            <version>${project.version}</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.baomidou</groupId>
@@ -97,7 +97,7 @@
         <dependency>
             <groupId>com.dhgx.api.notify</groupId>
             <artifactId>event-notify-api</artifactId>
-            <version>${project.version}</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
