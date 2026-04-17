@@ -3,31 +3,14 @@ package com.dhgx.portal.controller;
 import com.dhgx.common.cipher.Sm4CbcUtil;
 import com.dhgx.common.feign.dto.AuthLoginResponse;
 import com.dhgx.common.feign.dto.AuthLoginType;
-import com.dhgx.common.portal.dto.PortalActionEnterResponse;
-import com.dhgx.common.portal.dto.PortalActionTicketRequest;
-import com.dhgx.common.portal.dto.PortalForgotPasswordResetRequest;
-import com.dhgx.common.portal.dto.PortalLoginRequest;
-import com.dhgx.common.portal.dto.PortalLoginResponse;
-import com.dhgx.common.portal.dto.PortalMeResponse;
-import com.dhgx.common.portal.dto.PortalMenuItem;
-import com.dhgx.common.portal.dto.PortalPasswordChangeRequest;
-import com.dhgx.common.portal.dto.PortalPasswordChangeResponse;
-import com.dhgx.common.portal.dto.PortalProfileUpdateResponse;
-import com.dhgx.common.portal.dto.PortalSmsSendRequest;
-import com.dhgx.common.portal.dto.PortalSmsVerifyRequest;
-import com.dhgx.common.portal.dto.PortalSsoJumpRequest;
-import com.dhgx.common.portal.dto.PortalSsoJumpResponse;
+import com.dhgx.common.portal.dto.*;
 import com.dhgx.common.security.PasswordCryptoService;
 import com.dhgx.portal.client.AuthClient;
-import com.dhgx.portal.common.api.ErrorCode;
-import com.dhgx.portal.entity.PortalUser;
-import com.dhgx.portal.service.PortalPasswordService;
 import com.dhgx.portal.common.api.ApiResponse;
+import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.common.context.RequestContext;
-import com.dhgx.portal.service.PortalActionService;
-import com.dhgx.portal.service.PortalAuthService;
-import com.dhgx.portal.service.PortalProfileService;
-import com.dhgx.portal.service.PortalUserService;
+import com.dhgx.portal.entity.PortalUser;
+import com.dhgx.portal.service.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -411,8 +394,8 @@ public class PortalApiController {
      * @return 动作进入结果
      */
     private ApiResponse<PortalActionEnterResponse> enterActionTicket(PortalActionService.ActionType actionType,
-                                                                     PortalActionTicketRequest request,
-                                                                     HttpServletResponse response) {
+                                               PortalActionTicketRequest request,
+                                               HttpServletResponse response) {
         PortalActionService.EnterResult result = portalActionService.enter(actionType, request.getTicket());
         if (!result.isSuccess()) {
             return ApiResponse.failure(result.getErrorCode());
@@ -423,7 +406,7 @@ public class PortalApiController {
                 .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        PortalActionEnterResponse payload = new PortalActionEnterResponse(true, result.getReturnUrl(), result.getSystemCode());
+        PortalActionEnterResponse payload = new PortalActionEnterResponse(true, result.getReturnUrl(), result.getSystemCode(),result.getPtk());
         return ApiResponse.success(payload);
     }
 
