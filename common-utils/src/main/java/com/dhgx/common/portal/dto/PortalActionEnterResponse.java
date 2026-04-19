@@ -7,11 +7,13 @@ public class PortalActionEnterResponse {
     private final boolean success;
     private final String returnUrl;
     private final String systemCode;
+    private final String ptk;
 
-    public PortalActionEnterResponse(boolean success, String returnUrl, String systemCode) {
+    public PortalActionEnterResponse(boolean success, String returnUrl, String systemCode, String ptk) {
         this.success = success;
         this.returnUrl = returnUrl;
         this.systemCode = systemCode;
+        this.ptk = ptk;
     }
 
     public boolean isSuccess() {
@@ -24,5 +26,9 @@ public class PortalActionEnterResponse {
 
     public String getSystemCode() {
         return systemCode;
+    }
+
+    public String getPtk() {
+        return ptk;
     }
 }
