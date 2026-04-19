@@ -4,6 +4,8 @@ import com.dhgx.common.portal.dto.PortalAppWechatLoginRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramBindRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
+import com.dhgx.common.portal.dto.PortalMobileSmsLoginRequest;
+import com.dhgx.common.portal.dto.PortalMobileSmsSendRequest;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.service.PortalMobileAuthService;
@@ -34,6 +36,17 @@ public class PortalMobileAuthController {
         this.portalMobileAuthService = portalMobileAuthService;
     }
 
+
+
+    @PostMapping("/mobile/login/sms/send")
+    public ApiResponse<String> sendSmsCode(@Valid @RequestBody PortalMobileSmsSendRequest request) {
+        return portalMobileAuthService.sendLoginSms(request);
+    }
+
+    @PostMapping("/mobile/login/sms")
+    public ApiResponse<PortalMobileLoginResponse> smsLogin(@Valid @RequestBody PortalMobileSmsLoginRequest request) {
+        return portalMobileAuthService.loginBySms(request);
+    }
 
     @PostMapping("/mobile/login/wechat/app")
     public ApiResponse<PortalMobileLoginResponse> appWechatLogin(@Valid @RequestBody PortalAppWechatLoginRequest request) {

@@ -5,7 +5,10 @@ import com.dhgx.common.feign.dto.AuthLoginResponse;
 import com.dhgx.common.portal.dto.PortalAppWechatLoginRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramBindRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
+import com.dhgx.common.portal.dto.PortalMobileClientType;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
+import com.dhgx.common.portal.dto.PortalMobileSmsLoginRequest;
+import com.dhgx.common.portal.dto.PortalMobileSmsSendRequest;
 import com.dhgx.common.redis.RedisKeys;
 import com.dhgx.portal.client.AuthClient;
 import com.dhgx.portal.client.wechat.WechatAppClient;
@@ -82,6 +85,49 @@ public class PortalMobileAuthService {
         this.objectMapper = objectMapper;
         this.authClientProperties = authClientProperties;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    /**
+     * 移动端发送短信验证码（APP/小程序共用）。
+     */
+    public ApiResponse<String> sendLoginSms(PortalMobileSmsSendRequest request) {
+        String clientType = resolveClientType(request.getClientType());
+        ApiResponse<String> resp = authClient.sendLoginSms(request.getMobile());
+        if (resp == null) {
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "鉴权服务无响应");
+        }
+        if (resp.getCode() == 0) {
+            log.info("mobile sms send success, clientType={}, mobile={}", clientType, mask(request.getMobile()));
+        } else {
+            log.warn("mobile sms send failed, clientType={}, mobile={}, msg={}", clientType, mask(request.getMobile()), resp.getMessage());
+        }
+        return resp;
+    }
+
+    /**
+     * 移动端短信验证码登录（APP/小程序共用）。
+     */
+    public ApiResponse<PortalMobileLoginResponse> loginBySms(PortalMobileSmsLoginRequest request) {
+        String clientType = resolveClientType(request.getClientType());
+        ApiResponse<Void> smsVerifyResp = authClient.verifySms(request.getMobile(), request.getCode());
+        if (smsVerifyResp == null || smsVerifyResp.getCode() != 0) {
+            String msg = smsVerifyResp == null ? "短信验证码校验失败" : smsVerifyResp.getMessage();
+            log.warn("mobile sms login failed: verify failed, clientType={}, mobile={}, msg={}",
+                    clientType, mask(request.getMobile()), msg);
+            return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, msg);
+        }
+        PortalUser user = portalUserService.getOne(new LambdaQueryWrapper<PortalUser>()
+                .eq(PortalUser::getMobile, request.getMobile())
+                .last("LIMIT 1"));
+        if (user == null) {
+            if (!authClientProperties.isAutoCreateUser()) {
+                return ApiResponse.failure(ErrorCode.NOT_FOUND, "手机号未开通门户账号，请联系管理员");
+            }
+            user = autoCreatePortalUser(request.getMobile());
+            log.info("auto created portal user for sms login, clientType={}, userId={}, mobile={}",
+                    clientType, user.getId(), mask(user.getMobile()));
+        }
+        return doLogin(user.getId(), clientType, "sms-login");
     }
 
     /**
@@ -201,6 +247,21 @@ public class PortalMobileAuthService {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录态已失效");
         }
         return ApiResponse.success(payload);
+    }
+
+
+    private String resolveClientType(PortalMobileClientType clientType) {
+        if (clientType == null) {
+            throw new IllegalArgumentException("clientType 不能为空");
+        }
+        switch (clientType) {
+            case APP:
+                return CLIENT_TYPE_APP;
+            case MINI_PROGRAM:
+                return CLIENT_TYPE_MINI_PROGRAM;
+            default:
+                throw new IllegalArgumentException("不支持的客户端类型");
+        }
     }
 
     /**
