@@ -10,6 +10,7 @@ import com.dhgx.auth.service.SmsCodeService;
 import com.dhgx.auth.service.UserTokenVersionService;
 import com.dhgx.common.security.PasswordCryptoService;
 import com.dhgx.common.security.PasswordEncryptProperties;
+import com.dhgx.common.feign.dto.AuthInternalLoginRequest;
 import com.dhgx.common.feign.dto.AuthKickRequest;
 import com.dhgx.common.feign.dto.AuthLoginRequest;
 import com.dhgx.common.feign.dto.AuthLoginResponse;
@@ -21,6 +22,8 @@ import com.dhgx.common.feign.dto.AuthSmsScene;
 import com.dhgx.common.feign.dto.AuthSmsSendRequest;
 import com.dhgx.common.feign.dto.AuthSmsVerifyRequest;
 import com.dhgx.common.feign.dto.AuthTokenLogoutRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
@@ -47,6 +50,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private static final DateTimeFormatter LOGIN_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -236,6 +240,34 @@ public class AuthController {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "登录凭证无效，请重新登录");
         }
         return ApiResponse.success(new AuthSessionResponse(userId, currentVersion));
+    }
+
+
+    /**
+     * 内部按用户 ID 建立会话，仅允许内部服务调用。
+     */
+    @PostMapping("/session/internal-login")
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> internalLogin(
+            @RequestHeader(value = "X-Internal-Token", required = false) String internalToken,
+            @Valid @RequestBody AuthInternalLoginRequest request) {
+        if (internalToken == null || !internalToken.equals(authProperties.getInternalToken())) {
+            return ResponseEntity.status(ErrorCode.UNAUTHENTICATED.getHttpStatus())
+                    .body(ApiResponse.failure(ErrorCode.UNAUTHENTICATED, "内部鉴权失败"));
+        }
+        AuthService.User user = authService.authenticateByUserId(request.getUserId());
+        StpUtil.login(user.getUserId());
+        long tokenVersion = userTokenVersionService.getCurrentVersion(user.getUserId());
+        userTokenVersionService.writeSessionVersion(tokenVersion);
+        long loginTime = StpUtil.getSession().getCreateTime();
+        AuthLoginResponse response = new AuthLoginResponse();
+        response.setUserId(user.getUserId());
+        response.setUsername(user.getUsername());
+        response.setMobile(user.getMobile());
+        response.setRealName(user.getRealName());
+        response.setSatoken(StpUtil.getTokenValue());
+        response.setLoginTime(formatLoginTime(loginTime));
+        log.info("internal login success, userId={}", user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**

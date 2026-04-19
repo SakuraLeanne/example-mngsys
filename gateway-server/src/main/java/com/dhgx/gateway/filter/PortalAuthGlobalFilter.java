@@ -2,18 +2,22 @@ package com.dhgx.gateway.filter;
 
 import com.dhgx.common.api.ErrorCode;
 import com.dhgx.common.feign.AuthFeignClient;
+import com.dhgx.common.feign.PortalFeignClient;
 import com.dhgx.common.gateway.GatewaySecurityProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.server.ServerWebExchange;
@@ -30,51 +34,48 @@ import java.util.Map;
 /**
  * PortalAuthGlobalFilter。
  * <p>
- * 全局鉴权过滤器，拦截 Portal API 请求，调用认证服务校验登录状态，
- * 未通过校验时返回 401 JSON 响应。
+ * 全局鉴权过滤器：优先 Bearer，再回退 Cookie satoken。
  * </p>
  */
 @Component
 public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
 
-    /** 安全配置，包含白名单配置。 */
+    private static final Logger log = LoggerFactory.getLogger(PortalAuthGlobalFilter.class);
+
     private final GatewaySecurityProperties securityProperties;
-    /** 调用认证服务的 Feign 客户端。 */
     private final AuthFeignClient authFeignClient;
-    /** JSON 序列化工具。 */
+    private final PortalFeignClient portalFeignClient;
     private final ObjectMapper objectMapper;
-    /** 路径匹配器，用于匹配白名单。 */
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    /**
-     * 构造函数，注入依赖。
-     *
-     * @param securityProperties 安全配置项
-     * @param authFeignClient 认证服务 Feign 客户端
-     * @param objectMapper JSON 序列化工具
-     */
     public PortalAuthGlobalFilter(GatewaySecurityProperties securityProperties,
                                   AuthFeignClient authFeignClient,
+                                  PortalFeignClient portalFeignClient,
                                   ObjectMapper objectMapper) {
         this.securityProperties = securityProperties;
         this.authFeignClient = authFeignClient;
+        this.portalFeignClient = portalFeignClient;
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * 过滤入口，对 Portal API 请求执行登录校验。
-     *
-     * @param exchange 当前请求上下文
-     * @param chain    过滤器链
-     * @return 继续链路或返回未登录响应的 Mono
-     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
-
         if (isWhitelisted(path)) {
             return chain.filter(exchange);
         }
+
+        String bearer = resolveBearer(exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
+        if (StringUtils.isNotBlank(bearer)) {
+            return Mono.fromCallable(() -> portalFeignClient.introspect(bearer))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(response -> handleBearerResponse(chain, exchange, response))
+                    .onErrorResume(ex -> {
+                        log.warn("bearer introspect error: {}", ex.getMessage());
+                        return writeUnauthorized(exchange, "登录已失效，请重新登录");
+                    });
+        }
+
         String cookie = exchange.getRequest().getHeaders().getFirst(HttpHeaders.COOKIE);
         String cookieHeader = cookie == null ? "" : cookie;
         if (!hasSaTokenCookie(cookieHeader)) {
@@ -82,33 +83,75 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         }
         return Mono.fromCallable(() -> authFeignClient.sessionMe(cookieHeader))
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(response -> handleResponse(chain, exchange, response))
+                .flatMap(response -> handleCookieResponse(chain, exchange, response))
                 .onErrorResume(ex -> writeUnauthorized(exchange, null));
     }
 
-    /**
-     * 处理认证服务返回结果，成功则放行，失败则返回 401。
-     *
-     * @param chain    过滤器链
-     * @param exchange 请求上下文
-     * @param response 认证服务响应
-     * @return 下一步处理的 Mono
-     */
-    private Mono<Void> handleResponse(GatewayFilterChain chain,
-                                      ServerWebExchange exchange,
-                                      Response response) {
-        if (response.status() >= 200 && response.status() < 300) {
-            return chain.filter(exchange);
+    private Mono<Void> handleBearerResponse(GatewayFilterChain chain,
+                                            ServerWebExchange exchange,
+                                            Response response) {
+        if (response == null) {
+            return writeUnauthorized(exchange, null);
         }
-        return writeUnauthorized(exchange, resolveErrorMessage(response));
+        Map<String, Object> payload = readJsonPayload(response);
+        if (response.status() >= 200 && response.status() < 300 && isSuccessCode(payload)) {
+            Map<String, Object> data = readData(payload);
+            String userId = asText(data.get("userId"));
+            String clientType = asText(data.get("clientType"));
+            ServerHttpRequest request = exchange.getRequest().mutate()
+                    .header("X-User-Id", userId == null ? "" : userId)
+                    .header("X-Client-Type", clientType == null ? "" : clientType)
+                    .header("X-Auth-Source", "ACCESS_TOKEN")
+                    .build();
+            return chain.filter(exchange.mutate().request(request).build());
+        }
+        return writeUnauthorized(exchange, resolveErrorMessage(payload));
     }
 
-    /**
-     * 判断请求路径是否命中白名单。
-     *
-     * @param path 请求路径
-     * @return true 表示命中白名单
-     */
+    private Mono<Void> handleCookieResponse(GatewayFilterChain chain,
+                                            ServerWebExchange exchange,
+                                            Response response) {
+        if (response.status() >= 200 && response.status() < 300) {
+            ServerHttpRequest request = exchange.getRequest().mutate()
+                    .header("X-Auth-Source", "SATOKEN")
+                    .build();
+            return chain.filter(exchange.mutate().request(request).build());
+        }
+        return writeUnauthorized(exchange, resolveErrorMessage(readJsonPayload(response)));
+    }
+
+    private boolean isSuccessCode(Map<String, Object> payload) {
+        Object code = payload == null ? null : payload.get("code");
+        if (code instanceof Number) {
+            return ((Number) code).intValue() == 0;
+        }
+        return "0".equals(asText(code));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> readData(Map<String, Object> payload) {
+        Object data = payload == null ? null : payload.get("data");
+        if (data instanceof Map) {
+            return (Map<String, Object>) data;
+        }
+        return new HashMap<>();
+    }
+
+    private String asText(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private String resolveBearer(String authorization) {
+        if (StringUtils.isBlank(authorization)) {
+            return null;
+        }
+        final String prefix = "Bearer ";
+        if (authorization.startsWith(prefix)) {
+            return authorization.substring(prefix.length()).trim();
+        }
+        return authorization.trim();
+    }
+
     private boolean isWhitelisted(String path) {
         List<String> whitelist = securityProperties.getWhitelist();
         if (whitelist == null || whitelist.isEmpty()) {
@@ -117,26 +160,13 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         return whitelist.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
-    /**
-     * 返回未登录的 401 JSON 响应。
-     *
-     * @param exchange 请求上下文
-     * @return 写入响应的 Mono
-     */
     private Mono<Void> writeUnauthorized(ServerWebExchange exchange, String message) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         byte[] payload = buildUnauthorizedPayload(message);
-        return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()
-                .bufferFactory()
-                .wrap(payload)));
+        return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(payload)));
     }
 
-    /**
-     * 构建未登录响应的 JSON 字节数组。
-     *
-     * @return JSON 内容字节
-     */
     private byte[] buildUnauthorizedPayload(String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("code", ErrorCode.UNAUTHENTICATED.getCode());
@@ -154,17 +184,20 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         }
     }
 
-    private String resolveErrorMessage(Response response) {
+    private String resolveErrorMessage(Map<String, Object> payload) {
+        Object value = payload == null ? null : payload.get("message");
+        return value == null ? null : value.toString();
+    }
+
+    private Map<String, Object> readJsonPayload(Response response) {
         if (response == null || response.body() == null) {
-            return null;
+            return new HashMap<>();
         }
         try (InputStream inputStream = response.body().asInputStream()) {
-            Map<String, Object> payload = objectMapper.readValue(inputStream, new TypeReference<Map<String, Object>>() {
+            return objectMapper.readValue(inputStream, new TypeReference<Map<String, Object>>() {
             });
-            Object value = payload.get("message");
-            return value == null ? null : value.toString();
         } catch (IOException ex) {
-            return null;
+            return new HashMap<>();
         }
     }
 
@@ -183,11 +216,6 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
         return false;
     }
 
-    /**
-     * 设置过滤器排序，值越小越先执行。
-     *
-     * @return 排序值
-     */
     @Override
     public int getOrder() {
         return -100;
