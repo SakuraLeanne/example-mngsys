@@ -6,12 +6,12 @@
     <parent>
         <groupId>com.dhgx</groupId>
         <artifactId>dhgx-portal</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>common-utils</artifactId>
     <packaging>jar</packaging>
+    <version>1.0.0-SNAPSHOT</version>
 
     <name>common-utils</name>
     <description>Shared API response models, error codes, Redis keys, and event definitions</description>
