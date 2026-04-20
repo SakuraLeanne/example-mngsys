@@ -127,7 +127,7 @@ public class PortalMobileAuthService {
             log.info("auto created portal user for sms login, clientType={}, userId={}, mobile={}",
                     clientType, user.getId(), mask(user.getMobile()));
         }
-        return doLogin(user.getId(), clientType, "sms-login");
+        return doLogin(user.getId(), clientType, request.getDeviceId(), "sms-login");
     }
 
     /**
@@ -139,13 +139,17 @@ public class PortalMobileAuthService {
         String unionId = oauthResponse.getUnionid();
 
         // APP 场景优先按 unionId 归一，找不到再按 openId。
-        PortalUserIdentity identity = findAppIdentity(unionId, openId);
+        IdentityMatchResult matchResult = findIdentityWithConflictCheck(PROVIDER_WECHAT_APP, unionId, openId);
+        if (matchResult.hasConflict()) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "微信身份冲突，请联系管理员处理");
+        }
+        PortalUserIdentity identity = matchResult.getMatchedIdentity();
         if (identity == null) {
             String bindToken = createBindToken(new BindContext(PROVIDER_WECHAT_APP, openId, unionId));
             log.info("app wechat login requires binding, openId={}, unionId={}", mask(openId), mask(unionId));
             return ApiResponse.success(PortalMobileLoginResponse.bindRequired(bindToken));
         }
-        return doLogin(identity.getUserId(), CLIENT_TYPE_APP, "app-wechat");
+        return doLogin(identity.getUserId(), CLIENT_TYPE_APP, request.getDeviceId(), "app-wechat");
     }
 
     /**
@@ -154,21 +158,24 @@ public class PortalMobileAuthService {
     public ApiResponse<PortalMobileLoginResponse> loginByMiniProgram(PortalMiniProgramLoginRequest request) {
         WechatMiniProgramSessionResponse sessionResponse = wechatMiniProgramClient.code2Session(request.getCode().trim());
         String openId = sessionResponse.getOpenid();
-        PortalUserIdentity identity = portalUserIdentityService.findByIdentity(
-                PROVIDER_WECHAT_MINI_PROGRAM, IDENTITY_TYPE_OPENID, openId);
+        IdentityMatchResult matchResult = findIdentityWithConflictCheck(PROVIDER_WECHAT_MINI_PROGRAM, sessionResponse.getUnionid(), openId);
+        if (matchResult.hasConflict()) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "微信身份冲突，请联系管理员处理");
+        }
+        PortalUserIdentity identity = matchResult.getMatchedIdentity();
         if (identity == null) {
             String bindToken = createBindToken(new BindContext(PROVIDER_WECHAT_MINI_PROGRAM, openId, sessionResponse.getUnionid()));
             log.info("mini program login requires binding, openId={}", mask(openId));
             return ApiResponse.success(PortalMobileLoginResponse.bindRequired(bindToken));
         }
-        return doLogin(identity.getUserId(), CLIENT_TYPE_MINI_PROGRAM, "mini-program-openid");
+        return doLogin(identity.getUserId(), CLIENT_TYPE_MINI_PROGRAM, request.getDeviceId(), "mini-program-openid");
     }
 
     /**
      * 绑定手机号并登录。
      */
     public ApiResponse<PortalMobileLoginResponse> bindMobileAndLogin(PortalMiniProgramBindRequest request) {
-        BindContext bindContext = readBindContext(request.getBindToken());
+        BindContext bindContext = readBindContextAndConsume(request.getBindToken());
         if (bindContext == null || !StringUtils.hasText(bindContext.getOpenId())
                 || !StringUtils.hasText(bindContext.getProvider())) {
             return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "绑定令牌无效或已过期");
@@ -202,9 +209,8 @@ public class PortalMobileAuthService {
         saveIdentityIfAbsent(user.getId(), bindContext.getProvider(), IDENTITY_TYPE_OPENID, bindContext.getOpenId());
         saveIdentityIfAbsent(user.getId(), bindContext.getProvider(), IDENTITY_TYPE_UNIONID, bindContext.getUnionId());
 
-        stringRedisTemplate.delete(RedisKeys.miniBindToken(request.getBindToken()));
         String clientType = PROVIDER_WECHAT_APP.equals(bindContext.getProvider()) ? CLIENT_TYPE_APP : CLIENT_TYPE_MINI_PROGRAM;
-        return doLogin(user.getId(), clientType, "wechat-bind");
+        return doLogin(user.getId(), clientType, request.getDeviceId(), "wechat-bind");
     }
 
     public ApiResponse<PortalMobileLoginResponse> refresh(String refreshToken) {
@@ -217,7 +223,7 @@ public class PortalMobileAuthService {
             RefreshTokenPayload payload = objectMapper.readValue(refreshPayload, RefreshTokenPayload.class);
             // 刷新时重新签发 token，并删除旧 refresh_token，避免重放。
             stringRedisTemplate.delete(refreshKey);
-            return doLogin(payload.getUserId(), payload.getClientType(), "mobile-refresh");
+            return doLogin(payload.getUserId(), payload.getClientType(), payload.getDeviceId(), "mobile-refresh");
         } catch (JsonProcessingException ex) {
             log.error("refresh token payload parse error", ex);
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "令牌解析失败");
@@ -280,7 +286,7 @@ public class PortalMobileAuthService {
         return portalUser;
     }
 
-    private ApiResponse<PortalMobileLoginResponse> doLogin(String userId, String clientType, String source) {
+    private ApiResponse<PortalMobileLoginResponse> doLogin(String userId, String clientType, String deviceId, String source) {
         ApiResponse<AuthLoginResponse> authResp = authClient.internalLoginByUserId(userId);
         if (authResp == null || authResp.getCode() != 0 || authResp.getData() == null) {
             String msg = authResp == null ? "鉴权服务无响应" : authResp.getMessage();
@@ -295,11 +301,13 @@ public class PortalMobileAuthService {
         accessPayload.setClientType(clientType);
         accessPayload.setSaToken(loginResponse.getSatoken());
         accessPayload.setRefreshToken(refreshToken);
+        accessPayload.setDeviceId(deviceId);
         accessPayload.setExpireAt(Instant.now().plusSeconds(ACCESS_TOKEN_TTL_SECONDS).toEpochMilli());
 
         RefreshTokenPayload refreshPayload = new RefreshTokenPayload();
         refreshPayload.setUserId(userId);
         refreshPayload.setClientType(clientType);
+        refreshPayload.setDeviceId(deviceId);
 
         try {
             stringRedisTemplate.opsForValue().set(RedisKeys.mobileAccessToken(accessToken),
@@ -315,12 +323,30 @@ public class PortalMobileAuthService {
         }
     }
 
-    private PortalUserIdentity findAppIdentity(String unionId, String openId) {
-        PortalUserIdentity byUnion = portalUserIdentityService.findByIdentity(PROVIDER_WECHAT_APP, IDENTITY_TYPE_UNIONID, unionId);
-        if (byUnion != null) {
-            return byUnion;
+    /**
+     * 微信身份匹配规则：unionId 优先，openid 兜底；若两者命中不同用户视为冲突。
+     */
+    private IdentityMatchResult findIdentityWithConflictCheck(String provider, String unionId, String openId) {
+        PortalUserIdentity byUnion = portalUserIdentityService.findByIdentity(provider, IDENTITY_TYPE_UNIONID, unionId);
+        PortalUserIdentity byOpen = portalUserIdentityService.findByIdentity(provider, IDENTITY_TYPE_OPENID, openId);
+        if (byUnion != null && byOpen != null && !byUnion.getUserId().equals(byOpen.getUserId())) {
+            log.warn("wechat identity conflict detected, provider={}, unionId={}, openId={}", provider, mask(unionId), mask(openId));
+            return IdentityMatchResult.conflict();
         }
-        return portalUserIdentityService.findByIdentity(PROVIDER_WECHAT_APP, IDENTITY_TYPE_OPENID, openId);
+        if (byUnion != null) {
+            return IdentityMatchResult.matched(byUnion);
+        }
+        return IdentityMatchResult.matched(byOpen);
+    }
+
+    private String resolveAppIdByProvider(String provider) {
+        if (PROVIDER_WECHAT_APP.equals(provider)) {
+            return wechatAppClient.resolveConfiguredAppId();
+        }
+        if (PROVIDER_WECHAT_MINI_PROGRAM.equals(provider)) {
+            return wechatMiniProgramClient.resolveConfiguredAppId();
+        }
+        return null;
     }
 
     private void saveIdentityIfAbsent(String userId, String provider, String identityType, String identityKey) {
@@ -336,6 +362,7 @@ public class PortalMobileAuthService {
         identity.setIdentityProvider(provider);
         identity.setIdentityType(identityType);
         identity.setIdentityKey(identityKey);
+        identity.setAppId(resolveAppIdByProvider(provider));
         identity.setBindStatus(1);
         identity.setBindTime(LocalDateTime.now());
         portalUserIdentityService.save(identity);
@@ -355,8 +382,11 @@ public class PortalMobileAuthService {
         }
     }
 
-    private BindContext readBindContext(String bindToken) {
-        String raw = stringRedisTemplate.opsForValue().get(RedisKeys.miniBindToken(bindToken));
+    /**
+     * 读取并立即消费 bindToken，防止重放。
+     */
+    private BindContext readBindContextAndConsume(String bindToken) {
+        String raw = stringRedisTemplate.opsForValue().getAndDelete(RedisKeys.miniBindToken(bindToken));
         if (!StringUtils.hasText(raw)) {
             return null;
         }
@@ -399,6 +429,7 @@ public class PortalMobileAuthService {
     public static class TokenPayload {
         private String userId;
         private String clientType;
+        private String deviceId;
         private String saToken;
         private String refreshToken;
         private Long expireAt;
@@ -435,6 +466,14 @@ public class PortalMobileAuthService {
             this.refreshToken = refreshToken;
         }
 
+        public String getDeviceId() {
+            return deviceId;
+        }
+
+        public void setDeviceId(String deviceId) {
+            this.deviceId = deviceId;
+        }
+
         public Long getExpireAt() {
             return expireAt;
         }
@@ -447,6 +486,7 @@ public class PortalMobileAuthService {
     private static class RefreshTokenPayload {
         private String userId;
         private String clientType;
+        private String deviceId;
 
         public String getUserId() {
             return userId;
@@ -462,6 +502,41 @@ public class PortalMobileAuthService {
 
         public void setClientType(String clientType) {
             this.clientType = clientType;
+        }
+
+        public String getDeviceId() {
+            return deviceId;
+        }
+
+        public void setDeviceId(String deviceId) {
+            this.deviceId = deviceId;
+        }
+    }
+
+
+    private static class IdentityMatchResult {
+        private final PortalUserIdentity matchedIdentity;
+        private final boolean conflict;
+
+        private IdentityMatchResult(PortalUserIdentity matchedIdentity, boolean conflict) {
+            this.matchedIdentity = matchedIdentity;
+            this.conflict = conflict;
+        }
+
+        static IdentityMatchResult matched(PortalUserIdentity identity) {
+            return new IdentityMatchResult(identity, false);
+        }
+
+        static IdentityMatchResult conflict() {
+            return new IdentityMatchResult(null, true);
+        }
+
+        public PortalUserIdentity getMatchedIdentity() {
+            return matchedIdentity;
+        }
+
+        public boolean hasConflict() {
+            return conflict;
         }
     }
 

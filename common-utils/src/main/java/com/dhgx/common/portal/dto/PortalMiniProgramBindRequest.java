@@ -19,6 +19,9 @@ public class PortalMiniProgramBindRequest {
     @NotBlank(message = "code 不能为空")
     private String code;
 
+    /** 设备标识，可用于风控与会话治理。 */
+    private String deviceId;
+
     public String getBindToken() {
         return bindToken;
     }
@@ -41,5 +44,13 @@ public class PortalMiniProgramBindRequest {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 }

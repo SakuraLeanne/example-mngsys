@@ -22,6 +22,14 @@ public class WechatMiniProgramClient {
     private final RestTemplate restTemplate = new RestTemplate();
     private final PortalProperties portalProperties;
 
+
+    /**
+     * 返回当前配置的 appId，用于记录身份绑定来源。
+     */
+    public String resolveConfiguredAppId() {
+        return portalProperties.getWechat().getMiniProgram().getAppId();
+    }
+
     public WechatMiniProgramClient(PortalProperties portalProperties) {
         this.portalProperties = portalProperties;
     }

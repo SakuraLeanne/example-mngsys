@@ -67,7 +67,7 @@ public class PortalAuthGlobalFilter implements GlobalFilter, Ordered {
 
         String bearer = resolveBearer(exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
         if (StringUtils.isNotBlank(bearer)) {
-            return Mono.fromCallable(() -> portalFeignClient.introspect(bearer))
+            return Mono.fromCallable(() -> portalFeignClient.introspect("Bearer " + bearer))
                     .subscribeOn(Schedulers.boundedElastic())
                     .flatMap(response -> handleBearerResponse(chain, exchange, response))
                     .onErrorResume(ex -> {

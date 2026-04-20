@@ -21,6 +21,9 @@ public class PortalUserIdentity {
     private String identityProvider;
     private String identityType;
     private String identityKey;
+    private String appId;
+    private String tenantId;
+    private String extJson;
     private Integer bindStatus;
     private LocalDateTime bindTime;
     private LocalDateTime createTime;
@@ -66,6 +69,30 @@ public class PortalUserIdentity {
         this.identityKey = identityKey;
     }
 
+
+    public String getAppId() {
+        return appId;
+    }
+
+    public void setAppId(String appId) {
+        this.appId = appId;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public String getExtJson() {
+        return extJson;
+    }
+
+    public void setExtJson(String extJson) {
+        this.extJson = extJson;
+    }
     public Integer getBindStatus() {
         return bindStatus;
     }
