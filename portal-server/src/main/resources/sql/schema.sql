@@ -26,6 +26,23 @@ CREATE TABLE IF NOT EXISTS portal_user (
     KEY idx_portal_user_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='门户用户表';
 
+CREATE TABLE IF NOT EXISTS portal_user_identity (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '自增主键',
+    user_id VARCHAR(64) NOT NULL COMMENT 'portal_user.id',
+    identity_provider VARCHAR(32) NOT NULL COMMENT '身份提供方',
+    identity_type VARCHAR(32) NOT NULL COMMENT '身份类型',
+    identity_key VARCHAR(128) NOT NULL COMMENT '身份标识键(openid/unionid等)',
+    app_id VARCHAR(64) DEFAULT NULL COMMENT '第三方应用ID',
+    tenant_id VARCHAR(64) DEFAULT NULL COMMENT '租户ID',
+    ext_json VARCHAR(1024) DEFAULT NULL COMMENT '扩展信息',
+    bind_status TINYINT NOT NULL DEFAULT 1 COMMENT '1-已绑定 0-已解绑',
+    bind_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '绑定时间',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_provider_type_key (identity_provider, identity_type, identity_key),
+    KEY idx_user_provider (user_id, identity_provider)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='门户用户外部身份绑定表';
+
 CREATE TABLE IF NOT EXISTS portal_user_auth_state (
     user_id VARCHAR(64) PRIMARY KEY COMMENT '用户ID',
     auth_version BIGINT NOT NULL DEFAULT 1 COMMENT '认证信息版本号',
