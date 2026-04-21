@@ -38,8 +38,8 @@ spring:
           refresh: true
   datasource:
     hikari:
-      maxLifetime: 30000
-      keepaliveTime: 15000
+      maxLifetime: 60000
+      keepaliveTime: 30000
       validationTimeout: 5000
       connectionTimeout: 30000
 
@@ -82,7 +82,7 @@ portal:
       accountPassword: rBZQ5*q6AV
       empUsercode: dhgxjkyh
       empPassword: aBZQ6@q6AV
-      pageSize: 50
+      pageSize: 100
       empRequestIntervalMs: 300
       tbThreads: 4
       tbChunkSize: 30
