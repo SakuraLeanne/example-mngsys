@@ -3,6 +3,7 @@ package com.dhgx.portal.controller;
 import com.dhgx.common.portal.dto.PortalAppWechatLoginRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramBindRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
+import com.dhgx.common.portal.dto.PortalMiniProgramPhoneLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
 import com.dhgx.common.portal.dto.PortalMobileSmsLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileSmsSendRequest;
@@ -71,6 +72,14 @@ public class PortalMobileAuthController {
     @PostMapping("/mobile/login/wechat/mini-program")
     public ApiResponse<PortalMobileLoginResponse> miniProgramLogin(@Valid @RequestBody PortalMiniProgramLoginRequest request) {
         return portalMobileAuthService.loginByMiniProgram(request);
+    }
+
+    /**
+     * 场景：小程序通过 bindgetphonenumber 回调中的动态 code 快速登录。
+     */
+    @PostMapping("/mobile/login/mini-program/phone")
+    public ApiResponse<PortalMobileLoginResponse> miniProgramPhoneLogin(@Valid @RequestBody PortalMiniProgramPhoneLoginRequest request) {
+        return portalMobileAuthService.loginByMiniProgramPhoneCode(request);
     }
 
     /**

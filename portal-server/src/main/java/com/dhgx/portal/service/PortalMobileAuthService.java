@@ -5,16 +5,19 @@ import com.dhgx.common.feign.dto.AuthLoginResponse;
 import com.dhgx.common.portal.dto.PortalAppWechatLoginRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramBindRequest;
 import com.dhgx.common.portal.dto.PortalMiniProgramLoginRequest;
+import com.dhgx.common.portal.dto.PortalMiniProgramPhoneLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileClientType;
 import com.dhgx.common.portal.dto.PortalMobileLoginResponse;
 import com.dhgx.common.portal.dto.PortalMobileSmsLoginRequest;
 import com.dhgx.common.portal.dto.PortalMobileSmsSendRequest;
 import com.dhgx.common.redis.RedisKeys;
 import com.dhgx.portal.client.AuthClient;
+import com.dhgx.portal.client.wechat.WechatAccessTokenResponse;
 import com.dhgx.portal.client.wechat.WechatAppClient;
 import com.dhgx.portal.client.wechat.WechatAppOauthResponse;
 import com.dhgx.portal.client.wechat.WechatMiniProgramClient;
 import com.dhgx.portal.client.wechat.WechatMiniProgramSessionResponse;
+import com.dhgx.portal.client.wechat.WechatPhoneNumberResponse;
 import com.dhgx.portal.common.api.ApiResponse;
 import com.dhgx.portal.common.api.ErrorCode;
 import com.dhgx.portal.config.AuthClientProperties;
@@ -49,6 +52,7 @@ public class PortalMobileAuthService {
     private static final long ACCESS_TOKEN_TTL_SECONDS = 2 * 60 * 60;
     private static final long REFRESH_TOKEN_TTL_SECONDS = 30L * 24 * 60 * 60;
     private static final long BIND_TOKEN_TTL_SECONDS = 5 * 60;
+    private static final long WECHAT_ACCESS_TOKEN_SKEW_SECONDS = 120;
 
     private static final String CLIENT_TYPE_MINI_PROGRAM = "MINI_PROGRAM";
     private static final String CLIENT_TYPE_APP = "APP";
@@ -116,18 +120,62 @@ public class PortalMobileAuthService {
                     clientType, mask(request.getMobile()), msg);
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, msg);
         }
+        return loginByMobile(request.getMobile(), clientType, request.getDeviceId(), "sms-login");
+    }
+
+    /**
+     * 小程序手机号授权登录：消费 bindgetphonenumber 的动态 code 换取手机号并登录。
+     */
+    public ApiResponse<PortalMobileLoginResponse> loginByMiniProgramPhoneCode(PortalMiniProgramPhoneLoginRequest request) {
+        String accessToken;
+        try {
+            accessToken = resolveMiniProgramAccessToken();
+        } catch (RuntimeException ex) {
+            log.warn("mini program phone login failed: get access token error, msg={}", ex.getMessage());
+            return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "获取微信访问令牌失败");
+        }
+        WechatPhoneNumberResponse phoneResponse;
+        try {
+            phoneResponse = wechatMiniProgramClient.getPhoneNumber(accessToken, request.getPhoneCode().trim());
+        } catch (RuntimeException ex) {
+            log.warn("mini program phone login failed: get phone number error, msg={}", ex.getMessage());
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "微信手机号获取失败，请重新点击授权");
+        }
+        if (phoneResponse.getErrcode() != null && phoneResponse.getErrcode() != 0) {
+            log.warn("mini program phone login failed: wechat error, errcode={}, errmsg={}",
+                    phoneResponse.getErrcode(), phoneResponse.getErrmsg());
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "微信手机号获取失败：" + phoneResponse.getErrmsg());
+        }
+        WechatPhoneNumberResponse.PhoneInfo phoneInfo = phoneResponse.getPhoneInfo();
+        if (phoneInfo == null || !StringUtils.hasText(phoneInfo.getPhoneNumber())) {
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "微信手机号信息为空");
+        }
+        String configuredAppId = wechatMiniProgramClient.resolveConfiguredAppId();
+        String responseAppId = phoneInfo.getWatermark() == null ? null : phoneInfo.getWatermark().getAppid();
+        if (!StringUtils.hasText(configuredAppId) || !configuredAppId.equals(responseAppId)) {
+            log.warn("mini program phone login failed: appId mismatch, expected={}, actual={}",
+                    configuredAppId, responseAppId);
+            return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "小程序应用标识校验失败");
+        }
+        return loginByMobile(phoneInfo.getPhoneNumber(), CLIENT_TYPE_MINI_PROGRAM, request.getDeviceId(), "mini-phone-code");
+    }
+
+    private ApiResponse<PortalMobileLoginResponse> loginByMobile(String mobile,
+                                                                 String clientType,
+                                                                 String deviceId,
+                                                                 String source) {
         PortalUser user = portalUserService.getOne(new LambdaQueryWrapper<PortalUser>()
-                .eq(PortalUser::getMobile, request.getMobile())
+                .eq(PortalUser::getMobile, mobile)
                 .last("LIMIT 1"));
         if (user == null) {
             if (!authClientProperties.isAutoCreateUser()) {
                 return ApiResponse.failure(ErrorCode.NOT_FOUND, "手机号未开通门户账号，请联系管理员");
             }
-            user = autoCreatePortalUser(request.getMobile());
-            log.info("auto created portal user for sms login, clientType={}, userId={}, mobile={}",
+            user = autoCreatePortalUser(mobile);
+            log.info("auto created portal user for mobile login, clientType={}, userId={}, mobile={}",
                     clientType, user.getId(), mask(user.getMobile()));
         }
-        return doLogin(user.getId(), clientType, request.getDeviceId(), "sms-login");
+        return doLogin(user.getId(), clientType, deviceId, source);
     }
 
     /**
@@ -366,6 +414,26 @@ public class PortalMobileAuthService {
         identity.setBindStatus(1);
         identity.setBindTime(LocalDateTime.now());
         portalUserIdentityService.save(identity);
+    }
+
+    private String resolveMiniProgramAccessToken() {
+        String appId = wechatMiniProgramClient.resolveConfiguredAppId();
+        if (!StringUtils.hasText(appId)) {
+            throw new IllegalStateException("微信小程序 appId 未配置");
+        }
+        String cacheKey = RedisKeys.wechatMiniAccessToken(appId);
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (StringUtils.hasText(cached)) {
+            return cached;
+        }
+        WechatAccessTokenResponse accessTokenResponse = wechatMiniProgramClient.getAccessToken();
+        if (accessTokenResponse == null || !StringUtils.hasText(accessTokenResponse.getAccessToken())) {
+            throw new IllegalStateException("微信 access_token 为空");
+        }
+        long expiresIn = accessTokenResponse.getExpiresIn() == null ? 7200L : accessTokenResponse.getExpiresIn();
+        long ttl = Math.max(60L, expiresIn - WECHAT_ACCESS_TOKEN_SKEW_SECONDS);
+        stringRedisTemplate.opsForValue().set(cacheKey, accessTokenResponse.getAccessToken(), ttl, TimeUnit.SECONDS);
+        return accessTokenResponse.getAccessToken();
     }
 
     private TokenPayload readAccessPayload(String accessToken) {

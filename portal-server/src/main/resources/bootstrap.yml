@@ -58,6 +58,8 @@ portal:
       appId: ${WECHAT_MINI_APP_ID:}
       appSecret: ${WECHAT_MINI_APP_SECRET:}
       jsCode2SessionUrl: https://api.weixin.qq.com/sns/jscode2session
+      accessTokenUrl: https://api.weixin.qq.com/cgi-bin/token
+      phoneNumberUrl: https://api.weixin.qq.com/wxa/business/getuserphonenumber
     app:
       appId: ${WECHAT_APP_ID:}
       appSecret: ${WECHAT_APP_SECRET:}

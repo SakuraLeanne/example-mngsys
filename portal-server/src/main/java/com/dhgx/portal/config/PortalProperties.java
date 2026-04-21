@@ -256,6 +256,8 @@ public class PortalProperties {
             private String appId;
             private String appSecret;
             private String jsCode2SessionUrl = "https://api.weixin.qq.com/sns/jscode2session";
+            private String accessTokenUrl = "https://api.weixin.qq.com/cgi-bin/token";
+            private String phoneNumberUrl = "https://api.weixin.qq.com/wxa/business/getuserphonenumber";
 
             public String getAppId() {
                 return appId;
@@ -279,6 +281,22 @@ public class PortalProperties {
 
             public void setJsCode2SessionUrl(String jsCode2SessionUrl) {
                 this.jsCode2SessionUrl = jsCode2SessionUrl;
+            }
+
+            public String getAccessTokenUrl() {
+                return accessTokenUrl;
+            }
+
+            public void setAccessTokenUrl(String accessTokenUrl) {
+                this.accessTokenUrl = accessTokenUrl;
+            }
+
+            public String getPhoneNumberUrl() {
+                return phoneNumberUrl;
+            }
+
+            public void setPhoneNumberUrl(String phoneNumberUrl) {
+                this.phoneNumberUrl = phoneNumberUrl;
             }
         }
     }

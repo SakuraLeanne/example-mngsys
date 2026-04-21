@@ -37,6 +37,8 @@ public final class RedisKeys {
     public static final String MOBILE_REFRESH_TOKEN_PREFIX = "portal:mobile:rt:";
     /** 微信小程序绑定 token 前缀。 */
     public static final String MINI_BIND_TOKEN_PREFIX = "portal:mini:bind:";
+    /** 微信小程序调用微信 API 的 access_token 缓存前缀。 */
+    public static final String WECHAT_MINI_ACCESS_TOKEN_PREFIX = "portal:wechat:mini:access-token:";
 
     /** 用户权限缓存前缀。 */
     public static final String USER_AUTH_PREFIX = "user:auth:";
@@ -109,6 +111,13 @@ public final class RedisKeys {
      */
     public static String miniBindToken(String bindToken) {
         return MINI_BIND_TOKEN_PREFIX + bindToken;
+    }
+
+    /**
+     * 拼接微信小程序 access_token 缓存 Key。
+     */
+    public static String wechatMiniAccessToken(String appId) {
+        return WECHAT_MINI_ACCESS_TOKEN_PREFIX + appId;
     }
 
     /**
