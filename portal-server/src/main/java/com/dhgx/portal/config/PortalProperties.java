@@ -16,6 +16,7 @@ public class PortalProperties {
     private Ptk ptk = new Ptk();
     private UserAuth userAuth = new UserAuth();
     private Events events = new Events();
+    private Wechat wechat = new Wechat();
 
     public Security getSecurity() {
         return security;
@@ -55,6 +56,14 @@ public class PortalProperties {
 
     public void setEvents(Events events) {
         this.events = events;
+    }
+
+    public Wechat getWechat() {
+        return wechat;
+    }
+
+    public void setWechat(Wechat wechat) {
+        this.wechat = wechat;
     }
 
     public static class Security {
@@ -189,6 +198,106 @@ public class PortalProperties {
 
         public void setStreamKey(String streamKey) {
             this.streamKey = streamKey;
+        }
+    }
+
+    public static class Wechat {
+        private MiniProgram miniProgram = new MiniProgram();
+        private App app = new App();
+
+        public MiniProgram getMiniProgram() {
+            return miniProgram;
+        }
+
+        public void setMiniProgram(MiniProgram miniProgram) {
+            this.miniProgram = miniProgram;
+        }
+
+        public App getApp() {
+            return app;
+        }
+
+        public void setApp(App app) {
+            this.app = app;
+        }
+
+
+        public static class App {
+            private String appId;
+            private String appSecret;
+            private String oauthAccessTokenUrl = "https://api.weixin.qq.com/sns/oauth2/access_token";
+
+            public String getAppId() {
+                return appId;
+            }
+
+            public void setAppId(String appId) {
+                this.appId = appId;
+            }
+
+            public String getAppSecret() {
+                return appSecret;
+            }
+
+            public void setAppSecret(String appSecret) {
+                this.appSecret = appSecret;
+            }
+
+            public String getOauthAccessTokenUrl() {
+                return oauthAccessTokenUrl;
+            }
+
+            public void setOauthAccessTokenUrl(String oauthAccessTokenUrl) {
+                this.oauthAccessTokenUrl = oauthAccessTokenUrl;
+            }
+        }
+
+        public static class MiniProgram {
+            private String appId;
+            private String appSecret;
+            private String jsCode2SessionUrl = "https://api.weixin.qq.com/sns/jscode2session";
+            private String accessTokenUrl = "https://api.weixin.qq.com/cgi-bin/token";
+            private String phoneNumberUrl = "https://api.weixin.qq.com/wxa/business/getuserphonenumber";
+
+            public String getAppId() {
+                return appId;
+            }
+
+            public void setAppId(String appId) {
+                this.appId = appId;
+            }
+
+            public String getAppSecret() {
+                return appSecret;
+            }
+
+            public void setAppSecret(String appSecret) {
+                this.appSecret = appSecret;
+            }
+
+            public String getJsCode2SessionUrl() {
+                return jsCode2SessionUrl;
+            }
+
+            public void setJsCode2SessionUrl(String jsCode2SessionUrl) {
+                this.jsCode2SessionUrl = jsCode2SessionUrl;
+            }
+
+            public String getAccessTokenUrl() {
+                return accessTokenUrl;
+            }
+
+            public void setAccessTokenUrl(String accessTokenUrl) {
+                this.accessTokenUrl = accessTokenUrl;
+            }
+
+            public String getPhoneNumberUrl() {
+                return phoneNumberUrl;
+            }
+
+            public void setPhoneNumberUrl(String phoneNumberUrl) {
+                this.phoneNumberUrl = phoneNumberUrl;
+            }
         }
     }
 }

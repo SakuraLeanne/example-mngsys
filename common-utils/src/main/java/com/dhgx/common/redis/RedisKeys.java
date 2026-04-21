@@ -30,6 +30,16 @@ public final class RedisKeys {
     /** 门户 Token 过期时间。 */
     public static final Duration PTK_TTL = Duration.ofMinutes(10);
 
+
+    /** 移动端 Access Token 前缀。 */
+    public static final String MOBILE_ACCESS_TOKEN_PREFIX = "portal:mobile:at:";
+    /** 移动端 Refresh Token 前缀。 */
+    public static final String MOBILE_REFRESH_TOKEN_PREFIX = "portal:mobile:rt:";
+    /** 微信小程序绑定 token 前缀。 */
+    public static final String MINI_BIND_TOKEN_PREFIX = "portal:mini:bind:";
+    /** 微信小程序调用微信 API 的 access_token 缓存前缀。 */
+    public static final String WECHAT_MINI_ACCESS_TOKEN_PREFIX = "portal:wechat:mini:access-token:";
+
     /** 用户权限缓存前缀。 */
     public static final String USER_AUTH_PREFIX = "user:auth:";
     /** 用户权限缓存过期时间。 */
@@ -79,6 +89,35 @@ public final class RedisKeys {
      */
     public static String portalToken(String ptk) {
         return PTK_PREFIX + ptk;
+    }
+
+
+    /**
+     * 拼接移动端 Access Token Key。
+     */
+    public static String mobileAccessToken(String accessToken) {
+        return MOBILE_ACCESS_TOKEN_PREFIX + accessToken;
+    }
+
+    /**
+     * 拼接移动端 Refresh Token Key。
+     */
+    public static String mobileRefreshToken(String refreshToken) {
+        return MOBILE_REFRESH_TOKEN_PREFIX + refreshToken;
+    }
+
+    /**
+     * 拼接小程序绑定 Token Key。
+     */
+    public static String miniBindToken(String bindToken) {
+        return MINI_BIND_TOKEN_PREFIX + bindToken;
+    }
+
+    /**
+     * 拼接微信小程序 access_token 缓存 Key。
+     */
+    public static String wechatMiniAccessToken(String appId) {
+        return WECHAT_MINI_ACCESS_TOKEN_PREFIX + appId;
     }
 
     /**
