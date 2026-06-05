@@ -112,8 +112,9 @@ public class PortalAuthService {
         String systemCode = loginRequest.getSystemCode();
         String returnUrl = loginRequest.getReturnUrl();
         if (body != null && body.getCode() == 0 && StringUtils.hasText(systemCode) && StringUtils.hasText(returnUrl)) {
-            String jumpUrl = createSsoJumpUrl(extractUserId(body.getData()), systemCode, returnUrl, extractSaToken(body.getData()));
-            result.setJumpUrl(jumpUrl);
+            SsoJumpResult jumpResult = createSsoJumpResult(extractUserId(body.getData()), systemCode, returnUrl, extractSaToken(body.getData()));
+            result.setJumpUrl(jumpResult.getJumpUrl());
+            result.setTicket(jumpResult.getTicket());
         } else if (StringUtils.hasText(systemCode) ^ StringUtils.hasText(returnUrl)) {
             throw new IllegalArgumentException("systemCode 与 returnUrl 必须同时提供");
         }
@@ -135,6 +136,10 @@ public class PortalAuthService {
     }
 
     public String createSsoJumpUrl(String userId, String systemCode, String targetUrl, String tokenValue) {
+        return createSsoJumpResult(userId, systemCode, targetUrl, tokenValue).getJumpUrl();
+    }
+
+    public SsoJumpResult createSsoJumpResult(String userId, String systemCode, String targetUrl, String tokenValue) {
         validateReturnUrl(targetUrl);
         if (userId == null) {
             throw new IllegalArgumentException("登录状态已失效，请重新登录");
@@ -157,10 +162,11 @@ public class PortalAuthService {
         String key = buildTicketKey(ticket);
         stringRedisTemplate.opsForHash().putAll(key, payload);
         stringRedisTemplate.expire(key, ttlSeconds, TimeUnit.SECONDS);
-        return UriComponentsBuilder.fromUriString(targetUrl)
+        String jumpUrl = UriComponentsBuilder.fromUriString(targetUrl)
                 .queryParam("ticket", ticket)
                 .build()
                 .toUriString();
+        return new SsoJumpResult(jumpUrl, ticket);
     }
 
     /**
@@ -313,6 +319,8 @@ public class PortalAuthService {
         private final ResponseEntity<? extends ApiResponse<?>> responseEntity;
         /** 单点登录跳转地址。 */
         private String jumpUrl;
+        /** 单点登录票据。 */
+        private String ticket;
 
         public LoginResult(ApiResponse<?> responseBody, ResponseEntity<? extends ApiResponse<?>> responseEntity) {
             this.responseBody = responseBody;
@@ -337,6 +345,37 @@ public class PortalAuthService {
         /** 设置跳转地址。 */
         public void setJumpUrl(String jumpUrl) {
             this.jumpUrl = jumpUrl;
+        }
+
+        /** 获取单点登录票据。 */
+        public String getTicket() {
+            return ticket;
+        }
+
+        /** 设置单点登录票据。 */
+        public void setTicket(String ticket) {
+            this.ticket = ticket;
+        }
+    }
+
+    /**
+     * SSO ticket 与跳转地址。
+     */
+    public static class SsoJumpResult {
+        private final String jumpUrl;
+        private final String ticket;
+
+        public SsoJumpResult(String jumpUrl, String ticket) {
+            this.jumpUrl = jumpUrl;
+            this.ticket = ticket;
+        }
+
+        public String getJumpUrl() {
+            return jumpUrl;
+        }
+
+        public String getTicket() {
+            return ticket;
         }
     }
 }

@@ -13,6 +13,8 @@ public class PortalLoginResponse {
     private final String loginTime;
     /** 跳转链接。 */
     private final String jumpUrl;
+    /** 单点登录票据。 */
+    private final String ticket;
 
     public PortalLoginResponse(String userId,
                                String username,
@@ -21,6 +23,17 @@ public class PortalLoginResponse {
                                String satoken,
                                String loginTime,
                                String jumpUrl) {
+        this(userId, username, mobile, realName, satoken, loginTime, jumpUrl, null);
+    }
+
+    public PortalLoginResponse(String userId,
+                               String username,
+                               String mobile,
+                               String realName,
+                               String satoken,
+                               String loginTime,
+                               String jumpUrl,
+                               String ticket) {
         this.userId = userId;
         this.username = username;
         this.mobile = mobile;
@@ -28,6 +41,7 @@ public class PortalLoginResponse {
         this.satoken = satoken;
         this.loginTime = loginTime;
         this.jumpUrl = jumpUrl;
+        this.ticket = ticket;
     }
 
     public String getUserId() {
@@ -56,5 +70,9 @@ public class PortalLoginResponse {
 
     public String getJumpUrl() {
         return jumpUrl;
+    }
+
+    public String getTicket() {
+        return ticket;
     }
 }

@@ -127,7 +127,7 @@ public class PortalApiController {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, authBody.getMessage());
         }
         AuthLoginResponse data = (AuthLoginResponse) authBody.getData();
-        PortalLoginResponse loginResponse = buildLoginResponse(data, loginResult.getJumpUrl());
+        PortalLoginResponse loginResponse = buildLoginResponse(data, loginResult.getJumpUrl(), loginResult.getTicket());
         return ApiResponse.success(loginResponse);
     }
 
@@ -417,7 +417,7 @@ public class PortalApiController {
      * @param jumpUrl 跳转地址
      * @return 登录响应对象
      */
-    private PortalLoginResponse buildLoginResponse(AuthLoginResponse data, String jumpUrl) {
+    private PortalLoginResponse buildLoginResponse(AuthLoginResponse data, String jumpUrl, String ticket) {
         String userId = data.getUserId();
         String username = data.getUsername();
         String mobile = data.getMobile();
@@ -425,7 +425,7 @@ public class PortalApiController {
         String satoken = data.getSatoken();
         String loginTime = data.getLoginTime();
 
-        return new PortalLoginResponse(userId, username, mobile, realName, satoken, loginTime, jumpUrl);
+        return new PortalLoginResponse(userId, username, mobile, realName, satoken, loginTime, jumpUrl, ticket);
     }
 
     /**
