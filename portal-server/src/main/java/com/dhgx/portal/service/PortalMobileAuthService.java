@@ -70,6 +70,7 @@ public class PortalMobileAuthService {
     private final ObjectMapper objectMapper;
     private final AuthClientProperties authClientProperties;
     private final PasswordEncoder passwordEncoder;
+    private final PortalAuthService portalAuthService;
 
     public PortalMobileAuthService(PortalUserIdentityService portalUserIdentityService,
                                    PortalUserService portalUserService,
@@ -79,7 +80,8 @@ public class PortalMobileAuthService {
                                    StringRedisTemplate stringRedisTemplate,
                                    ObjectMapper objectMapper,
                                    AuthClientProperties authClientProperties,
-                                   PasswordEncoder passwordEncoder) {
+                                   PasswordEncoder passwordEncoder,
+                                   PortalAuthService portalAuthService) {
         this.portalUserIdentityService = portalUserIdentityService;
         this.portalUserService = portalUserService;
         this.authClient = authClient;
@@ -89,6 +91,7 @@ public class PortalMobileAuthService {
         this.objectMapper = objectMapper;
         this.authClientProperties = authClientProperties;
         this.passwordEncoder = passwordEncoder;
+        this.portalAuthService = portalAuthService;
     }
 
     /**
@@ -120,7 +123,8 @@ public class PortalMobileAuthService {
                     clientType, mask(request.getMobile()), msg);
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, msg);
         }
-        return loginByMobile(request.getMobile(), clientType, request.getDeviceId(), "sms-login");
+        return loginByMobile(request.getMobile(), clientType, request.getDeviceId(), "sms-login",
+                request.getSystemCode(), request.getReturnUrl());
     }
 
     /**
@@ -157,13 +161,16 @@ public class PortalMobileAuthService {
                     configuredAppId, responseAppId);
             return ApiResponse.failure(ErrorCode.INVALID_ARGUMENT, "小程序应用标识校验失败");
         }
-        return loginByMobile(phoneInfo.getPhoneNumber(), CLIENT_TYPE_MINI_PROGRAM, request.getDeviceId(), "mini-phone-code");
+        return loginByMobile(phoneInfo.getPhoneNumber(), CLIENT_TYPE_MINI_PROGRAM, request.getDeviceId(), "mini-phone-code",
+                request.getSystemCode(), request.getReturnUrl());
     }
 
     private ApiResponse<PortalMobileLoginResponse> loginByMobile(String mobile,
                                                                  String clientType,
                                                                  String deviceId,
-                                                                 String source) {
+                                                                 String source,
+                                                                 String systemCode,
+                                                                 String returnUrl) {
         PortalUser user = portalUserService.getOne(new LambdaQueryWrapper<PortalUser>()
                 .eq(PortalUser::getMobile, mobile)
                 .last("LIMIT 1"));
@@ -175,7 +182,7 @@ public class PortalMobileAuthService {
             log.info("auto created portal user for mobile login, clientType={}, userId={}, mobile={}",
                     clientType, user.getId(), mask(user.getMobile()));
         }
-        return doLogin(user.getId(), clientType, deviceId, source);
+        return doLogin(user.getId(), clientType, deviceId, source, systemCode, returnUrl);
     }
 
     /**
@@ -335,6 +342,15 @@ public class PortalMobileAuthService {
     }
 
     private ApiResponse<PortalMobileLoginResponse> doLogin(String userId, String clientType, String deviceId, String source) {
+        return doLogin(userId, clientType, deviceId, source, null, null);
+    }
+
+    private ApiResponse<PortalMobileLoginResponse> doLogin(String userId,
+                                                          String clientType,
+                                                          String deviceId,
+                                                          String source,
+                                                          String systemCode,
+                                                          String returnUrl) {
         ApiResponse<AuthLoginResponse> authResp = authClient.internalLoginByUserId(userId);
         if (authResp == null || authResp.getCode() != 0 || authResp.getData() == null) {
             String msg = authResp == null ? "鉴权服务无响应" : authResp.getMessage();
@@ -342,6 +358,12 @@ public class PortalMobileAuthService {
             return ApiResponse.failure(ErrorCode.UNAUTHENTICATED, msg);
         }
         AuthLoginResponse loginResponse = authResp.getData();
+        PortalAuthService.SsoJumpResult ssoJumpResult = null;
+        if (StringUtils.hasText(systemCode) && StringUtils.hasText(returnUrl)) {
+            ssoJumpResult = portalAuthService.createSsoJumpResult(userId, systemCode, returnUrl, loginResponse.getSatoken());
+        } else if (StringUtils.hasText(systemCode) ^ StringUtils.hasText(returnUrl)) {
+            throw new IllegalArgumentException("systemCode 与 returnUrl 必须同时提供");
+        }
         String accessToken = randomToken();
         String refreshToken = randomToken();
         TokenPayload accessPayload = new TokenPayload();
@@ -364,7 +386,9 @@ public class PortalMobileAuthService {
                     objectMapper.writeValueAsString(refreshPayload), REFRESH_TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
             log.info("mobile login success, userId={}, source={}, clientType={}", userId, source, clientType);
             return ApiResponse.success(PortalMobileLoginResponse.loginSuccess(
-                    accessToken, refreshToken, ACCESS_TOKEN_TTL_SECONDS, userId));
+                    accessToken, refreshToken, ACCESS_TOKEN_TTL_SECONDS, userId,
+                    ssoJumpResult == null ? null : ssoJumpResult.getJumpUrl(),
+                    ssoJumpResult == null ? null : ssoJumpResult.getTicket()));
         } catch (JsonProcessingException ex) {
             log.error("write mobile token payload failed, userId={}", userId, ex);
             return ApiResponse.failure(ErrorCode.INTERNAL_ERROR, "令牌签发失败");

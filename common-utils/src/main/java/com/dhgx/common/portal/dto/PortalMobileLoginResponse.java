@@ -14,6 +14,10 @@ public class PortalMobileLoginResponse {
     private boolean bindRequired;
     private String bindToken;
     private String userId;
+    /** 单点登录跳转地址。 */
+    private String jumpUrl;
+    /** 单点登录票据。 */
+    private String ticket;
 
     public static PortalMobileLoginResponse bindRequired(String bindToken) {
         PortalMobileLoginResponse response = new PortalMobileLoginResponse();
@@ -26,12 +30,23 @@ public class PortalMobileLoginResponse {
                                                          String refreshToken,
                                                          Long expiresIn,
                                                          String userId) {
+        return loginSuccess(accessToken, refreshToken, expiresIn, userId, null, null);
+    }
+
+    public static PortalMobileLoginResponse loginSuccess(String accessToken,
+                                                         String refreshToken,
+                                                         Long expiresIn,
+                                                         String userId,
+                                                         String jumpUrl,
+                                                         String ticket) {
         PortalMobileLoginResponse response = new PortalMobileLoginResponse();
         response.setBindRequired(false);
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
         response.setExpiresIn(expiresIn);
         response.setUserId(userId);
+        response.setJumpUrl(jumpUrl);
+        response.setTicket(ticket);
         return response;
     }
 
@@ -81,5 +96,21 @@ public class PortalMobileLoginResponse {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getJumpUrl() {
+        return jumpUrl;
+    }
+
+    public void setJumpUrl(String jumpUrl) {
+        this.jumpUrl = jumpUrl;
+    }
+
+    public String getTicket() {
+        return ticket;
+    }
+
+    public void setTicket(String ticket) {
+        this.ticket = ticket;
     }
 }

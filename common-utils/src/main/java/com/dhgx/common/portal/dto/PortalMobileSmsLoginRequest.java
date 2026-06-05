@@ -23,6 +23,12 @@ public class PortalMobileSmsLoginRequest {
     @NotNull(message = "clientType 不能为空")
     private PortalMobileClientType clientType;
 
+    /** 目标系统编码，和 returnUrl 同时提供时会生成 SSO ticket。 */
+    private String systemCode;
+
+    /** 业务系统回调地址，和 systemCode 同时提供时会生成 SSO ticket。 */
+    private String returnUrl;
+
     public String getMobile() {
         return mobile;
     }
@@ -45,6 +51,22 @@ public class PortalMobileSmsLoginRequest {
 
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
+    }
+
+    public String getSystemCode() {
+        return systemCode;
+    }
+
+    public void setSystemCode(String systemCode) {
+        this.systemCode = systemCode;
+    }
+
+    public String getReturnUrl() {
+        return returnUrl;
+    }
+
+    public void setReturnUrl(String returnUrl) {
+        this.returnUrl = returnUrl;
     }
 
     public PortalMobileClientType getClientType() {
